@@ -139,7 +139,7 @@ defmodule Cardano.AddressTest do
                payment_credential: nil,
                stake_credential: %Credential{
                  hash: "337b62cfff6403a06a3acbc34f8c46003c69fe79a3628cefa9c47251",
-                 credential_type: :skey
+                 credential_type: :vkey
                }
              }
     end

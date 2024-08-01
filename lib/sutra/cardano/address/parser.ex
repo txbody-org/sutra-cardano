@@ -1,14 +1,16 @@
-defmodule Cardano.Address.Parser do
+defmodule Sutra.Cardano.Address.Parser do
   @moduledoc """
-    Cardano Address Parser
+    Contains function to encode and decode Cardano addresses based on cip-0019
+    https://cips.cardano.org/cip/CIP-0019
+
   """
 
   import Bitwise
 
-  alias Cardano.Address
-  alias Cardano.Address.Credential
-  alias Cardano.Address.Pointer
-  alias Cardano.Address.Parser
+  alias Sutra.Cardano.Address
+  alias Sutra.Cardano.Address.Credential
+  alias Sutra.Cardano.Address.Parser
+  alias Sutra.Cardano.Address.Pointer
 
   defimpl CBOR.Encoder, for: Address do
     @impl true
@@ -17,6 +19,35 @@ defmodule Cardano.Address.Parser do
     end
   end
 
+  @doc """
+  Encode an [Address] to CBOR.
+
+  Byron addresses are left untouched as we don't plan to have full support of Byron era.
+
+  Shelley address description from CIP-0019:
+
+    Header type (tttt....)  Payment Part     Delegation Part
+    (0) 0000....            PaymentKeyHash   StakeKeyHash
+    (1) 0001....            ScriptHash       StakeKeyHash
+    (2) 0010....            PaymentKeyHash   ScriptHash
+    (3) 0011....            ScriptHash       ScriptHash
+    (4) 0100....            PaymentKeyHash   Pointer
+    (5) 0101....            ScriptHash       Pointer
+    (6) 0110....            PaymentKeyHash   ø
+    (7) 0111....            ScriptHash       ø
+
+    Header type (....tttt)
+    (0) ....0000 testnet
+    (1) ....0001 mainnet
+
+  For example, `61....(56 chars / 28 bytes)....` is an enterprise address (6, only a payment key) on mainnet (1).
+
+  Stake address description from CIP-0019:
+
+    Header type (tttt....)  Stake Reference
+    (14) 1110....           StakeKeyHash
+    (15) 1111....           ScriptHash
+  """
   def encode(%Address{} = address) do
     network = if address.network == :testnet, do: "0", else: "1"
 

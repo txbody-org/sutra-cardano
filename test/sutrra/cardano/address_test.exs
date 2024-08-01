@@ -1,8 +1,8 @@
-defmodule Cardano.AddressTest do
+defmodule Sutra.Cardano.AddressTest do
   @moduledoc false
   use ExUnit.Case
-  alias Cardano.Address
-  alias Cardano.Address.Credential
+  alias Sutra.Cardano.Address
+  alias Sutra.Cardano.Address.Credential
 
   @addr_mainnet_0 "addr1qx2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer3n0d3vllmyqwsx5wktcd8cc3sq835lu7drv2xwl2wywfgse35a3x"
   @addr_mainnet_1 "addr1z8phkx6acpnf78fuvxn0mkew3l0fd058hzquvz7w36x4gten0d3vllmyqwsx5wktcd8cc3sq835lu7drv2xwl2wywfgs9yc0hh"
@@ -84,7 +84,7 @@ defmodule Cardano.AddressTest do
                  credential_type: :vkey,
                  hash: "9493315cd92eb5d8c4304e67b7e16ae36d61d34502694657811a2c8e"
                },
-               stake_credential: %Cardano.Address.Pointer{
+               stake_credential: %Sutra.Cardano.Address.Pointer{
                  slot: 2_498_243,
                  tx_index: 27,
                  cert_index: 3
@@ -100,7 +100,7 @@ defmodule Cardano.AddressTest do
                  credential_type: :script,
                  hash: "c37b1b5dc0669f1d3c61a6fddb2e8fde96be87b881c60bce8e8d542f"
                },
-               stake_credential: %Cardano.Address.Pointer{
+               stake_credential: %Sutra.Cardano.Address.Pointer{
                  slot: 2_498_243,
                  tx_index: 27,
                  cert_index: 3
@@ -154,6 +154,17 @@ defmodule Cardano.AddressTest do
                  credential_type: :script
                }
              }
+    end
+
+    test "to_bech32 returns bech32 string from address" do
+      assert Address.from_bech32(@addr_mainnet_0) |> Address.to_bech32() == @addr_mainnet_0
+      assert Address.from_bech32(@addr_mainnet_1) |> Address.to_bech32() == @addr_mainnet_1
+      assert Address.from_bech32(@addr_mainnet_2) |> Address.to_bech32() == @addr_mainnet_2
+      assert Address.from_bech32(@addr_mainnet_3) |> Address.to_bech32() == @addr_mainnet_3
+      assert Address.from_bech32(@addr_mainnet_6) |> Address.to_bech32() == @addr_mainnet_6
+      assert Address.from_bech32(@addr_mainnet_7) |> Address.to_bech32() == @addr_mainnet_7
+      assert Address.from_bech32(@addr_mainnet_14) |> Address.to_bech32() == @addr_mainnet_14
+      assert Address.from_bech32(@addr_mainnet_15) |> Address.to_bech32() == @addr_mainnet_15
     end
   end
 end

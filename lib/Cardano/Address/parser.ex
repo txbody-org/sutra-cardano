@@ -8,15 +8,84 @@ defmodule Cardano.Address.Parser do
   alias Cardano.Address
   alias Cardano.Address.Credential
   alias Cardano.Address.Pointer
+  alias Cardano.Address.Parser
 
+  defimpl CBOR.Encoder, for: Address do
+    @impl true
+    def encode_into(address, acc) do
+      Parser.encode(address) |> CBOR.Encoder.encode_into(acc)
+    end
+  end
+
+  def encode(%Address{} = address) do
+    network = if address.network == :testnet, do: "0", else: "1"
+
+    {header_type, payload} =
+      do_encode_address(
+        address.address_type,
+        address.payment_credential,
+        address.stake_credential
+      )
+
+    header_type <> network <> payload
+  end
+
+  defp do_encode_address(:shelley, payment_credential, stake_credential) do
+    case {payment_credential, stake_credential} do
+      # (0) 0000.... PaymentKeyHash StakeKeyHash
+      {%Credential{credential_type: :vkey} = p_cred, %Credential{credential_type: :vkey} = s_cred} ->
+        {"0", p_cred.hash <> s_cred.hash}
+
+      # (1) 0001.... ScriptHash StakeKeyHash
+      {%Credential{credential_type: :script} = p_cred,
+       %Credential{credential_type: :vkey} = s_cred} ->
+        {"1", p_cred.hash <> s_cred.hash}
+
+      # (2) 0010.... PaymentKeyHash ScriptHash
+      {%Credential{credential_type: :vkey} = p_cred,
+       %Credential{credential_type: :script} = s_cred} ->
+        {"2", p_cred.hash <> s_cred.hash}
+
+      # (3) 0011.... ScriptHash ScriptHash
+      {%Credential{credential_type: :script} = p_cred,
+       %Credential{credential_type: :script} = s_cred} ->
+        {"3", p_cred.hash <> s_cred.hash}
+
+      # (4) 0100.... PaymentKeyHash Pointer
+      {%Credential{credential_type: :vkey} = _p_cred, %Pointer{} = _s_cred} ->
+        raise "TODO: Implement Pointer encoding"
+
+      # (5) 0101.... ScriptHash Pointer
+      {%Credential{credential_type: :script} = _p_cred, %Pointer{} = _s_cred} ->
+        raise "TODO: Implement Pointer encoding"
+
+      # (6) 0110.... PaymentKeyHash  ø
+      {%Credential{credential_type: :vkey} = p_cred, nil} ->
+        {"6", p_cred.hash}
+
+      # (7) 0111.... ScriptHash  ø
+      {%Credential{credential_type: :script} = p_cred, nil} ->
+        {"7", p_cred.hash}
+    end
+  end
+
+  defp do_encode_address(:reward, nil, %Credential{} = stake_cred) do
+    case stake_cred.credential_type do
+      # (14) 1110.... StakeKeyHash
+      :vkey -> {"e", stake_cred.hash}
+      # (15) 1111.... ScriptHash
+      :script -> {"f", stake_cred.hash}
+    end
+  end
+
+  @spec decode(binary()) :: Address.t()
   def decode(bytes) do
     <<t1::1, t2::1, t3::1, t4::1, n1::1, n2::1, n3::1, n4::1, rest::bitstring>> = bytes
     address_header = [t1, t2, t3, t4]
-    network = get_network([n1, n2, n3, n4])
     decoded_address = do_decode_bytes(address_header, rest)
 
     %Address{
-      network: network,
+      network: get_network([n1, n2, n3, n4]),
       address_type: decoded_address.address_type,
       payment_credential: decoded_address.payment_credential,
       stake_credential: decoded_address.stake_credential
@@ -26,6 +95,7 @@ defmodule Cardano.Address.Parser do
   defp get_network([0, 0, 0, 0]), do: :testnet
   defp get_network([0, 0, 0, 1]), do: :mainnet
 
+  # (0) 0000.... PaymentKeyHash StakeKeyHash
   defp do_decode_bytes([0, 0, 0, 0], bytes) do
     %{
       payment_credential: %Credential{
@@ -40,6 +110,7 @@ defmodule Cardano.Address.Parser do
     }
   end
 
+  # (1) 0001.... ScriptHash StakeKeyHash
   defp do_decode_bytes([0, 0, 0, 1], bytes) do
     %{
       payment_credential: %Credential{
@@ -54,6 +125,7 @@ defmodule Cardano.Address.Parser do
     }
   end
 
+  # (2) 0010.... PaymentKeyHash ScriptHash
   defp do_decode_bytes([0, 0, 1, 0], bytes) do
     %{
       payment_credential: %Credential{
@@ -68,6 +140,7 @@ defmodule Cardano.Address.Parser do
     }
   end
 
+  # (3) 0011.... ScriptHash ScriptHash
   defp do_decode_bytes([0, 0, 1, 1], bytes) do
     %{
       payment_credential: %Credential{
@@ -82,6 +155,7 @@ defmodule Cardano.Address.Parser do
     }
   end
 
+  # (4) 0100.... PaymentKeyHash Pointer
   defp do_decode_bytes([0, 1, 0, 0], bytes) do
     bytes_list = :binary.bin_to_list(bytes)
     {payment, pointer_bytes} = Enum.split(bytes_list, 28)
@@ -100,6 +174,7 @@ defmodule Cardano.Address.Parser do
     }
   end
 
+  # (5) 0101.... ScriptHash Pointer
   defp do_decode_bytes([0, 1, 0, 1], bytes) do
     bytes_list = :binary.bin_to_list(bytes)
     {payment, pointer_bytes} = Enum.split(bytes_list, 28)
@@ -118,6 +193,7 @@ defmodule Cardano.Address.Parser do
     }
   end
 
+  # (6) 0110.... PaymentKeyHash  ø
   defp do_decode_bytes([0, 1, 1, 0], bytes) do
     %{
       payment_credential: %Credential{
@@ -129,6 +205,7 @@ defmodule Cardano.Address.Parser do
     }
   end
 
+  # (7) 0111.... ScriptHash  ø
   defp do_decode_bytes([0, 1, 1, 1], bytes) do
     %{
       payment_credential: %Credential{
@@ -140,21 +217,24 @@ defmodule Cardano.Address.Parser do
     }
   end
 
+  # (8) 1000.... Byron
   defp do_decode_bytes([1, 0, 0, 0], _bytes) do
     raise "Not implemented: Byron Address"
   end
 
+  # (9) 1110.... StakeKeyHash
   defp do_decode_bytes([1, 1, 1, 0], bytes) do
     %{
       payment_credential: nil,
       stake_credential: %Credential{
         hash: binary_slice(bytes, 0, 28) |> Base.encode16(case: :lower),
-        credential_type: :skey
+        credential_type: :vkey
       },
       address_type: :reward
     }
   end
 
+  # (10) 1111.... ScriptHash
   defp do_decode_bytes([1, 1, 1, 1], bytes) do
     %{
       payment_credential: nil,

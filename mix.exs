@@ -23,7 +23,10 @@ defmodule Sutra.MixProject do
     [
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
-      {:credo, "~> 1.6", only: [:dev, :test], runtime: false}
+      {:cbor, "~> 1.0.1"},
+      {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
+      {:bech32, "~> 1.0"},
+      {:typed_struct, "~> 0.3.0"}
     ]
   end
 end

@@ -161,6 +161,8 @@ defmodule Sutra.Cardano.AddressTest do
       assert Address.from_bech32(@addr_mainnet_1) |> Address.to_bech32() == @addr_mainnet_1
       assert Address.from_bech32(@addr_mainnet_2) |> Address.to_bech32() == @addr_mainnet_2
       assert Address.from_bech32(@addr_mainnet_3) |> Address.to_bech32() == @addr_mainnet_3
+      assert Address.from_bech32(@addr_mainnet_4) |> Address.to_bech32() == @addr_mainnet_4
+      assert Address.from_bech32(@addr_mainnet_5) |> Address.to_bech32() == @addr_mainnet_5
       assert Address.from_bech32(@addr_mainnet_6) |> Address.to_bech32() == @addr_mainnet_6
       assert Address.from_bech32(@addr_mainnet_7) |> Address.to_bech32() == @addr_mainnet_7
       assert Address.from_bech32(@addr_mainnet_14) |> Address.to_bech32() == @addr_mainnet_14

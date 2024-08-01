@@ -74,6 +74,12 @@ defmodule Sutra.Cardano.Address do
         _ -> ""
       end
 
+    is_padded =
+      case address.stake_credential do
+        %Pointer{} -> false
+        _ -> true
+      end
+
     hrp =
       if address.network == :mainnet do
         hrp_prefix
@@ -81,8 +87,7 @@ defmodule Sutra.Cardano.Address do
         hrp_prefix <> "_test"
       end
 
-    data = Parser.encode(address) |> Base.decode16!(case: :lower)
-
-    Bech32.encode(hrp, data)
+    data = Parser.encode(address) |> Bech32.convertbits(8, 5, is_padded)
+    Bech32.encode_from_5bit(hrp, data)
   end
 end

@@ -5,7 +5,7 @@ defmodule Sutra.Cardano.Address.Parser do
 
   """
 
-  import Bitwise
+  import Bitwise, only: [band: 2, bor: 2, <<<: 2, &&&: 2, >>>: 2]
 
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Address.Credential
@@ -14,15 +14,15 @@ defmodule Sutra.Cardano.Address.Parser do
 
   defimpl CBOR.Encoder, for: Address do
     @impl true
-    def encode_into(address, acc) do
-      Parser.encode(address) |> CBOR.Encoder.encode_into(acc)
+    def encode_into(address, _acc) do
+      Parser.encode(address)
     end
   end
 
   @doc """
   Encode an [Address] to CBOR.
 
-  Byron addresses are left untouched as we don't plan to have full support of Byron era.
+  Byron addresses are not supported
 
   Shelley address description from CIP-0019:
 
@@ -47,7 +47,10 @@ defmodule Sutra.Cardano.Address.Parser do
     Header type (tttt....)  Stake Reference
     (14) 1110....           StakeKeyHash
     (15) 1111....           ScriptHash
+
+
   """
+  @spec encode(Address.t()) :: binary()
   def encode(%Address{} = address) do
     network = if address.network == :testnet, do: "0", else: "1"
 
@@ -58,7 +61,7 @@ defmodule Sutra.Cardano.Address.Parser do
         address.stake_credential
       )
 
-    header_type <> network <> payload
+    (header_type <> network <> payload) |> Base.decode16!(case: :lower)
   end
 
   defp do_encode_address(:shelley, payment_credential, stake_credential) do
@@ -83,12 +86,20 @@ defmodule Sutra.Cardano.Address.Parser do
         {"3", p_cred.hash <> s_cred.hash}
 
       # (4) 0100.... PaymentKeyHash Pointer
-      {%Credential{credential_type: :vkey} = _p_cred, %Pointer{} = _s_cred} ->
-        raise "TODO: Implement Pointer encoding"
+      {%Credential{credential_type: :vkey} = p_cred, %Pointer{} = pointer} ->
+        pointer_val =
+          encode_variable_length(pointer.slot) <>
+            encode_variable_length(pointer.tx_index) <> encode_variable_length(pointer.cert_index)
+
+        {"4", p_cred.hash <> Base.encode16(pointer_val, case: :lower)}
 
       # (5) 0101.... ScriptHash Pointer
-      {%Credential{credential_type: :script} = _p_cred, %Pointer{} = _s_cred} ->
-        raise "TODO: Implement Pointer encoding"
+      {%Credential{credential_type: :script} = p_cred, %Pointer{} = pointer} ->
+        pointer_val =
+          encode_variable_length(pointer.slot) <>
+            encode_variable_length(pointer.tx_index) <> encode_variable_length(pointer.cert_index)
+
+        {"5", p_cred.hash <> Base.encode16(pointer_val, case: :lower)}
 
       # (6) 0110.... PaymentKeyHash  ø
       {%Credential{credential_type: :vkey} = p_cred, nil} ->
@@ -123,7 +134,9 @@ defmodule Sutra.Cardano.Address.Parser do
     }
   end
 
+  # (0) ....0000 testnet
   defp get_network([0, 0, 0, 0]), do: :testnet
+  # (1) ....0001 mainnet
   defp get_network([0, 0, 0, 1]), do: :mainnet
 
   # (0) 0000.... PaymentKeyHash StakeKeyHash
@@ -289,5 +302,23 @@ defmodule Sutra.Cardano.Address.Parser do
         {:cont, {new_val, t}}
       end
     end)
+  end
+
+  defp encode_variable_length(val) when val >= 0 do
+    bit_length = Integer.to_string(val, 2) |> String.length()
+
+    {_, _, buff} =
+      Enum.reduce_while(0..bit_length, {bit_length, val >>> 7, [val &&& 127]}, fn _,
+                                                                                  {l, v, buff} ->
+        if l > 7 do
+          new_val = v >>> 7
+          new_buff_val = (v &&& 127) + 128
+          {:cont, {l - 7, new_val, [new_buff_val | buff]}}
+        else
+          {:halt, {l, v, buff}}
+        end
+      end)
+
+    :binary.list_to_bin(buff)
   end
 end

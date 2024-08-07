@@ -6,12 +6,18 @@ defmodule Sutra.Cardano.Address do
   use TypedStruct
 
   alias __MODULE__, as: Address
+  alias Sutra.Cardano.Address.Credential
   alias Sutra.Cardano.Address.Parser
+  alias Sutra.Cardano.Address.Pointer
+  alias Sutra.Cardano.Data
+  alias Sutra.Cardano.Data.Constr
 
   @type credential_type :: :vkey | :script
   @type address_type :: :shelley | :reward | :byron
   @type stake_credential :: Credential.t() | Pointer.t() | nil
   @type network :: :mainnet | :testnet
+
+  @behaviour Sutra.Cardano.Data.DataBehavior
 
   typedstruct module: Credential do
     @moduledoc """
@@ -89,5 +95,107 @@ defmodule Sutra.Cardano.Address do
 
     data = Parser.encode(address) |> Bech32.convertbits(8, 5, is_padded)
     Bech32.encode_from_5bit(hrp, data)
+  end
+
+  @spec from_plutus(network(), binary()) :: Address.t() | {:error, String.t()}
+  def from_plutus(network, cbor) do
+    case Data.decode(cbor) do
+      {:ok, %Constr{index: 0, fields: [payment_cred, stake_cred_data]}} ->
+        %Address{
+          network: network,
+          address_type: :shelley,
+          payment_credential: fetch_payment_credential(payment_cred),
+          stake_credential: fetch_stake_credential(stake_cred_data)
+        }
+    end
+  end
+
+  defp fetch_payment_credential(%Constr{index: indx, fields: [%CBOR.Tag{value: v}]}) do
+    credential_type = if indx == 0, do: :vkey, else: :script
+    %Credential{credential_type: credential_type, hash: v}
+  end
+
+  defp fetch_stake_credential(%Constr{index: 1}), do: nil
+
+  defp fetch_stake_credential(%Constr{
+         fields: [%Constr{fields: [slot, tx_index, cert_index], index: 1}]
+       }),
+       do: %Pointer{slot: slot, tx_index: tx_index, cert_index: cert_index}
+
+  defp fetch_stake_credential(%Constr{
+         fields: [
+           %Constr{
+             fields: [%Constr{fields: [%CBOR.Tag{value: stake_cred_hash}], index: indx}]
+           }
+         ]
+       }) do
+    credential_type = if indx == 0, do: :vkey, else: :script
+    %Credential{credential_type: credential_type, hash: stake_cred_hash}
+  end
+
+  @spec to_plutus(Address.t()) :: binary()
+  def to_plutus(%Address{} = addr) do
+    payment_credential =
+      case addr.payment_credential do
+        %Credential{credential_type: :vkey, hash: hash} ->
+          %Constr{index: 0, fields: [%CBOR.Tag{value: hash, tag: :bytes}]}
+
+        %Credential{credential_type: :script, hash: hash} ->
+          %Constr{index: 1, fields: [%CBOR.Tag{value: hash, tag: :bytes}]}
+      end
+
+    stake_credential =
+      case addr.stake_credential do
+        %Pointer{slot: slot, tx_index: tx_index, cert_index: cert_index} ->
+          %Constr{
+            index: 0,
+            fields: [
+              %Constr{
+                index: 1,
+                fields: [slot, tx_index, cert_index]
+              }
+            ]
+          }
+
+        %Credential{credential_type: :vkey, hash: hash} ->
+          %Constr{
+            index: 0,
+            fields: [
+              %Constr{
+                index: 0,
+                fields: [
+                  %Constr{
+                    index: 0,
+                    fields: [%CBOR.Tag{value: hash, tag: :bytes}]
+                  }
+                ]
+              }
+            ]
+          }
+
+        %Credential{credential_type: :script, hash: hash} ->
+          %Constr{
+            index: 0,
+            fields: [
+              %Constr{
+                index: 0,
+                fields: [
+                  %Constr{
+                    index: 1,
+                    fields: [%CBOR.Tag{value: hash, tag: :bytes}]
+                  }
+                ]
+              }
+            ]
+          }
+
+        nil ->
+          %Constr{index: 1, fields: []}
+      end
+
+    Data.encode(%Constr{
+      index: 0,
+      fields: [payment_credential, stake_credential]
+    })
   end
 end

@@ -1,8 +1,13 @@
 # Sutra
 
-**TODO: Add description**
+** Offchain transaction builder framework for cardano using Elixr.**
+
+## Roadmap 
+- 
+
 
 ## Installation
+
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
 by adding `sutra_offchain` to your list of dependencies in `mix.exs`:

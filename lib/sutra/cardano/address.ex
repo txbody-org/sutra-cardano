@@ -9,15 +9,13 @@ defmodule Sutra.Cardano.Address do
   alias Sutra.Cardano.Address.Credential
   alias Sutra.Cardano.Address.Parser
   alias Sutra.Cardano.Address.Pointer
-  alias Sutra.Cardano.Data
-  alias Sutra.Cardano.Data.Constr
+  alias Sutra.Data
+  alias Sutra.Data.Plutus.Constr
 
   @type credential_type :: :vkey | :script
   @type address_type :: :shelley | :reward | :byron
   @type stake_credential :: Credential.t() | Pointer.t() | nil
   @type network :: :mainnet | :testnet
-
-  @behaviour Sutra.Cardano.Data.DataBehavior
 
   typedstruct module: Credential do
     @moduledoc """
@@ -97,17 +95,22 @@ defmodule Sutra.Cardano.Address do
     Bech32.encode_from_5bit(hrp, data)
   end
 
-  @spec from_plutus(network(), binary()) :: Address.t() | {:error, String.t()}
-  def from_plutus(network, cbor) do
-    case Data.decode(cbor) do
-      {:ok, %Constr{index: 0, fields: [payment_cred, stake_cred_data]}} ->
-        %Address{
-          network: network,
-          address_type: :shelley,
-          payment_credential: fetch_payment_credential(payment_cred),
-          stake_credential: fetch_stake_credential(stake_cred_data)
-        }
+  @spec from_plutus(binary() | Sutra.Data.Plutus.t()) ::
+          Address.t() | {:error, String.t()} | {:error, any()}
+  def from_plutus(data) when is_binary(data) do
+    case Data.decode(data) do
+      {:ok, decoded} -> from_plutus(decoded)
+      {:error, reason} -> {:error, reason}
     end
+  end
+
+  def from_plutus(%Constr{index: 0, fields: [pay_cred, stake_cred]}) do
+    %Address{
+      network: nil,
+      address_type: :shelley,
+      payment_credential: fetch_payment_credential(pay_cred),
+      stake_credential: fetch_stake_credential(stake_cred)
+    }
   end
 
   defp fetch_payment_credential(%Constr{index: indx, fields: [%CBOR.Tag{value: v}]}) do

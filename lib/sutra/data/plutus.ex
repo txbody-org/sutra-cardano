@@ -1,13 +1,11 @@
-defmodule Sutra.Cardano.Data do
+defmodule Sutra.Data.Plutus do
   @moduledoc """
-    Plutus Data
+    Plutus data
   """
 
   use TypedStruct
 
-  alias __MODULE__, as: Data
-  alias __MODULE__.Constr, as: Constr
-  alias __MODULE__.PList, as: PList
+  alias __MODULE__, as: Plutus
 
   @type pbytes() :: String.t()
   @type pInt() :: pos_integer()
@@ -31,7 +29,7 @@ defmodule Sutra.Cardano.Data do
         For empty list, it is encoded as definite empty lists (0x80)
         For non-empty list, it is encoded as indefinite lists
       """
-      field(:value, [Data.t()], enforce: true)
+      field(:value, [Plutus.t()], enforce: true)
     end
 
     alias __MODULE__, as: PList
@@ -49,10 +47,24 @@ defmodule Sutra.Cardano.Data do
   end
 
   @spec decode(binary()) :: {:ok, CBOR.Tag.t()} | {:error, any()}
-  def decode(cbor) do
-    with {:ok, bytes} <- Base.decode16(cbor, case: :mixed),
+  def decode(raw) do
+    with {:ok, bytes} <- normalize_bytes(raw),
          {:ok, cbor_decoded, _} <- CBOR.decode(bytes) do
       {:ok, decode_cbor_tag(cbor_decoded)}
+    end
+  end
+
+  defp normalize_bytes(str) do
+    case Base.decode16(str, case: :mixed) do
+      {:ok, bytes} -> {:ok, bytes}
+      _ -> {:ok, str}
+    end
+  end
+
+  def decode!(cbor) do
+    case decode(cbor) do
+      {:ok, decoded} -> decoded
+      {:error, reason} -> raise reason
     end
   end
 
@@ -80,7 +92,7 @@ defmodule Sutra.Cardano.Data do
     data
     |> encode_data()
     |> CBOR.encode()
-    |> Base.encode16(case: :lower)
+    |> Base.encode16()
   end
 
   defp encode_data(%Constr{index: index, fields: fields}) when index >= 0 and index < 7 do

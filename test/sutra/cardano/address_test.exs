@@ -171,16 +171,24 @@ defmodule Sutra.Cardano.AddressTest do
   end
 
   describe "Address from plutus data" do
-    @vkey_vkey "d8799fd8799f487061795f766b6579ffd8799fd8799fd8799f4a7374616b655f766b6579ffffffff"
-    @vkey_pointer "d8799fd8799f487061795f766b6579ffd8799fd87a9f1a00261ec3181b03ffffff"
-    @script_pointer "d8799fd87a9f4a7061795f736372697074ffd8799fd87a9f1a00261ec3181b03ffffff"
-    @script_script "d8799fd87a9f4a7061795f736372697074ffd8799fd8799fd87a9f4c7374616b655f736372697074ffffffff"
-    @vkey_none "d8799fd8799f44766b6579ffd87a80ff"
-    @script_none "d8799fd87a9f46736372697074ffd87a80ff"
+    @vkey_vkey String.upcase(
+                 "d8799fd8799f487061795f766b6579ffd8799fd8799fd8799f4a7374616b655f766b6579ffffffff"
+               )
+    @vkey_pointer String.upcase(
+                    "d8799fd8799f487061795f766b6579ffd8799fd87a9f1a00261ec3181b03ffffff"
+                  )
+    @script_pointer String.upcase(
+                      "d8799fd87a9f4a7061795f736372697074ffd8799fd87a9f1a00261ec3181b03ffffff"
+                    )
+    @script_script String.upcase(
+                     "d8799fd87a9f4a7061795f736372697074ffd8799fd8799fd87a9f4c7374616b655f736372697074ffffffff"
+                   )
+    @vkey_none String.upcase("d8799fd8799f44766b6579ffd87a80ff")
+    @script_none String.upcase("d8799fd87a9f46736372697074ffd87a80ff")
 
     test "from_plutus/2 decode address from plutus data" do
-      assert Address.from_plutus(:mainnet, @vkey_vkey) == %Address{
-               network: :mainnet,
+      assert Address.from_plutus(@vkey_vkey) == %Address{
+               network: nil,
                address_type: :shelley,
                payment_credential: %Credential{
                  credential_type: :vkey,
@@ -192,8 +200,8 @@ defmodule Sutra.Cardano.AddressTest do
                }
              }
 
-      assert Address.from_plutus(:mainnet, @vkey_pointer) == %Address{
-               network: :mainnet,
+      assert Address.from_plutus(@vkey_pointer) == %Address{
+               network: nil,
                address_type: :shelley,
                payment_credential: %Credential{
                  credential_type: :vkey,
@@ -206,8 +214,8 @@ defmodule Sutra.Cardano.AddressTest do
                }
              }
 
-      assert Address.from_plutus(:mainnet, @script_pointer) == %Address{
-               network: :mainnet,
+      assert Address.from_plutus(@script_pointer) == %Address{
+               network: nil,
                address_type: :shelley,
                payment_credential: %Credential{
                  credential_type: :script,
@@ -220,8 +228,8 @@ defmodule Sutra.Cardano.AddressTest do
                }
              }
 
-      assert Address.from_plutus(:mainnet, @script_script) == %Address{
-               network: :mainnet,
+      assert Address.from_plutus(@script_script) == %Address{
+               network: nil,
                address_type: :shelley,
                payment_credential: %Credential{
                  credential_type: :script,
@@ -235,17 +243,17 @@ defmodule Sutra.Cardano.AddressTest do
     end
 
     test "to_plutus/1 encodes address to plutus cbor" do
-      assert Address.from_plutus(:mainnet, @vkey_vkey) |> Address.to_plutus() == @vkey_vkey
-      assert Address.from_plutus(:mainnet, @vkey_pointer) |> Address.to_plutus() == @vkey_pointer
+      assert Address.from_plutus(@vkey_vkey) |> Address.to_plutus() == @vkey_vkey
+      assert Address.from_plutus(@vkey_pointer) |> Address.to_plutus() == @vkey_pointer
 
-      assert Address.from_plutus(:mainnet, @script_pointer) |> Address.to_plutus() ==
+      assert Address.from_plutus(@script_pointer) |> Address.to_plutus() ==
                @script_pointer
 
-      assert Address.from_plutus(:mainnet, @script_script) |> Address.to_plutus() ==
+      assert Address.from_plutus(@script_script) |> Address.to_plutus() ==
                @script_script
 
-      assert Address.from_plutus(:mainnet, @vkey_none) |> Address.to_plutus() == @vkey_none
-      assert Address.from_plutus(:mainnet, @script_none) |> Address.to_plutus() == @script_none
+      assert Address.from_plutus(@vkey_none) |> Address.to_plutus() == @vkey_none
+      assert Address.from_plutus(@script_none) |> Address.to_plutus() == @script_none
     end
   end
 end

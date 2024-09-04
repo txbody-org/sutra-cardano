@@ -10,11 +10,11 @@ defmodule Sutra.Data do
     pairs: :default
   }
 
-  alias Sutra.Data.Plutus.Constr
-  alias Sutra.Utils
-  alias Sutra.Data.Option
   alias Sutra.Data
   alias Sutra.Data.MacroHelper.EnumMacro
+  alias Sutra.Data.Option
+  alias Sutra.Data.Plutus.Constr
+  alias Sutra.Utils
 
   import Sutra.Data.Cbor, only: [extract_value: 1]
 
@@ -63,7 +63,7 @@ defmodule Sutra.Data do
       end
 
       def to_plutus(%__MODULE__{} = _mod) do
-        IO.inspect("to_plutus")
+        ""
       end
 
       def __fields__ do

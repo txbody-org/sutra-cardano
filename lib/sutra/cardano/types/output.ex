@@ -2,8 +2,9 @@ defmodule Sutra.Cardano.Types.Output do
   @moduledoc """
     Cardano Output
   """
-  alias Sutra.Cardano.Types.Datum
+
   alias Sutra.Cardano.Address
+  alias Sutra.Cardano.Types.Datum
 
   use Sutra.Data
 

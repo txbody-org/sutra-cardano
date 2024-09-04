@@ -1,8 +1,8 @@
 defmodule Sutra.Cardano.Types.DatumTest do
   use ExUnit.Case
 
-  alias Sutra.Data
   alias Sutra.Cardano.Types.Datum
+  alias Sutra.Data
 
   describe "Datum Parsers" do
     @no_datum_cbor "D87980"

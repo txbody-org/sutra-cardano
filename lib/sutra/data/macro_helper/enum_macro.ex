@@ -28,6 +28,7 @@ defmodule Sutra.Data.MacroHelper.EnumMacro do
     end
   end
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   def prepare_ast(fields) do
     quote bind_quoted: [fields: fields] do
       @type t() :: %__MODULE__{kind: atom(), value: any()}

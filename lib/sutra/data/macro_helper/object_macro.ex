@@ -40,7 +40,7 @@ defmodule Sutra.Data.MacroHelper.ObjectMacro do
 
       quote do
         unquote(
-          def __fields__() do
+          def __fields__ do
             unquote(Enum.reverse(@__fields))
           end
         )

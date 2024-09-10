@@ -105,12 +105,13 @@ defmodule Sutra.Cardano.Address do
   end
 
   def from_plutus(%Constr{index: 0, fields: [pay_cred, stake_cred]}) do
-    %Address{
-      network: nil,
-      address_type: :shelley,
-      payment_credential: fetch_payment_credential(pay_cred),
-      stake_credential: fetch_stake_credential(stake_cred)
-    }
+    {:ok,
+     %Address{
+       network: nil,
+       address_type: :shelley,
+       payment_credential: fetch_payment_credential(pay_cred),
+       stake_credential: fetch_stake_credential(stake_cred)
+     }}
   end
 
   defp fetch_payment_credential(%Constr{index: indx, fields: [%CBOR.Tag{value: v}]}) do

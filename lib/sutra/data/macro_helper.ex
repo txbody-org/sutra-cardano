@@ -2,6 +2,7 @@ defmodule Sutra.Data.MacroHelper do
   @moduledoc """
     Helper function to define Data Macros
   """
+  alias Sutra.Data.Option
   import Sutra.Data.Cbor, only: [extract_value: 1]
 
   # Add more common support types
@@ -39,7 +40,10 @@ defmodule Sutra.Data.MacroHelper do
       Enum.member?(@common_types, type) ->
         Keyword.merge(opts, @encode_decode_mapping[type])
 
-      module?(type) ->
+      nullable?(type) ->
+        with_encoder_decoder(type.option, opts)
+
+      runtime_module?(type) ->
         opts
         |> Keyword.merge(encode_with: &type.to_plutus/1, decode_with: &type.from_plutus/1)
 
@@ -48,10 +52,13 @@ defmodule Sutra.Data.MacroHelper do
     end
   end
 
-  defp module?(type) do
+  defp runtime_module?(type) do
     case Atom.to_string(type) do
       "Elixir." <> _ -> true
       _ -> false
     end
   end
+
+  def nullable?(%Option{}), do: true
+  def nullable?(_), do: false
 end

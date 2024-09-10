@@ -1,4 +1,5 @@
 defmodule Sutra.Cardano.Types.DatumTest do
+  @moduledoc false
   use ExUnit.Case
 
   alias Sutra.Cardano.Types.Datum
@@ -10,12 +11,12 @@ defmodule Sutra.Cardano.Types.DatumTest do
     @datum_hash_cbor "D87A9F4F736F6D652D646174756D2D68617368FF"
 
     test "from_plutus/1" do
-      assert %Datum{kind: :no_datum, value: nil} == Datum.from_plutus(@no_datum_cbor)
+      assert {:ok, %Datum{kind: :no_datum, value: nil}} == Datum.from_plutus(@no_datum_cbor)
 
-      assert %Datum{kind: :inline_datum, value: "\x9F\x01\x02\x03\xFF"} ==
+      assert {:ok, %Datum{kind: :inline_datum, value: "\x9F\x01\x02\x03\xFF"}} ==
                Datum.from_plutus(@inline_datum_cbor)
 
-      assert %Datum{kind: :datum_hash, value: "some-datum-hash"} ==
+      assert {:ok, %Datum{kind: :datum_hash, value: "some-datum-hash"}} ==
                Datum.from_plutus(@datum_hash_cbor)
     end
 

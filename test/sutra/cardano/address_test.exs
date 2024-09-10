@@ -187,73 +187,91 @@ defmodule Sutra.Cardano.AddressTest do
     @script_none String.upcase("d8799fd87a9f46736372697074ffd87a80ff")
 
     test "from_plutus/2 decode address from plutus data" do
-      assert Address.from_plutus(@vkey_vkey) == %Address{
-               network: nil,
-               address_type: :shelley,
-               payment_credential: %Credential{
-                 credential_type: :vkey,
-                 hash: "pay_vkey"
-               },
-               stake_credential: %Credential{
-                 credential_type: :vkey,
-                 hash: "stake_vkey"
-               }
-             }
+      assert Address.from_plutus(@vkey_vkey) ==
+               {:ok,
+                %Address{
+                  network: nil,
+                  address_type: :shelley,
+                  payment_credential: %Credential{
+                    credential_type: :vkey,
+                    hash: "pay_vkey"
+                  },
+                  stake_credential: %Credential{
+                    credential_type: :vkey,
+                    hash: "stake_vkey"
+                  }
+                }}
 
-      assert Address.from_plutus(@vkey_pointer) == %Address{
-               network: nil,
-               address_type: :shelley,
-               payment_credential: %Credential{
-                 credential_type: :vkey,
-                 hash: "pay_vkey"
-               },
-               stake_credential: %Sutra.Cardano.Address.Pointer{
-                 slot: 2_498_243,
-                 tx_index: 27,
-                 cert_index: 3
-               }
-             }
+      assert Address.from_plutus(@vkey_pointer) ==
+               {:ok,
+                %Address{
+                  network: nil,
+                  address_type: :shelley,
+                  payment_credential: %Credential{
+                    credential_type: :vkey,
+                    hash: "pay_vkey"
+                  },
+                  stake_credential: %Sutra.Cardano.Address.Pointer{
+                    slot: 2_498_243,
+                    tx_index: 27,
+                    cert_index: 3
+                  }
+                }}
 
-      assert Address.from_plutus(@script_pointer) == %Address{
-               network: nil,
-               address_type: :shelley,
-               payment_credential: %Credential{
-                 credential_type: :script,
-                 hash: "pay_script"
-               },
-               stake_credential: %Sutra.Cardano.Address.Pointer{
-                 slot: 2_498_243,
-                 tx_index: 27,
-                 cert_index: 3
-               }
-             }
+      assert Address.from_plutus(@script_pointer) ==
+               {:ok,
+                %Address{
+                  network: nil,
+                  address_type: :shelley,
+                  payment_credential: %Credential{
+                    credential_type: :script,
+                    hash: "pay_script"
+                  },
+                  stake_credential: %Sutra.Cardano.Address.Pointer{
+                    slot: 2_498_243,
+                    tx_index: 27,
+                    cert_index: 3
+                  }
+                }}
 
-      assert Address.from_plutus(@script_script) == %Address{
-               network: nil,
-               address_type: :shelley,
-               payment_credential: %Credential{
-                 credential_type: :script,
-                 hash: "pay_script"
-               },
-               stake_credential: %Credential{
-                 credential_type: :script,
-                 hash: "stake_script"
-               }
-             }
+      assert Address.from_plutus(@script_script) ==
+               {:ok,
+                %Address{
+                  network: nil,
+                  address_type: :shelley,
+                  payment_credential: %Credential{
+                    credential_type: :script,
+                    hash: "pay_script"
+                  },
+                  stake_credential: %Credential{
+                    credential_type: :script,
+                    hash: "stake_script"
+                  }
+                }}
     end
 
     test "to_plutus/1 encodes address to plutus cbor" do
-      assert Address.from_plutus(@vkey_vkey) |> Address.to_plutus() == @vkey_vkey
-      assert Address.from_plutus(@vkey_pointer) |> Address.to_plutus() == @vkey_pointer
+      assert {:ok, addr1_v_v} = Address.from_plutus(@vkey_vkey)
+      assert Address.to_plutus(addr1_v_v) == @vkey_vkey
 
-      assert Address.from_plutus(@script_pointer) |> Address.to_plutus() ==
+      assert {:ok, addr2_v_p} = Address.from_plutus(@vkey_pointer)
+      assert Address.to_plutus(addr2_v_p) == @vkey_pointer
+
+      assert {:ok, addr3_s_p} = Address.from_plutus(@script_pointer)
+
+      assert Address.to_plutus(addr3_s_p) ==
                @script_pointer
 
-      assert Address.from_plutus(@script_script) |> Address.to_plutus() ==
+      assert {:ok, addr4_s_s} = Address.from_plutus(@script_script)
+
+      assert Address.to_plutus(addr4_s_s) ==
                @script_script
 
-      assert Address.from_plutus(@vkey_none) |> Address.to_plutus() == @vkey_none
-      assert Address.from_plutus(@script_none) |> Address.to_plutus() == @script_none
+      assert {:ok, addr5_v_n} = Address.from_plutus(@vkey_none)
+      assert Address.to_plutus(addr5_v_n) == @vkey_none
+
+      assert {:ok, addr6_s_n} = Address.from_plutus(@script_none)
+      assert Address.to_plutus(addr6_s_n) == @script_none
     end
   end
 end

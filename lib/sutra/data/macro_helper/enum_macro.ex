@@ -73,7 +73,9 @@ defmodule Sutra.Data.MacroHelper.EnumMacro do
             do: field_info[:decode_with],
             else: &extract_value/1
 
-        %__MODULE__{kind: kind, value: decode_fn.(Utils.safe_head(flds))}
+        with {:ok, value} <- decode_fn.(Utils.safe_head(flds)) do
+          {:ok, %__MODULE__{kind: kind, value: value}}
+        end
       end
 
       def to_plutus(%__MODULE__{} = mod) do

@@ -3,7 +3,7 @@ defmodule Sutra.Data.Option do
   @moduledoc """
     Common data types
   """
-
+  @enforce_keys [:option]
   defstruct [:option]
 
   @type t() :: %__MODULE__{option: atom() | module()}

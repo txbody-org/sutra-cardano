@@ -1,8 +1,8 @@
-defmodule Sutra.Cardano.Types.DatumTest do
+defmodule Sutra.Cardano.Transaction.DatumTest do
   @moduledoc false
   use ExUnit.Case
 
-  alias Sutra.Cardano.Types.Datum
+  alias Sutra.Cardano.Transaction.Datum
   alias Sutra.Data
 
   describe "Datum Parsers" do

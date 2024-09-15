@@ -197,9 +197,9 @@ defmodule Sutra.Cardano.Address do
           %Constr{index: 1, fields: []}
       end
 
-    Data.encode(%Constr{
+    %Constr{
       index: 0,
       fields: [payment_credential, stake_credential]
-    })
+    }
   end
 end

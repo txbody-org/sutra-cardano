@@ -3,8 +3,8 @@ defmodule Sutra.Cardano.AssetTest do
 
   use ExUnit.Case
 
-  alias Sutra.Data
   alias Sutra.Cardano.Asset
+  alias Sutra.Data
 
   describe "Asset Plutus encoding" do
     @asset_cbor %{

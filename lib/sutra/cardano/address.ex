@@ -5,6 +5,7 @@ defmodule Sutra.Cardano.Address do
 
   use TypedStruct
 
+  alias Sutra.Data.Plutus
   alias __MODULE__, as: Address
   alias Sutra.Cardano.Address.Credential
   alias Sutra.Cardano.Address.Parser
@@ -137,7 +138,7 @@ defmodule Sutra.Cardano.Address do
     %Credential{credential_type: credential_type, hash: stake_cred_hash}
   end
 
-  @spec to_plutus(Address.t()) :: binary()
+  @spec to_plutus(Address.t()) :: Plutus.t()
   def to_plutus(%Address{} = addr) do
     payment_credential =
       case addr.payment_credential do

@@ -18,7 +18,7 @@ defmodule Sutra.Data.Plutus do
       Data Constr
     """
     field(:index, Integer.t(), enforce: true)
-    field(:fields, [Data.t()], enforce: true)
+    field(:fields, [Plutus.t()], enforce: true)
   end
 
   defmodule PList do

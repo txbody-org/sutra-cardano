@@ -1,9 +1,10 @@
 defmodule Sutra.Cardano.AddressTest do
   @moduledoc false
   use ExUnit.Case
-  alias Sutra.Data
+
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Address.Credential
+  alias Sutra.Data
 
   @addr_mainnet_0 "addr1qx2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer3n0d3vllmyqwsx5wktcd8cc3sq835lu7drv2xwl2wywfgse35a3x"
   @addr_mainnet_1 "addr1z8phkx6acpnf78fuvxn0mkew3l0fd058hzquvz7w36x4gten0d3vllmyqwsx5wktcd8cc3sq835lu7drv2xwl2wywfgs9yc0hh"

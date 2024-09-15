@@ -65,6 +65,9 @@ defmodule Sutra.Data.MacroHelper.ObjectMacro do
                 {%Option{}, %Constr{index: 1}} ->
                   {:ok, nil}
 
+                {%Option{}, %Constr{index: 0, fields: [option_field]}} ->
+                  field_info[:decode_with].(option_field)
+
                 {%Option{}, %Constr{index: 0, fields: option_fields}} ->
                   field_info[:decode_with].(option_fields)
 
@@ -85,12 +88,29 @@ defmodule Sutra.Data.MacroHelper.ObjectMacro do
           )
 
         with {:ok, result} <- decoded_info do
-          struct(__MODULE__, result)
+          {:ok, struct(__MODULE__, result)}
         end
       end
 
-      def to_plutus(%__MODULE__{} = _mod) do
-        ""
+      def to_plutus(%__MODULE__{} = mod) do
+        fields =
+          Enum.reduce(__MODULE__.__fields__(), [], fn name, acc ->
+            field_info = __MODULE__.__field_info__(name)
+            value = Map.get(mod, name)
+
+            case {field_info[:field_kind], value} do
+              {%Option{}, nil} ->
+                [%Constr{index: 1, fields: []} | acc]
+
+              {%Option{}, _} ->
+                [%Constr{index: 1, fields: [field_info[:encode_with]]} | acc]
+
+              _ ->
+                [field_info[:encode_with].(value) | acc]
+            end
+          end)
+
+        %Constr{index: 0, fields: Enum.reverse(fields)}
       end
 
       def __plutus_data_info__ do

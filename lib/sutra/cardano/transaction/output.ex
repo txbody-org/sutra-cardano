@@ -9,6 +9,11 @@ defmodule Sutra.Cardano.Transaction.Output do
 
   use Sutra.Data
 
+  defdata(name: OutputReference) do
+    data(:transaction_id, :string)
+    data(:output_index, :integer)
+  end
+
   defdata do
     data(:address, Address)
     data(:value, Asset)

@@ -7,4 +7,11 @@ defmodule Sutra.Data.Cbor do
   def extract_value(%CBOR.Tag{value: value}), do: {:ok, value}
   def extract_value(%Sutra.Data.Plutus.PList{value: value}), do: {:ok, value}
   def extract_value(value), do: {:ok, value}
+
+  def extract_value!(v) do
+    case extract_value(v) do
+      {:ok, value} -> value
+      {:error, _} -> raise "Invalid CBOR value: #{inspect(v)}"
+    end
+  end
 end

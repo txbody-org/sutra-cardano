@@ -23,16 +23,16 @@ defmodule Sutra.Cardano.Asset do
             {:ok, value} -> value
           end
 
-        Map.put(acc, key, to_asset_class(val))
+        Map.put(acc, key, to_asset_class(key, val))
       end)
 
     {:ok, result}
   end
 
-  defp to_asset_class(%{%CBOR.Tag{tag: :bytes, value: ""} => lovelace}),
+  defp to_asset_class("lovelace", %{%CBOR.Tag{tag: :bytes, value: ""} => lovelace}),
     do: lovelace
 
-  defp to_asset_class(value) when is_map(value) do
+  defp to_asset_class(_, value) when is_map(value) do
     Enum.reduce(value, %{}, fn {key, val}, acc ->
       {:ok, key} = extract_value(key)
       Map.put(acc, key, val)
@@ -63,4 +63,7 @@ defmodule Sutra.Cardano.Asset do
       Map.put(acc, key, val)
     end)
   end
+
+  def lovelace_of(value) when is_integer(value), do: %{"lovelace" => value}
+  def lovelace_of(_), do: nil
 end

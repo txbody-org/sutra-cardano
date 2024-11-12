@@ -49,7 +49,7 @@ defmodule Sutra.Cardano.Transaction.OutputTest do
                   },
                   stake_credential: nil
                 },
-                datum: %Datum{kind: :datum_hash, value: "some-hash"},
+                datum: %Datum{kind: :datum_hash, value: "736F6D652D68617368"},
                 reference_script: nil,
                 value: %{
                   "lovelace" => 1_000_000
@@ -67,7 +67,7 @@ defmodule Sutra.Cardano.Transaction.OutputTest do
                   },
                   stake_credential: nil
                 },
-                datum: %Datum{kind: :inline_datum, value: <<216, 121, 159, 1, 255>>},
+                datum: %Datum{kind: :inline_datum, value: "D8799F01FF"},
                 reference_script: nil,
                 value: %{
                   "lovelace" => 1_000_000
@@ -85,8 +85,8 @@ defmodule Sutra.Cardano.Transaction.OutputTest do
                   },
                   stake_credential: nil
                 },
-                datum: %Datum{kind: :inline_datum, value: <<216, 121, 159, 1, 255>>},
-                reference_script: "some-ref-script",
+                datum: %Datum{kind: :inline_datum, value: "D8799F01FF"},
+                reference_script: "736F6D652D7265662D736372697074",
                 value: %{
                   "lovelace" => 1_000_000
                 }

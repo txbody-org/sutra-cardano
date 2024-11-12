@@ -46,15 +46,20 @@ defmodule Sutra.Data.Plutus do
     end
   end
 
-  @spec decode(binary()) :: {:ok, CBOR.Tag.t()} | {:error, any()}
-  def decode(raw) do
+  @spec decode(binary() | CBOR.Tag.t() | integer()) :: {:ok, CBOR.Tag.t()} | {:error, any()}
+  def decode(val) when is_integer(val), do: {:ok, val}
+  def decode(%CBOR.Tag{} = cbor_tag), do: {:ok, decode_cbor_tag(cbor_tag)}
+
+  def decode(raw) when is_binary(raw) do
     with {:ok, bytes} <- normalize_bytes(raw),
          {:ok, cbor_decoded, _} <- CBOR.decode(bytes) do
       {:ok, decode_cbor_tag(cbor_decoded)}
     end
   end
 
-  defp normalize_bytes(str) do
+  def decode(data), do: {:error, {:invalid_data, data}}
+
+  defp normalize_bytes(str) when is_binary(str) do
     case Base.decode16(str, case: :mixed) do
       {:ok, bytes} -> {:ok, bytes}
       _ -> {:ok, str}

@@ -32,4 +32,3 @@ defmodule Sutra.Cardano.Common.PoolRelay do
     %MultiHostName{dns_name: dns_name}
   end
 end
-

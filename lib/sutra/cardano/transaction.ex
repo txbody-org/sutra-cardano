@@ -5,7 +5,6 @@ defmodule Sutra.Cardano.Transaction do
 
   alias Sutra.Cardano.Transaction.TxBody
   alias Sutra.Cardano.Transaction.Witness
-  alias Sutra.Cardano.Transaction.TxBody
   alias Sutra.Data.Cbor
   alias Sutra.Data.Plutus.PList
 
@@ -43,8 +42,9 @@ defmodule Sutra.Cardano.Transaction do
     }
   end
 
-  def from_cbor(%PList{value: values}) do
-    IO.inspect("Other Era TX ...")
-    IO.inspect(values)
+  def from_cbor(%PList{value: _values}) do
+    raise """
+      Only Conway era transaction supported 
+    """
   end
 end

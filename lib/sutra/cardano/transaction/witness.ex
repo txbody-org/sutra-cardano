@@ -23,7 +23,7 @@ defmodule Sutra.Cardano.Transaction.Witness do
 
     field(:tag, redeemer_tag())
     field(:index, integer())
-    field(:data, Sutra.Data.Plutus.t())
+    field(:data, Plutus.t())
     field(:exunits, {integer(), integer()})
     field(:is_legacy, boolean(), default: false)
 

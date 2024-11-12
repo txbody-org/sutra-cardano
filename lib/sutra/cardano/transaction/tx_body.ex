@@ -3,12 +3,12 @@ defmodule Sutra.Cardano.Transaction.TxBody do
     Cardano Transaction Body
   """
   alias Sutra.Cardano.Address
+  alias Sutra.Cardano.Asset
+  alias Sutra.Cardano.Transaction.Certificate
   alias Sutra.Cardano.Transaction.Datum
   alias Sutra.Cardano.Transaction.Output
-  alias Sutra.Utils
-  alias Sutra.Cardano.Transaction.Certificate
-  alias Sutra.Cardano.Asset
   alias Sutra.Cardano.Transaction.Output.OutputReference
+  alias Sutra.Utils
 
   import Sutra.Data.Cbor, only: [extract_value!: 1]
   import Utils, only: [maybe: 3]

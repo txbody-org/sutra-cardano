@@ -3,14 +3,14 @@ defmodule Sutra.Cardano.Transaction.Certificate do
     Cardano Transaction Certificate
   """
 
+  alias Sutra.Cardano.Address
+  alias Sutra.Cardano.Address.Credential
   alias Sutra.Cardano.Asset
+  alias Sutra.Cardano.Common.PoolRelay
+  alias Sutra.Cardano.Transaction.Certificate.Drep
   alias Sutra.Cardano.Transaction.Certificate.PoolRegistration
   alias Sutra.Cardano.Transaction.Certificate.PoolRetirement
-  alias Sutra.Cardano.Transaction.Certificate.Drep
-  alias Sutra.Cardano.Address
-  alias Sutra.Cardano.Common.PoolRelay
   alias Sutra.Cardano.Transaction.Certificate.StakeRegistration
-  alias Sutra.Cardano.Address.Credential
 
   import Sutra.Data.Cbor, only: [extract_value!: 1]
   import Sutra.Utils, only: [maybe: 3]
@@ -174,9 +174,12 @@ defmodule Sutra.Cardano.Transaction.Certificate do
       cost: Asset.lovelace_of(cost),
       margin: n / d,
       reward_account: extract_value!(reward_accont),
-      owners: Enum.map(owners, &extract_value!/1),
-      relays: Enum.map(relays, &PoolRelay.decode/1),
-      metadata: maybe(pool_metadata, nil, fn [u, h] -> %{url: u, hash: h} end)
+      owners: Enum.map(extract_value!(owners), &extract_value!/1),
+      relays: Enum.map(extract_value!(relays), &PoolRelay.decode/1),
+      metadata:
+        maybe(pool_metadata, nil, fn [u, h] ->
+          %{url: extract_value!(u), hash: extract_value!(h)}
+        end)
     }
   end
 
@@ -269,9 +272,9 @@ defmodule Sutra.Cardano.Transaction.Certificate do
     }
   end
 
-  defp parse_credential([cred_type, %CBOR.Tag{value: stake_credential}]) do
+  defp parse_credential([cred_type, %CBOR.Tag{} = stake_credential]) do
     credential_type = if cred_type == 0, do: :vkey, else: :script
-    %Credential{credential_type: credential_type, hash: stake_credential}
+    %Credential{credential_type: credential_type, hash: extract_value!(stake_credential)}
   end
 
   def decode_drep([0, v]), do: %Drep{drep_type: :vkey, drep_value: extract_value!(v)}

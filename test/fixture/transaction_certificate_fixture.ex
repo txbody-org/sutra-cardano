@@ -20,6 +20,7 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
         %Certificate.PoolRegistration{
           cost: %{"lovelace" => 170_000_000},
           margin: 0.05,
+          margin_ratio: {1, 20},
           metadata: %{
             hash: "7DE1A14FD91A5C307C9816FDBC970BDD724C62C7EA1EB2BA97AC89EE0FB9FB7A",
             url: "https://upstream.org.uk/assets/preprod/metadata.json"

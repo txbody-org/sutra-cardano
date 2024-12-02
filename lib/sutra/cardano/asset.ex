@@ -5,6 +5,8 @@ defmodule Sutra.Cardano.Asset do
 
   alias Sutra.Data
 
+  alias Sutra.Data.Cbor
+
   import Sutra.Data.Cbor, only: [extract_value: 1]
 
   def from_plutus(cbor) when is_binary(cbor) do
@@ -48,7 +50,7 @@ defmodule Sutra.Cardano.Asset do
         end
 
       acc
-      |> Map.put(%CBOR.Tag{tag: :bytes, value: key_val}, from_asset_class(val))
+      |> Map.put(Cbor.as_byte(key_val), from_asset_class(val))
     end)
   end
 
@@ -59,11 +61,24 @@ defmodule Sutra.Cardano.Asset do
 
   defp from_asset_class(asset_map) when is_map(asset_map) do
     Enum.reduce(asset_map, %{}, fn {key, val}, acc ->
-      key = %CBOR.Tag{tag: :bytes, value: key}
-      Map.put(acc, key, val)
+      Map.put(acc, Cbor.as_byte(key), val)
     end)
   end
 
   def lovelace_of(value) when is_integer(value), do: %{"lovelace" => value}
   def lovelace_of(_), do: nil
+
+  def from_cbor(lovelace) when is_integer(lovelace), do: lovelace_of(lovelace)
+
+  def from_cbor([lovelace, other_assets]) do
+    with {:ok, assets} <- from_plutus(other_assets) do
+      Map.put(assets, "lovelace", lovelace)
+    end
+  end
+
+  def to_cbor(%{"lovelace" => lovelace} = asset) when map_size(asset) == 1, do: lovelace
+
+  def to_cbor(assets) do
+    [Map.get(assets, "lovelace", 0), Map.delete(assets, "lovelace") |> to_plutus()]
+  end
 end

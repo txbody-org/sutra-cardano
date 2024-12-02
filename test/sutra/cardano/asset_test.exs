@@ -31,8 +31,8 @@ defmodule Sutra.Cardano.AssetTest do
       assert @asset_cbor["with_token"] ==
                Asset.to_plutus(%{
                  "lovelace" => 1_000_000,
-                 "policy-id-1" => %{"tkn1" => 100, "tkn2" => 200},
-                 "policy-id-2" => %{"tkn3" => 300}
+                 "706F6C6963792D69642D31" => %{"746B6E31" => 100, "746B6E32" => 200},
+                 "706F6C6963792D69642D32" => %{"746B6E33" => 300}
                })
                |> Data.encode()
     end

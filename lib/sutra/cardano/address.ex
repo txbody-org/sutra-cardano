@@ -203,4 +203,8 @@ defmodule Sutra.Cardano.Address do
       fields: [payment_credential, stake_credential]
     }
   end
+
+  def to_cbor(%Address{} = addr) do
+    %CBOR.Tag{tag: :bytes, value: Parser.encode(addr)}
+  end
 end

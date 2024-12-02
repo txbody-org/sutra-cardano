@@ -25,9 +25,14 @@ defmodule Sutra.Data.Cbor do
     do: %CBOR.Tag{tag: :bytes, value: Base.decode16!(value, case: :mixed)}
 
   def as_nonempty_set(value), do: %CBOR.Tag{tag: 258, value: value}
+  def as_set(value), do: %CBOR.Tag{tag: 258, value: value}
 
   def as_indexed_map(value, index, map \\ %{}) do
     Map.put(map, index, value)
+  end
+
+  def as_unit_interval({numerator, denomanator}) do
+    %CBOR.Tag{tag: 30, value: [numerator, denomanator]}
   end
 
   def as_tagged(values) when is_list(values) do

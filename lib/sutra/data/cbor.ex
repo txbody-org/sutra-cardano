@@ -3,15 +3,40 @@ defmodule Sutra.Data.Cbor do
 
     CBOR handling
   """
-  def extract_value(%CBOR.Tag{tag: :bytes, value: value}), do: {:ok, Base.encode16(value)}
+  alias Sutra.Data.Plutus.PList
+
+  @type t() :: %PList{} | %CBOR.Tag{} | map()
+
+  alias Sutra.Utils
+
+  def extract_value(%CBOR.Tag{tag: :bytes, value: value}),
+    do: {:ok, Base.encode16(value)}
+
   def extract_value(%CBOR.Tag{value: value}), do: {:ok, value}
   def extract_value(%Sutra.Data.Plutus.PList{value: value}), do: {:ok, value}
   def extract_value(value), do: {:ok, value}
 
   def extract_value!(v) do
-    case extract_value(v) do
-      {:ok, value} -> value
-      {:error, _} -> raise "Invalid CBOR value: #{inspect(v)}"
-    end
+    extract_value(v)
+    |> Utils.ok_or(fn -> raise "Invalid CBOR value: #{inspect(v)}" end)
   end
+
+  def as_byte(value) when is_binary(value),
+    do: %CBOR.Tag{tag: :bytes, value: Base.decode16!(value, case: :mixed)}
+
+  def as_nonempty_set(value), do: %CBOR.Tag{tag: 258, value: value}
+
+  def as_indexed_map(value, index, map \\ %{}) do
+    Map.put(map, index, value)
+  end
+
+  def as_tagged(values) when is_list(values) do
+    Enum.map(values, &as_tagged/1)
+  end
+
+  def as_tagged(value) when is_binary(value) do
+    %CBOR.Tag{tag: :bytes, value: value}
+  end
+
+  def as_tagged(value), do: value
 end

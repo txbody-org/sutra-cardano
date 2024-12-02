@@ -62,4 +62,28 @@ defmodule Sutra.Cardano.Script.NativeScript do
   def from_witness_set([5, slot]) do
     %ScriptInvalidHereafter{slot: slot}
   end
+
+  def to_witness_set(%ScriptPubkey{pubkey_hash: pubkey}) do
+    [0, pubkey]
+  end
+
+  def to_witness_set(%ScriptAll{scripts: scripts}) do
+    [1, Enum.map(scripts, &to_witness_set/1)]
+  end
+
+  def to_witness_set(%ScriptAny{scripts: scripts}) do
+    [2, Enum.map(scripts, &to_witness_set/1)]
+  end
+
+  def to_witness_set(%ScriptNOfK{n: n, scripts: scripts}) do
+    [3, n, Enum.map(scripts, &to_witness_set/1)]
+  end
+
+  def to_witness_set(%ScriptInvalidBefore{slot: slot}) do
+    [4, slot]
+  end
+
+  def to_witness_set(%ScriptInvalidHereafter{slot: slot}) do
+    [5, slot]
+  end
 end

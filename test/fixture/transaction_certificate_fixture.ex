@@ -44,16 +44,14 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
           }
         }
       ],
-      collateral: [],
       fee: %{"lovelace" => 189_173},
       inputs: [
-        %Transaction.Output.OutputReference{
+        %Transaction.OutputReference{
           output_index: 0,
           transaction_id: "55E2606FD2FAA05415C721A846767FA1B37FCB477800851F5C2AFCA234604470"
         }
       ],
       mint: nil,
-      network_id: "testnet",
       outputs: [
         %Transaction.Output{
           address: %Sutra.Cardano.Address{
@@ -73,7 +71,6 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
           value: %{"lovelace" => 9_497_638_770}
         }
       ],
-      reference_inputs: [],
       ttl: 75_103_845
     }
   end
@@ -111,18 +108,16 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
               133, 14, 82, 223, 173, 142, 226, 255, 254, 234>>
         }
       ],
-      collateral: [],
       collateral_return: nil,
       current_treasury_value: nil,
       fee: %{"lovelace" => 171_837},
       inputs: [
-        %Transaction.Output.OutputReference{
+        %Transaction.OutputReference{
           output_index: 0,
           transaction_id: "0AC7C67527386E1E4E939497C92D442F6B0D9A46BB18C545F8FD1601AA625A24"
         }
       ],
       mint: nil,
-      network_id: "testnet",
       outputs: [
         %Transaction.Output{
           reference_script: nil,
@@ -142,7 +137,6 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
           }
         }
       ],
-      reference_inputs: [],
       ttl: 74_828_452
     }
   end
@@ -165,9 +159,6 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
   # For TxId: b67026a02bb1235e466fe56d64c0cd7155abccc2b0f3c646e8cc6bd4a0cf3275 (preprod)
   def body_b6703275 do
     %Transaction.TxBody{
-      reference_inputs: [],
-      network_id: "testnet",
-      collateral: [],
       certificates: [
         %Certificate.StakeRegistration{
           stake_credential: %Sutra.Cardano.Address.Credential{
@@ -205,7 +196,7 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
         }
       ],
       inputs: [
-        %Transaction.Output.OutputReference{
+        %Transaction.OutputReference{
           output_index: 1,
           transaction_id: "B929989211AF8CA57E2EFB4C178EA50978D25B2A15E35BA2EF30D69022C1924E"
         }
@@ -239,15 +230,13 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
           }
         }
       ],
-      collateral: [],
       fee: %{"lovelace" => 171_661},
       inputs: [
-        %Transaction.Output.OutputReference{
+        %Transaction.OutputReference{
           output_index: 5,
           transaction_id: "7F946BFB9BBE8135C68D1096B7A52A0F47E715916D501440E7B6DAE59D243CB8"
         }
       ],
-      network_id: "testnet",
       outputs: [
         %Transaction.Output{
           reference_script: nil,
@@ -267,7 +256,6 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
           }
         }
       ],
-      reference_inputs: [],
       ttl: 77_298_745
     }
   end
@@ -291,9 +279,6 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
 
   def body_c8776215 do
     %TxBody{
-      reference_inputs: [],
-      network_id: "testnet",
-      collateral: [],
       certificates: [
         %Certificate.StakeRegDelegCert{
           deposit: %{"lovelace" => 2_000_000},
@@ -360,7 +345,7 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
         }
       ],
       inputs: [
-        %Transaction.Output.OutputReference{
+        %Transaction.OutputReference{
           output_index: 0,
           transaction_id: "A4B94F6A211DD03DFE43E66A798EF4268285EC707A65E645C447FD96980E0601"
         }
@@ -387,9 +372,6 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
 
   def body_6ed6cedc do
     %TxBody{
-      reference_inputs: [],
-      network_id: "testnet",
-      collateral: [],
       certificates: [
         %Certificate.StakeVoteRegDelegCert{
           deposit: %{"lovelace" => 2_000_000},
@@ -457,7 +439,7 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
         }
       ],
       inputs: [
-        %Transaction.Output.OutputReference{
+        %Transaction.OutputReference{
           output_index: 0,
           transaction_id: "7604E9B3B02F1C67955CACC6049FD70F69547A09AD347C85052AEC5D7FD07195"
         }
@@ -483,9 +465,6 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
   # for TxId: 16bdb2bad71be8b43df33ed41d6c785fbc4722f87600fd10311956898ec94ae9 (Preprod)
   def body_16bd4ae9 do
     %Transaction.TxBody{
-      reference_inputs: [],
-      network_id: "testnet",
-      collateral: [],
       certificates: [
         %Certificate.StakeVoteDelegCert{
           drep: %Certificate.Drep{drep_value: nil, drep_type: 2},
@@ -552,7 +531,7 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
         }
       ],
       inputs: [
-        %Transaction.Output.OutputReference{
+        %Transaction.OutputReference{
           output_index: 0,
           transaction_id: "37E9AA9B258DEB306431E09A862F86CF3D59085EA025BF27A3064E06D0858A77"
         }
@@ -579,9 +558,6 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
 
   def body_a4809f97 do
     %TxBody{
-      reference_inputs: [],
-      network_id: "testnet",
-      collateral: [],
       certificates: [
         %Certificate.VoteRegDelegCert{
           deposit: %{"lovelace" => 2_000_000},
@@ -648,7 +624,7 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
         }
       ],
       inputs: [
-        %Transaction.Output.OutputReference{
+        %Transaction.OutputReference{
           output_index: 0,
           transaction_id: "130663F385984456F5D3F9B1C7EDA359F942F325A30218CADEB23413DDAAF6B8"
         }
@@ -675,9 +651,6 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
 
   def body_92714dd1 do
     %TxBody{
-      reference_inputs: [],
-      network_id: "testnet",
-      collateral: [],
       certificates: [
         %Certificate.VoteDelegCert{
           drep: %Certificate.Drep{drep_value: nil, drep_type: 3},
@@ -726,7 +699,7 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
         }
       ],
       inputs: [
-        %Transaction.Output.OutputReference{
+        %Transaction.OutputReference{
           output_index: 1,
           transaction_id: "FC3CB52653C3F2E0B983EBC10B7634A88816AA1EA01D68AACC40C4B08A669A84"
         }
@@ -752,9 +725,6 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
   # For TxId: 0891a7e18016b08bfe1bed306c0c12bd68a2e4cc933181659ace22b331e476f3 (Preprod)
   def body_089176f3 do
     %TxBody{
-      reference_inputs: [],
-      network_id: "testnet",
-      collateral: [],
       certificates: [
         %Certificate.RegDrepCert{
           anchor: nil,
@@ -787,7 +757,7 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
         }
       ],
       inputs: [
-        %Transaction.Output.OutputReference{
+        %Transaction.OutputReference{
           output_index: 0,
           transaction_id: "9E8EF69967AE9FB1234D4210453DE1C8A5882952EE7FC0B90877AF1368239327"
         }
@@ -814,7 +784,6 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
 
   def body_4ab1f4ed do
     %Transaction.TxBody{
-      reference_inputs: [],
       total_collateral: %{"lovelace" => 5_000_000},
       collateral_return: %Transaction.Output{
         reference_script: nil,
@@ -868,9 +837,8 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
           network: :testnet
         }
       },
-      network_id: "testnet",
       collateral: [
-        %Transaction.Output.OutputReference{
+        %Transaction.OutputReference{
           output_index: 0,
           transaction_id: "4EDEDD73B30FC7C7140BB79ECC072CE800617356809850968E4E5EB2699A465E"
         }
@@ -942,7 +910,7 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
         }
       ],
       inputs: [
-        %Transaction.Output.OutputReference{
+        %Transaction.OutputReference{
           output_index: 0,
           transaction_id: "4EDEDD73B30FC7C7140BB79ECC072CE800617356809850968E4E5EB2699A465E"
         }
@@ -958,7 +926,6 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
         vkey: "0ABB7B89E091DCD3201AEA501854A4CB05290862D88B6EB30AFA6DFD23F54467"
       },
       %Witness.Redeemer{
-        is_legacy: true,
         exunits: {8291, 2_214_370},
         data: %Sutra.Data.Plutus.Constr{fields: [], index: 0},
         index: 0,
@@ -977,9 +944,6 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
 
   def body_d77f127d do
     %TxBody{
-      reference_inputs: [],
-      network_id: "testnet",
-      collateral: [],
       certificates: [
         %Certificate.UpdateDrepCert{
           anchor: nil,
@@ -1045,7 +1009,7 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
         }
       ],
       inputs: [
-        %Transaction.Output.OutputReference{
+        %Transaction.OutputReference{
           output_index: 0,
           transaction_id: "8267A54D323ED85E5271546AA85E888AE4D120D24B49A1A5DEC70F3536ACFEE7"
         }

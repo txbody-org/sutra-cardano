@@ -1,0 +1,14 @@
+[package]
+authors = []
+edition = "2021"
+name = "sutra_uplc"
+version = "0.1.0"
+
+[lib]
+crate-type = ["cdylib"]
+name = "sutra_uplc"
+path = "src/lib.rs"
+
+[dependencies]
+rustler = "0.34.0"
+uplc = "=1.1.5"

@@ -5,6 +5,7 @@ defmodule Sutra.Cardano.Address do
 
   use TypedStruct
 
+  alias Sutra.Cardano.Script
   alias Sutra.Data.Plutus
   alias __MODULE__, as: Address
   alias Sutra.Cardano.Address.Credential
@@ -30,9 +31,9 @@ defmodule Sutra.Cardano.Address do
     @moduledoc """
       Address Pointer
     """
-    field(:slot, Integer.t(), enforce: true)
-    field(:tx_index, Integer.t(), enforce: true)
-    field(:cert_index, Integer.t(), enforce: true)
+    field(:slot, pos_integer(), enforce: true)
+    field(:tx_index, pos_integer(), enforce: true)
+    field(:cert_index, pos_integer(), enforce: true)
   end
 
   typedstruct do
@@ -207,4 +208,34 @@ defmodule Sutra.Cardano.Address do
   def to_cbor(%Address{} = addr) do
     %CBOR.Tag{tag: :bytes, value: Parser.encode(addr)}
   end
+
+  def from_script(network, _script) when network not in [:mainnet, :testnet, :preview, :preprod],
+    do: {:error, "Invalid Network ID"}
+
+  def from_script(network, %Script{} = script) do
+    script_payment_key = Script.hash_script(script)
+    from_script(network, script_payment_key)
+  end
+
+  def from_script(network, script_hash) when is_binary(script_hash) do
+    %__MODULE__{
+      network: network,
+      address_type: :shelley,
+      payment_credential: %Credential{
+        credential_type: :script,
+        hash: script_hash
+      },
+      stake_credential: nil
+    }
+  end
+
+  def script_address?(%__MODULE__{
+        payment_credential: %Credential{credential_type: credential_type}
+      }),
+      do: credential_type == :script
+
+  def vkey_address?(%__MODULE__{
+        payment_credential: %Credential{credential_type: credential_type}
+      }),
+      do: credential_type == :vkey
 end

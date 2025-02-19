@@ -5,6 +5,7 @@ defmodule Sutra.Cardano.Transaction.TxBody do
   alias CBOR.Utils
   alias Sutra.Cardano.Asset
   alias Sutra.Cardano.Transaction.Certificate
+  alias Sutra.Cardano.Transaction.Input
   alias Sutra.Cardano.Transaction.Output
   alias Sutra.Cardano.Transaction.OutputReference
   alias Sutra.Data.Cbor
@@ -89,7 +90,7 @@ defmodule Sutra.Cardano.Transaction.TxBody do
     %__MODULE__{
       inputs: inputs,
       outputs: Enum.map(tx_body[1], &Output.from_cbor/1),
-      fee: Asset.lovelace_of(tx_body[2]),
+      fee: Asset.from_lovelace(tx_body[2]),
       ttl: tx_body[3],
       certificates: certificates,
       withdrawals: withdrawal_from_cbor(tx_body[5]),
@@ -128,12 +129,21 @@ defmodule Sutra.Cardano.Transaction.TxBody do
 
   # Ignore nil values
   defp do_map_to_cbor({_, nil}, acc), do: acc
+  # Ignore Empty Values
+  defp do_map_to_cbor({_, []}, acc), do: acc
+  defp do_map_to_cbor({_, m}, acc) when m == %{}, do: acc
+  defp do_map_to_cbor({_, %MapSet{map: m}}, acc) when m == %{}, do: acc
   # Ignore values with script definition
   defp do_map_to_cbor({:__struct__, _}, acc), do: acc
 
   defp do_map_to_cbor({:inputs, inputs}, acc) do
     inputs
-    |> Enum.map(&OutputReference.to_cbor/1)
+    |> Enum.map(fn i ->
+      case i do
+        %Input{output_reference: ref} -> OutputReference.to_cbor(ref)
+        _ -> OutputReference.to_cbor(i)
+      end
+    end)
     |> Cbor.as_nonempty_set()
     |> Cbor.as_indexed_map(0, acc)
   end
@@ -178,7 +188,7 @@ defmodule Sutra.Cardano.Transaction.TxBody do
     Cbor.as_indexed_map(slot, 8, acc)
   end
 
-  defp do_map_to_cbor({:mint, mint_info}, acc) do
+  defp do_map_to_cbor({:mint, mint_info}, acc) when mint_info != %{} do
     mint_info
     |> Asset.to_plutus()
     |> Cbor.as_indexed_map(9, acc)

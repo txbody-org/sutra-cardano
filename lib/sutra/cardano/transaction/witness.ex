@@ -15,7 +15,14 @@ defmodule Sutra.Cardano.Transaction.Witness do
   import Sutra.Data.Cbor, only: [extract_value!: 1]
   import Sutra.Utils, only: [maybe: 3]
 
-  @type t() :: __MODULE__.VkeyWitness.t() | __MODULE__.Redeemer.t()
+  defstruct vkey_witness: [], script_witness: [], redeemer: [], plutus_data: []
+
+  @type t() :: %__MODULE__{
+          vkey_witness: [VkeyWitness.t()],
+          script_witness: [ScriptWitness.t()],
+          redeemer: [Redeemer.t()],
+          plutus_data: [PlutusData.t()]
+        }
 
   typedstruct(module: VkeyWitness) do
     field(:vkey, String.t())
@@ -79,6 +86,39 @@ defmodule Sutra.Cardano.Transaction.Witness do
     end
   end
 
+  def from_cbor(cbor) when is_binary(cbor) do
+    with {:ok, decoded, _} <- CBOR.decode(cbor) do
+      from_cbor(decoded)
+    end
+  end
+
+  def from_cbor(witness_cbor) do
+    witness =
+      Enum.reduce(Cbor.extract_value!(witness_cbor), %{}, fn w, acc ->
+        decoded_val = decode(w)
+
+        key =
+          case hd(decoded_val) do
+            %VkeyWitness{} ->
+              :vkey_witness
+
+            %ScriptWitness{} ->
+              :script_witness
+
+            %Redeemer{} ->
+              :redeemer
+
+            %PlutusData{} ->
+              :plutus_data
+          end
+
+        prev_val = Map.get(acc, key, [])
+        Map.put(acc, key, prev_val ++ decoded_val)
+      end)
+
+    struct!(__MODULE__, witness)
+  end
+
   def decode({0, %CBOR.Tag{tag: 258, value: vkey_witnesses}}), do: decode({0, vkey_witnesses})
 
   def decode({0, vkey_witnesses}) do
@@ -116,6 +156,15 @@ defmodule Sutra.Cardano.Transaction.Witness do
     end)
   end
 
+  def decode({5, [tag, index, data, [mem, exec]]}) do
+    %Redeemer{
+      tag: __MODULE__.Redeemer.decode_tag!(tag),
+      index: index,
+      data: Plutus.decode(data) |> Utils.ok_or(data),
+      exunits: {mem, exec}
+    }
+  end
+
   def decode({5, redeemer_witnesses}) when is_list(redeemer_witnesses) do
     Enum.map(redeemer_witnesses, fn [tag, index, data, [mem, exec]] ->
       %Redeemer{
@@ -143,8 +192,8 @@ defmodule Sutra.Cardano.Transaction.Witness do
   @doc """
     Encode WitnessSet to CBOR
     https://github.com/IntersectMBO/cardano-ledger/blob/master/eras/conway/impl/cddl-files/conway.cddl#L489
-    
-    
+
+
     transaction_witness_set = {? 0 : nonempty_set<vkeywitness>
                           , ? 1 : nonempty_set<native_script>
                           , ? 2 : nonempty_set<bootstrap_witness>
@@ -164,6 +213,12 @@ defmodule Sutra.Cardano.Transaction.Witness do
     Enum.reduce(tx_witness_sets, %{}, &do_encode_witness_to_cbor/2)
   end
 
+  def to_cbor(%__MODULE__{} = witness) do
+    to_cbor(
+      witness.vkey_witness ++ witness.script_witness ++ witness.redeemer ++ witness.plutus_data
+    )
+  end
+
   # Encode VkeyWitness to CBOR
   # {0 : nonempty_set<vkeywitness}
   defp do_encode_witness_to_cbor(%VkeyWitness{} = vkey_witness, acc) do
@@ -172,7 +227,7 @@ defmodule Sutra.Cardano.Transaction.Witness do
 
     Map.get(acc, 0)
     |> extract_value!()
-    |> Utils.maybe(val, &[&1 | [val]])
+    |> Utils.maybe([val], &[&1 | [val]])
     |> Cbor.as_nonempty_set()
     |> Cbor.as_indexed_map(0, acc)
   end
@@ -193,12 +248,12 @@ defmodule Sutra.Cardano.Transaction.Witness do
   # {3, 6, 7 : nonempty_set<plutusdata>}
   defp do_encode_witness_to_cbor(%__MODULE__.ScriptWitness{} = script_witness, acc) do
     script_indx = __MODULE__.ScriptWitness.encode_script_type(script_witness.script_type)
-    values = Enum.map(script_witness.data, &Cbor.as_byte/1)
+    values = Utils.safe_base16_decode(script_witness.data) |> Cbor.as_byte()
 
     acc
     |> Map.get(script_indx)
     |> extract_value!()
-    |> Utils.maybe(values, &[&1 | values])
+    |> Utils.maybe([values], &(&1 ++ [values]))
     |> Cbor.as_nonempty_set()
     |> Cbor.as_indexed_map(script_indx, acc)
   end

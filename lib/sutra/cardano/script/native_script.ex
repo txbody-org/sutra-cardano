@@ -5,12 +5,12 @@ defmodule Sutra.Cardano.Script.NativeScript do
   alias Sutra.Cardano.Script.NativeScript
 
   @type t() ::
-          ScriptPubkey.t()
-          | ScriptAll.t()
-          | ScriptAny.t()
-          | ScriptNOfK.t()
-          | ScriptInvalidBefore.t()
-          | ScriptInvalidHereafter.t()
+          __MODULE__.ScriptPubkey.t()
+          | __MODULE__.ScriptAll.t()
+          | __MODULE__.ScriptAny.t()
+          | __MODULE__.ScriptNOfK.t()
+          | __MODULE__.ScriptInvalidBefore.t()
+          | __MODULE__.ScriptInvalidHereafter.t()
 
   use TypedStruct
 

@@ -1,10 +1,15 @@
-use uplc::tx::{eval_phase_two_raw};
-use rustler::{Encoder, Env, NifResult, Term, Binary, OwnedBinary};
+use uplc::tx::{eval_phase_two_raw, apply_params_to_script};
+use rustler::{Encoder, Env, NifResult, Term, Binary};
 
-fn convert_to_binary<'a>(env: Env<'a>, bytes: Vec<u8>) -> Binary<'a> {
-    let mut binary = OwnedBinary::new(bytes.len()).unwrap();
-    binary.as_mut_slice().copy_from_slice(&bytes);
-    binary.release(env)
+#[rustler::nif]
+fn do_apply_params_to_script<'a>(env: Env<'a>, script_bytes: Binary<'a>, params: Binary<'a>) -> NifResult<Term<'a>> {
+  format!("hello from apply params");
+  let script_u8  = script_bytes.as_slice().to_vec();
+  let params_u8 = params.as_slice().to_vec();
+  match apply_params_to_script(&params_u8, &script_u8) {
+    Ok(result) => Ok((true, result).encode(env)),
+    Err(e) => Ok((false, e.to_string()).encode(env))
+  }
 }
 
 #[rustler::nif]
@@ -31,6 +36,7 @@ fn eval_phase_two<'a>(
     // Convert Optional Binary to Vec<u8>
     let cost_models_vec = cost_models_bytes
         .map(|b| b.as_slice().to_vec());
+
     
     // Get cost models slice reference
     let cost_models_slice = cost_models_vec
@@ -49,14 +55,11 @@ fn eval_phase_two<'a>(
         |_| ()
     ) {
         Ok(results) => {
-            let term_results: Vec<Binary> = results
-                .into_iter()
-                .map(|bytes| convert_to_binary(env, bytes))
-                .collect();
-            Ok((true, term_results).encode(env))
+             
+            Ok((true, results).encode(env))
         }
         Err(e) => Ok((false, e.to_string()).encode(env))
     }
 }
 
-rustler::init!("Elixir.Sutra.Uplc");
+rustler::init!("Elixir.Sutra.Uplc", [do_apply_params_to_script, eval_phase_two]);

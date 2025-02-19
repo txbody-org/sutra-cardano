@@ -21,15 +21,20 @@ defmodule Sutra.Cardano.Transaction.DatumTest do
     end
 
     test "to_plutus/1" do
-      assert Datum.to_plutus(%Datum{kind: :no_datum, value: nil}) |> Data.encode() ==
-               @no_datum_cbor
+      assert @no_datum_cbor ==
+               Datum.to_plutus(%Datum{kind: :no_datum, value: nil})
+               |> Data.encode()
+               |> Base.encode16()
 
-      assert Datum.to_plutus(%Datum{kind: :inline_datum, value: "\x9F\x01\x02\x03\xFF"})
-             |> Data.encode() ==
-               @inline_datum_cbor
+      assert @inline_datum_cbor ==
+               Datum.to_plutus(%Datum{kind: :inline_datum, value: "\x9F\x01\x02\x03\xFF"})
+               |> Data.encode()
+               |> Base.encode16()
 
-      assert Datum.to_plutus(%Datum{kind: :datum_hash, value: "some-datum-hash"}) |> Data.encode() ==
-               @datum_hash_cbor
+      assert @datum_hash_cbor ==
+               Datum.to_plutus(%Datum{kind: :datum_hash, value: "some-datum-hash"})
+               |> Data.encode()
+               |> Base.encode16()
     end
   end
 end

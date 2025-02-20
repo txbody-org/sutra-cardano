@@ -2,7 +2,10 @@ defmodule Sutra.Cardano.Script.NativeScript do
   @moduledoc """
    Cardano Native Script 
   """
+
+  alias Sutra.Cardano.Script
   alias Sutra.Cardano.Script.NativeScript
+  alias Sutra.Data.Cbor
 
   @type t() ::
           __MODULE__.ScriptPubkey.t()
@@ -64,7 +67,7 @@ defmodule Sutra.Cardano.Script.NativeScript do
   end
 
   def to_witness_set(%ScriptPubkey{pubkey_hash: pubkey}) do
-    [0, pubkey]
+    [0, Cbor.as_byte(pubkey)]
   end
 
   def to_witness_set(%ScriptAll{scripts: scripts}) do
@@ -85,5 +88,42 @@ defmodule Sutra.Cardano.Script.NativeScript do
 
   def to_witness_set(%ScriptInvalidHereafter{slot: slot}) do
     [5, slot]
+  end
+
+  def from_json(script) when is_map(script) do
+    do_parse_from_json(script)
+  end
+
+  def to_script(native_script) do
+    native_script
+    |> to_witness_set()
+    |> Cbor.encode_hex()
+    |> Script.new(:native)
+  end
+
+  defp do_parse_from_json(%{"type" => "all", "scripts" => scripts}) when is_list(scripts) do
+    %__MODULE__.ScriptAll{scripts: Enum.map(scripts, &do_parse_from_json/1)}
+  end
+
+  defp do_parse_from_json(%{"type" => "any", "scripts" => scripts}) when is_list(scripts) do
+    %__MODULE__.ScriptAny{scripts: Enum.map(scripts, &do_parse_from_json/1)}
+  end
+
+  defp do_parse_from_json(%{"type" => "atLeast", "required" => n, "scripts" => scripts})
+       when is_list(scripts) and is_integer(n) do
+    %__MODULE__.ScriptNOfK{scripts: Enum.map(scripts, &do_parse_from_json/1), n: n}
+  end
+
+  defp do_parse_from_json(%{"type" => "after", "slot" => slot_no}) when is_integer(slot_no) do
+    %__MODULE__.ScriptInvalidBefore{slot: slot_no}
+  end
+
+  defp do_parse_from_json(%{"type" => "before", "slot" => slot_no}) when is_integer(slot_no) do
+    %__MODULE__.ScriptInvalidHereafter{slot: slot_no}
+  end
+
+  defp do_parse_from_json(%{"type" => "sig", "keyHash" => pubkey_hash})
+       when is_binary(pubkey_hash) do
+    %__MODULE__.ScriptPubkey{pubkey_hash: pubkey_hash}
   end
 end

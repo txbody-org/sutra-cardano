@@ -28,7 +28,7 @@ defmodule Sutra.Examples.Advance.AlwaysSucceed do
       |> Script.apply_params([Base.encode16("some-params")]) 
       |> Script.new(:plutus_v3)
 
-    mint_script_address = Address.from_script(:testnet, simple_mint_script)
+    mint_script_address = Address.from_script(simple_mint_script, :preprod)
     koios_provider = KoiosProvider.new(network: :preprod)
 
     out_token_name = Base.encode16("SUTRA-SDK-TEST")

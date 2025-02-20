@@ -27,7 +27,7 @@ sig = "ed25519_sk1tmxtkw3ek64zyg9gtn3qkk355hfs9jnfjy33zwp87s8qkdmznd0qvukr43"
 
 script = %Script{script_type: :plutus_v3, data: script_code}
 
-script_address = Address.from_script(:testnet, script)
+script_address = Address.from_script(script, :testnet)
 
 place = fn () ->
 

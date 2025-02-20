@@ -5,12 +5,14 @@ defmodule Sutra.Cardano.Transaction.Witness do
 
   use TypedStruct
 
+  require Sutra.Cardano.Script
+  alias Sutra.Cardano.Script
   alias Sutra.Cardano.Script.NativeScript
   alias Sutra.Data.Cbor
   alias Sutra.Data.Plutus
   alias Sutra.Utils
 
-  alias __MODULE__.{PlutusData, Redeemer, VkeyWitness, ScriptWitness}
+  alias __MODULE__.{PlutusData, Redeemer, VkeyWitness}
 
   import Sutra.Data.Cbor, only: [extract_value!: 1]
   import Sutra.Utils, only: [maybe: 3]
@@ -19,7 +21,7 @@ defmodule Sutra.Cardano.Transaction.Witness do
 
   @type t() :: %__MODULE__{
           vkey_witness: [VkeyWitness.t()],
-          script_witness: [ScriptWitness.t()],
+          script_witness: [Script.t() | NativeScript.t()],
           redeemer: [Redeemer.t()],
           plutus_data: [PlutusData.t()]
         }
@@ -61,31 +63,6 @@ defmodule Sutra.Cardano.Transaction.Witness do
     end
   end
 
-  typedstruct(module: ScriptWitness) do
-    @type script_type() ::
-            :native_script
-            | :plutus_v1
-            | :plutus_v2
-            | :plutus_v3
-
-    field(:script_type, script_type())
-    field(:data, String.t())
-
-    def decode_script_type!(1), do: :native
-    def decode_script_type!(3), do: :plutus_v1
-    def decode_script_type!(6), do: :plutus_v2
-    def decode_script_type!(7), do: :plutus_v3
-
-    def encode_script_type(script_type) do
-      case script_type do
-        :native -> 1
-        :plutus_v1 -> 3
-        :plutus_v2 -> 6
-        :plutus_v3 -> 7
-      end
-    end
-  end
-
   def from_cbor(cbor) when is_binary(cbor) do
     with {:ok, decoded, _} <- CBOR.decode(cbor) do
       from_cbor(decoded)
@@ -102,7 +79,7 @@ defmodule Sutra.Cardano.Transaction.Witness do
             %VkeyWitness{} ->
               :vkey_witness
 
-            %ScriptWitness{} ->
+            %Script{} ->
               :script_witness
 
             %Redeemer{} ->
@@ -128,18 +105,13 @@ defmodule Sutra.Cardano.Transaction.Witness do
   end
 
   def decode({1, native_scripts}) do
-    [
-      %ScriptWitness{
-        script_type: :native,
-        data: Enum.map(extract_value!(native_scripts), &NativeScript.from_witness_set/1)
-      }
-    ]
+    Enum.map(extract_value!(native_scripts), &NativeScript.from_witness_set/1)
   end
 
   def decode({script_type, script_value}) when script_type in [3, 6, 7] do
     [
-      %ScriptWitness{
-        script_type: ScriptWitness.decode_script_type!(script_type),
+      %Script{
+        script_type: Script.decode_script_type!(script_type),
         data: extract_value!(script_value) |> Enum.map(&extract_value!/1)
       }
     ]
@@ -234,8 +206,8 @@ defmodule Sutra.Cardano.Transaction.Witness do
 
   # Encode Native Script to CBOR
   # {1 : nonempty_set<nativescript>}
-  defp do_encode_witness_to_cbor(%ScriptWitness{script_type: :native} = script, acc) do
-    cbor_witness = NativeScript.to_witness_set(script.data)
+  defp do_encode_witness_to_cbor(script, acc) when Script.is_native_script(script) do
+    cbor_witness = NativeScript.to_witness_set(script)
 
     Map.get(acc, 1)
     |> extract_value!()
@@ -246,8 +218,8 @@ defmodule Sutra.Cardano.Transaction.Witness do
 
   # Encode Plutus Script to CBOR
   # {3, 6, 7 : nonempty_set<plutusdata>}
-  defp do_encode_witness_to_cbor(%__MODULE__.ScriptWitness{} = script_witness, acc) do
-    script_indx = __MODULE__.ScriptWitness.encode_script_type(script_witness.script_type)
+  defp do_encode_witness_to_cbor(%Script{} = script_witness, acc) do
+    script_indx = Script.encode_script_type(script_witness.script_type)
     values = Utils.safe_base16_decode(script_witness.data) |> Cbor.as_byte()
 
     acc

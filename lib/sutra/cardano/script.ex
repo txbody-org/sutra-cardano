@@ -2,7 +2,7 @@ defmodule Sutra.Cardano.Script do
   @moduledoc """
     Cardano script
   """
-  @type script_type() :: :native | :plutus_v1 | :plutus_v2 | :plutus_v3
+  @type script_type() :: :plutus_v1 | :plutus_v2 | :plutus_v3
   @type script_data() :: binary()
   @type t() :: %__MODULE__{
           script_type: script_type(),
@@ -12,6 +12,34 @@ defmodule Sutra.Cardano.Script do
   defstruct [:script_type, :data]
 
   alias Sutra.Blake2b
+
+  alias __MODULE__.NativeScript.{
+    ScriptAll,
+    ScriptNOfK,
+    ScriptAny,
+    ScriptPubkey,
+    ScriptInvalidHereafter,
+    ScriptInvalidBefore
+  }
+
+  defguard is_native_script(a)
+           when is_struct(a, ScriptAll) or is_struct(a, ScriptAny) or is_struct(a, ScriptNOfK) or
+                  is_struct(a, ScriptPubkey) or is_struct(a, ScriptInvalidBefore) or
+                  is_struct(a, ScriptInvalidHereafter)
+
+  def decode_script_type!(1), do: :native
+  def decode_script_type!(3), do: :plutus_v1
+  def decode_script_type!(6), do: :plutus_v2
+  def decode_script_type!(7), do: :plutus_v3
+
+  def encode_script_type(script_type) do
+    case script_type do
+      :native -> 1
+      :plutus_v1 -> 3
+      :plutus_v2 -> 6
+      :plutus_v3 -> 7
+    end
+  end
 
   @doc """
     returns script hash

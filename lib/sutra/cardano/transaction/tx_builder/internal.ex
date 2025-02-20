@@ -19,7 +19,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
   alias Sutra.Uplc
   alias Sutra.Utils
   alias TxBuilder.TxConfig
-  alias Witness.{PlutusData, Redeemer, ScriptWitness, VkeyWitness}
+  alias Witness.{PlutusData, Redeemer, VkeyWitness}
 
   import Sutra.Utils, only: [maybe: 3]
 
@@ -71,15 +71,9 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
          plutus_v2: plutus_v2_scripts,
          plutus_v3: plutus_v3_scripts
        }) do
-    scripts =
-      Map.values(native_scripts) ++
-        Map.values(plutus_v1_scripts) ++
-        Map.values(plutus_v2_scripts) ++ Map.values(plutus_v3_scripts)
-
-    ## FIXME: use %Script{} struct for script witness
-    Enum.map(scripts, fn s ->
-      %ScriptWitness{script_type: s.script_type, data: s.data}
-    end)
+    Map.values(native_scripts) ++
+      Map.values(plutus_v1_scripts) ++
+      Map.values(plutus_v2_scripts) ++ Map.values(plutus_v3_scripts)
   end
 
   ## FIXME:  Return eror if no redeemer is found

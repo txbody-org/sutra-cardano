@@ -2,6 +2,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   @moduledoc """
     building blocks to build Transaction in Cardano
   """
+  require Sutra.Cardano.Script
+  alias Sutra.Cardano.Script.NativeScript
   alias __MODULE__.Internal
   alias __MODULE__.TxConfig
   alias Sutra.Blake2b
@@ -185,6 +187,26 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
     }
   end
 
+  def attach_script(
+        %__MODULE__{scripts_lookup: script_lookup} = builder,
+        native_script
+      )
+      when Script.is_native_script(native_script) do
+    script = NativeScript.to_script(native_script)
+
+    updated_script_lookup =
+      Map.put_new(
+        script_lookup[script.script_type] || %{},
+        Script.hash_script(script),
+        native_script
+      )
+
+    %__MODULE__{
+      builder
+      | scripts_lookup: Map.put(script_lookup, script.script_type, updated_script_lookup)
+    }
+  end
+
   def mint_asset(
         %__MODULE__{mints: prev_mints, redeemer_lookup: prev_redeemer} =
           builder,
@@ -192,7 +214,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
         asset,
         redeemer_data \\ nil
       )
-      when not is_nil(redeemer_data) and is_binary(policy_id) and is_map(asset) do
+      when is_binary(policy_id) and is_map(asset) do
     if Map.get(prev_redeemer, {:mint, policy_id}) do
       raise "Same asset is already Minted. You can only mint asset once"
     else
@@ -234,6 +256,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
     # FIXME: Maybe wallet_utxos is not needed in config and can be fetched from here
     with {:ok, %Transaction{} = tx} <-
            Internal.finalize_tx(final_builder, final_cfg.wallet_utxos, collateral_ref) do
+      IO.inspect(tx)
       tx
     end
   end
@@ -267,6 +290,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
 
   def submit_tx(%Transaction{} = signed_tx, provider) do
     cbor = signed_tx |> Transaction.to_cbor() |> CBOR.encode()
+    IO.inspect(Base.encode16(cbor))
 
     provider.__struct__.submit(provider, cbor)
   end

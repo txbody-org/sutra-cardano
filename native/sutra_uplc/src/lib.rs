@@ -3,7 +3,6 @@ use rustler::{Encoder, Env, NifResult, Term, Binary};
 
 #[rustler::nif]
 fn do_apply_params_to_script<'a>(env: Env<'a>, script_bytes: Binary<'a>, params: Binary<'a>) -> NifResult<Term<'a>> {
-  format!("hello from apply params");
   let script_u8  = script_bytes.as_slice().to_vec();
   let params_u8 = params.as_slice().to_vec();
   match apply_params_to_script(&params_u8, &script_u8) {
@@ -62,4 +61,4 @@ fn eval_phase_two<'a>(
     }
 }
 
-rustler::init!("Elixir.Sutra.Uplc", [do_apply_params_to_script, eval_phase_two]);
+rustler::init!("Elixir.Sutra.Uplc");

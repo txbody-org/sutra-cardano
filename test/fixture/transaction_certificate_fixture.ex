@@ -3,6 +3,7 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
     This modules procides helper function and setup transactions for testing
   """
 
+  alias Sutra.Cardano.Script
   alias Sutra.Cardano.Transaction
   alias Sutra.Cardano.Transaction.Certificate
   alias Sutra.Cardano.Transaction.TxBody
@@ -978,7 +979,7 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
         }
       ],
       script_witness: [
-        %Witness.ScriptWitness{
+        %Script{
           data: [
             "584F010100323232323225333002323232323253330073370E900418041BAA0011324A2601460126EA80045289804980500118040009804001180300098021BAA00114984D9595CD2AB9D5573CAE855D11"
           ],

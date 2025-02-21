@@ -70,4 +70,10 @@ defmodule Sutra.Utils do
       {[h | elems], v}
     end
   end
+
+  def merge_list([]), do: []
+  def merge_list([a | b]), do: a ++ merge_list(b)
+
+  def fst({a, _}), do: a
+  def snd({_, b}), do: b
 end

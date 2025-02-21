@@ -4,7 +4,6 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxConfig do
   """
   alias Sutra.Cardano.Address
   alias Sutra.ProtocolParams
-  alias Sutra.SlotConfig
 
   import Sutra.Utils, only: [maybe: 2]
 
@@ -77,13 +76,10 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxConfig do
   def __init(%__MODULE__{provider: nil} = cfg), do: cfg
 
   def __init(%__MODULE__{wallet_address: nil, protocol_params: nil} = cfg) do
-    provider_mod = cfg.provider.__struct__
-    %__MODULE__{protocol_params: provider_mod.protocol_params(cfg.provider)}
+    %__MODULE__{protocol_params: cfg.provider.protocol_params()}
   end
 
   def __init(%__MODULE__{provider: provider} = cfg) do
-    provider_mod = provider.__struct__
-
     Enum.reduce(Map.from_struct(cfg), cfg, fn cfg_field, %__MODULE__{} = acc ->
       case cfg_field do
         {:wallet_address, %Address{} = wallet_addr} ->
@@ -91,7 +87,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxConfig do
             acc
             | wallet_utxos:
                 maybe(cfg.wallet_utxos, fn ->
-                  provider_mod.utxos_at(provider, [Address.to_bech32(wallet_addr)])
+                  provider.utxos_at([wallet_addr])
                 end),
               change_address: maybe(cfg.change_address, wallet_addr)
           }
@@ -99,14 +95,11 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxConfig do
         {:change_address, %Address{} = change_address} ->
           %__MODULE__{acc | change_address: change_address}
 
-        {:provider, provider} when is_struct(provider) ->
+        {:provider, provider} when not is_nil(provider) ->
           %__MODULE__{
             acc
-            | protocol_params:
-                maybe(cfg.protocol_params, fn -> provider_mod.protocol_params(provider) end),
-              # TODO: handle custom slot config
-              slot_config:
-                maybe(SlotConfig.fetch_slot_config(provider_mod.network(provider)), nil)
+            | protocol_params: maybe(cfg.protocol_params, fn -> provider.protocol_params() end),
+              slot_config: provider.slot_config()
           }
 
         _ ->

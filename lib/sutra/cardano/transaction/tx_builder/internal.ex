@@ -3,6 +3,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
     Internal Helper function for Transaction builder
   """
 
+  alias Credo.CLI.Command.Categories.Output
+  alias Credo.CLI.Command.Categories.Output
   alias Sutra.Blake2b
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Asset
@@ -12,7 +14,6 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
   alias Sutra.CoinSelection
   alias Sutra.CoinSelection.LargestFirst
   alias Sutra.Common.ExecutionUnitPrice
-  alias Sutra.Data
   alias Sutra.Data.Plutus.PList
   alias Sutra.ProtocolParams
   alias Sutra.SlotConfig
@@ -30,12 +31,12 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
   def extract_ref(%OutputReference{transaction_id: tx_id, output_index: indx}),
     do: "#{tx_id}##{indx}"
 
-  ## TODO: Handle collateral better way
   def finalize_tx(%TxBuilder{} = builder, wallet_utxos, collateral_ref) do
-    # TODO: use better way to handle colateral
     {new_wallet_inputs, collateral_input} =
-      Utils.without_elem(wallet_utxos, fn i ->
-        i.output_reference == collateral_ref
+      maybe(collateral_ref, {wallet_utxos, nil}, fn _ ->
+        Utils.without_elem(wallet_utxos, fn i ->
+          i.output_reference == collateral_ref
+        end)
       end)
 
     builder = %TxBuilder{
@@ -64,6 +65,87 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
        }}
     end
   end
+
+  defp with_collateral(
+         %Transaction{
+           witnesses: %Witness{
+             redeemer: redeemer
+           }
+         } = tx,
+         _wallet_utxos,
+         _config
+       )
+       when redeemer == [] or is_nil(redeemer),
+       do:
+         {:ok,
+          %Transaction{
+            tx
+            | tx_body: %TxBody{tx.tx_body | collateral_return: nil, collateral: nil}
+          }}
+
+  defp with_collateral(
+         %Transaction{tx_body: %TxBody{collateral: nil}} = tx,
+         wallet_utxos,
+         %TxBuilder{config: %TxConfig{} = config}
+       )
+       when is_list(wallet_utxos) do
+    # TODO calculate collateral Fee  using TX
+    collateral_fee = 5_000_000
+
+    sorted_by_val =
+      Enum.sort_by(wallet_utxos, fn %Input{output: %Output{value: val}} ->
+        Asset.lovelace_of(val)
+      end)
+
+    fetch_collateral_combined = fn ->
+      Enum.reduce_while(sorted_by_val, {[], collateral_fee}, fn %Input{output: output} = input,
+                                                                {inputs, amt_left} ->
+        if amt_left <= 0 do
+          {:halt, inputs}
+        else
+          {:cont, {[input | inputs], amt_left - Asset.lovelace_of(output.value)}}
+        end
+      end)
+    end
+
+    set_collateral = fn inputs ->
+      {total_asset_used, collateral_refs} =
+        Enum.reduce(inputs, {Asset.zero(), []}, fn i, {used_asset, refs} ->
+          {Asset.merge(used_asset, i.output.value), [i.output_reference | refs]}
+        end)
+
+      change = Asset.add(total_asset_used, "lovelace", -collateral_fee)
+
+      collateral_retun =
+        if Asset.is_positive_asset(change),
+          do: Output.new(config.change_address, change),
+          else: nil
+
+      %Transaction{
+        tx
+        | tx_body: %TxBody{
+            tx.tx_body
+            | collateral: collateral_refs,
+              collateral_return: collateral_retun,
+              total_collateral: total_asset_used
+          }
+      }
+    end
+
+    # TODO: check collateral exceedes total count
+    collateral_inputs =
+      sorted_by_val
+      |> Enum.find(fn i -> Asset.lovelace_of(i.output.value) >= collateral_fee end)
+      |> Utils.maybe(fetch_collateral_combined, fn i -> [i] end)
+
+    if is_list(collateral_inputs) and collateral_inputs != [] do
+      {:ok, set_collateral.(collateral_inputs)}
+    else
+      {:error, :no_suitable_collateral}
+    end
+  end
+
+  defp with_collateral(tx, _, _), do: {:ok, tx}
 
   defp with_script_witness(%{
          native: native_scripts,
@@ -103,7 +185,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
              native: native_script_lookup,
              plutus_v1: plutus_v1_scripts,
              plutus_v2: plutus_v2_scripts,
-             plutus_v3: plutus_v3_scripts
+             plutus_v3: plutus_v3_scripts,
+             in_ref_script: ref_scripts
            }
          } = builder
        )
@@ -133,18 +216,20 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
             raise "No Minting policy attached for PolicyId: #{k}"
         end
 
-      indexed_script = Utils.with_sorted_indexed_map(scripts_lookup)
+      maybe(redeemer_data, acc, fn _ ->
+        indexed_script = Utils.with_sorted_indexed_map(scripts_lookup)
 
-      redeemer = %Redeemer{
-        index: indexed_script[k].index,
-        # We can use void here for Native script
-        data: redeemer_data || Data.void(),
-        tag: :mint,
-        # Initialize Exunits with 0,0. will be replaced by exact Exunits after Evaluation
-        exunits: {0, 0}
-      }
+        redeemer = %Redeemer{
+          index: indexed_script[k].index,
+          # We can use void here for Native script
+          data: redeemer_data,
+          tag: :mint,
+          # Initialize Exunits with 0,0. will be replaced by exact Exunits after Evaluation
+          exunits: {0, 0}
+        }
 
-      [redeemer | acc]
+        [redeemer | acc]
+      end)
     end)
   end
 
@@ -173,8 +258,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
       fee: Asset.from_lovelace(100_000),
       mint: builder.mints,
       reference_inputs: builder.ref_inputs,
-      collateral: [builder.collateral_input.output_reference],
-      total_collateral: builder.collateral_input.output.value,
+      collateral: maybe(builder.collateral_input, nil, fn i -> [i.output_reference] end),
+      total_collateral: maybe(builder.collateral_input, nil, fn i -> i.output.value end),
       # TODO: use proper Auxiliary Data format
       auxiliary_data_hash: set_auxiliary_data_hash(builder.metadata),
       script_data_hash: Blake2b.blake2b_256("")
@@ -236,10 +321,22 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
           Witness.to_cbor(tx_with_evaluated_redeemer.witnesses.redeemer) |> Map.get(5)
         )
 
+      utxos_left = wallet_utxos -- new_inputs
+
+      {:ok, with_collateral_tx} =
+        with_collateral(tx_with_evaluated_redeemer, utxos_left, builder)
+
+      new_wallet_utxos =
+        maybe(with_collateral_tx.tx_body.collateral, utxos_left, fn coll_inps ->
+          Enum.filter(utxos_left, fn %Input{output_reference: out_ref} ->
+            Enum.find_value(coll_inps, &(&1 == out_ref)) |> is_nil()
+          end)
+        end)
+
       final_tx = %Transaction{
-        tx_with_evaluated_redeemer
+        with_collateral_tx
         | tx_body: %TxBody{
-            tx_with_evaluated_redeemer.tx_body
+            with_collateral_tx.tx_body
             | script_data_hash: script_data_hash
           }
       }
@@ -250,7 +347,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
         {:ok, final_tx}
       else
         %TxBody{tx_body | inputs: new_inputs, fee: Asset.from_lovelace(ceil(tx_fee * 1.06))}
-        |> create_tx(builder, wallet_utxos, tx.witnesses)
+        |> create_tx(builder, new_wallet_utxos, tx.witnesses)
       end
     end
   end
@@ -341,7 +438,6 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
 
     if Asset.only_positive(diff_asset) == %{} do
       # current inputs is enough to cover output
-
       {:ok,
        %CoinSelection{
          selected_inputs: [],

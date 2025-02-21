@@ -29,7 +29,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
     native: %{},
     plutus_v1: %{},
     plutus_v2: %{},
-    plutus_v3: %{}
+    plutus_v3: %{},
+    in_ref_script: %{}
   }
 
   @type t() :: %__MODULE__{
@@ -256,7 +257,6 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
     # FIXME: Maybe wallet_utxos is not needed in config and can be fetched from here
     with {:ok, %Transaction{} = tx} <-
            Internal.finalize_tx(final_builder, final_cfg.wallet_utxos, collateral_ref) do
-      IO.inspect(tx)
       tx
     end
   end
@@ -289,10 +289,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   end
 
   def submit_tx(%Transaction{} = signed_tx, provider) do
-    cbor = signed_tx |> Transaction.to_cbor() |> CBOR.encode()
-    IO.inspect(Base.encode16(cbor))
-
-    provider.__struct__.submit(provider, cbor)
+    provider.submit_tx(signed_tx)
   end
 
   def get_change_address([%Address{} = addr | _], nil), do: addr

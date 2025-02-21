@@ -17,6 +17,7 @@ defmodule Sutra.Cardano.Address do
   @type address_type :: :shelley | :reward | :byron
   @type stake_credential :: Credential.t() | Pointer.t() | nil
   @type network :: :mainnet | :testnet
+  @type bech_32() :: binary()
 
   typedstruct module: Credential do
     @moduledoc """

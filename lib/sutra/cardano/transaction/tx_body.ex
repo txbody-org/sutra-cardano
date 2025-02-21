@@ -45,7 +45,7 @@ defmodule Sutra.Cardano.Transaction.TxBody do
     # -- (15)
     field(:network_id, :string)
     # -- (16)
-    field(:collateral_return, :integer)
+    field(:collateral_return, Output.t())
     # -- (17)
     field(:total_collateral, :integer)
     # -- (18)

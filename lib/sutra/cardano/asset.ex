@@ -469,4 +469,11 @@ defmodule Sutra.Cardano.Asset do
       Map.put(assets, "lovelace", lovelace)
     end
   end
+
+  def from_seperator(assets, seperator \\ ".") when is_map(assets) do
+    Enum.reduce(assets, %{}, fn {k, v}, acc ->
+      [policy_id, asset_name] = String.split(k, seperator)
+      add(acc, policy_id, asset_name, v)
+    end)
+  end
 end

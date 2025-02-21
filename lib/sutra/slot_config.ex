@@ -3,6 +3,12 @@ defmodule Sutra.SlotConfig do
    Slot Configuration 
   """
 
+  @type t() :: %__MODULE__{
+          zero_time: pos_integer(),
+          zero_slot: pos_integer(),
+          slot_length: pos_integer()
+        }
+
   @enforce_keys [:zero_time, :zero_slot, :slot_length]
   defstruct [:zero_time, :zero_slot, :slot_length]
 

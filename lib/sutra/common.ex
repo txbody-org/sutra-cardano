@@ -19,4 +19,14 @@ defmodule Sutra.Common do
     field(:mem, pos_integer())
     field(:step, pos_integer())
   end
+
+  def rational_from_binary(str) when is_binary(str) do
+    case String.split(str, "/") do
+      [n, d] ->
+        %RationalNumber{numerator: String.to_integer(n), denominator: String.to_integer(d)}
+
+      _ ->
+        nil
+    end
+  end
 end

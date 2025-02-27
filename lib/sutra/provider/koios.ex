@@ -3,51 +3,56 @@ defmodule Sutra.Provider.KoiosProvider do
     Koios Data provider
   """
 
+  @behaviour Sutra.Provider
+
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Gov.CostModels
+  alias Sutra.Cardano.Transaction
   alias Sutra.Cardano.Transaction.{Datum, Input, Output, OutputReference}
   alias Sutra.Common.ExecutionUnitPrice
   alias Sutra.Common.ExecutionUnits
   alias Sutra.ProtocolParams
-  alias Sutra.Provider.KoiosProvider
+  alias Sutra.SlotConfig
 
-  defstruct [:network, :api_key, :base_url]
+  defp fetch_env(key), do: Application.get_env(:sutra, :koios)[key]
 
-  @network_base_url "https://preprod.koios.rest/api/v1/"
-
-  ## TODO: use correct options
-  def new(_opts \\ []) do
-    %__MODULE__{network: :preprod, base_url: @network_base_url}
+  defp base_url do
+    network_prefix = network() |> Atom.to_string() |> String.downcase()
+    "https://#{network_prefix}.koios.res/api/v1"
   end
 
-  def network(%__MODULE__{} = koios), do: koios.network
+  @impl true
+  def network, do: fetch_env(:network)
 
-  def utxos_at(%KoiosProvider{} = provider, bech32_addrs) do
+  @impl true
+  def utxos_at(bech32_addrs) do
     resp =
-      Req.post!(provider.base_url <> "address_utxos",
+      Req.post!(base_url() <> "address_utxos",
         json: %{"_addresses" => bech32_addrs, "_extended" => true}
       ).body
 
     Enum.map(resp, &parse_utxo/1)
   end
 
-  def utxos_at_refs(%KoiosProvider{} = provider, refs) do
+  @impl true
+  def utxos_at_refs(refs) do
     resp =
-      Req.post!(provider.base_url <> "utxo_info",
+      Req.post!(base_url() <> "utxo_info",
         json: %{"_utxo_refs" => refs, "_extended" => true}
       ).body
 
     Enum.map(resp, &parse_utxo/1)
   end
 
-  def chain_tip(%__MODULE__{} = provider) do
-    Req.get!(provider.base_url <> "tip").body
+  def chain_tip do
+    Req.get!(base_url() <> "tip").body
   end
 
-  def protocol_params(%__MODULE__{} = provider) do
-    curr_epoch_no = chain_tip(provider) |> hd() |> Map.get("epoch_no")
+  @impl true
+  def protocol_params do
+    curr_epoch_no = chain_tip() |> hd() |> Map.get("epoch_no")
 
-    Req.get!(provider.base_url <> "epoch_params?_epoch_no=#{curr_epoch_no}").body
+    Req.get!(base_url() <> "epoch_params?_epoch_no=#{curr_epoch_no}").body
     |> hd()
     |> parse_protocol_params()
   end
@@ -131,10 +136,23 @@ defmodule Sutra.Provider.KoiosProvider do
     end)
   end
 
-  def submit(%__MODULE__{} = provider, cbor) do
-    Req.post!(provider.base_url <> "submittx",
+  @impl true
+  def slot_config do
+    network()
+    |> SlotConfig.fetch_slot_config()
+  end
+
+  @impl true
+  def submit_tx(cbor) when is_binary(cbor) do
+    Req.post!(base_url() <> "submittx",
       body: cbor,
       headers: %{"Content-Type" => "application/cbor"}
     ).body
+  end
+
+  def submit_tx(%Transaction{} = tx) do
+    Transaction.to_cbor(tx)
+    |> CBOR.encode()
+    |> submit_tx()
   end
 end

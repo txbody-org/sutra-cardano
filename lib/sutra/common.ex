@@ -5,14 +5,16 @@ defmodule Sutra.Common do
 
   use TypedStruct
 
+  @type ex_price() :: {pos_integer(), pos_integer()}
+
   typedstruct(module: RationalNumber) do
     field(:numerator, :integer, required: true)
     field(:denominator, :integer, required: true)
   end
 
   typedstruct(module: ExecutionUnitPrice) do
-    field(:mem_price, RationalNumber)
-    field(:step_price, RationalNumber)
+    field(:mem_price, Sutra.Common.ex_price())
+    field(:step_price, Sutra.Common.ex_price())
   end
 
   typedstruct(module: ExecutionUnits) do

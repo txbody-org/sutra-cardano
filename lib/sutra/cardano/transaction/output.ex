@@ -5,6 +5,7 @@ defmodule Sutra.Cardano.Transaction.Output do
 
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Asset
+  alias Sutra.Cardano.Script
   alias Sutra.Cardano.Transaction.Datum
   alias Sutra.Data.Cbor
   alias Sutra.Utils
@@ -46,11 +47,13 @@ defmodule Sutra.Cardano.Transaction.Output do
   end
 
   def from_cbor(%{0 => %CBOR.Tag{tag: :bytes, value: addr_value}} = ops) do
+    ref_script = if is_nil(ops[3]), do: nil, else: Script.from_script_ref(ops[3])
+
     %__MODULE__{
       address: Address.Parser.decode(addr_value),
       value: Asset.from_cbor(ops[1]),
       datum: Datum.from_cbor(ops[2]),
-      reference_script: ops[3]
+      reference_script: ref_script
     }
   end
 
@@ -96,7 +99,7 @@ defmodule Sutra.Cardano.Transaction.Output do
           |> maybe(acc, &Map.put(acc, 2, &1))
 
         {:reference_script, script} ->
-          Map.put(acc, 3, script)
+          Map.put(acc, 3, Script.to_script_ref(script))
 
         _ ->
           acc

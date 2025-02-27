@@ -6,8 +6,8 @@ defmodule Sutra.Cardano.Script.NativeScriptTest do
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Script.NativeScript
 
-  # Examples are from 
-  # https =>//github.com/IntersectMBO/cardano-node/blob/1.26.1-with-cardano-cli/doc/reference/simple-scripts.md#json-script-syntax
+  # Examples are from
+  # https://github.com/IntersectMBO/cardano-node/blob/1.26.1-with-cardano-cli/doc/reference/simple-scripts.md#json-script-syntax
 
   @script_all %{
     "type" => "all",

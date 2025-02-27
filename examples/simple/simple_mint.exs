@@ -2,14 +2,14 @@
 Code.eval_file("examples/setup_kupogmios_provider.exs")
 
 defmodule Sutra.Examples.Advance.AlwaysSucceed do
-  alias Sutra.Cardano.Asset
-  alias Sutra.Data
-  alias Sutra.Cardano.Script
   alias Sutra.Cardano.Address
+  alias Sutra.Cardano.Asset
+  alias Sutra.Cardano.Script
+  alias Sutra.Data
 
   import Sutra.Cardano.Transaction.TxBuilder
 
-  def blueprint(), do: File.read!("./blueprint.json") |> :json.decode()
+  def blueprint, do: File.read!("./blueprint.json") |> :json.decode()
 
   def get_script(title) do
     blueprint()
@@ -18,7 +18,7 @@ defmodule Sutra.Examples.Advance.AlwaysSucceed do
     |> Map.get("compiledCode")
   end
 
-  def run() do
+  def run do
     user_address = "addr_test1vq28nc9dpkull96p5aeqz3xg2n6xq0mfdd4ahyrz4aa9rag83cs3c"
 
     simple_mint_script =
@@ -46,7 +46,7 @@ defmodule Sutra.Examples.Advance.AlwaysSucceed do
       |> pay_to_address(user_address, %{"lovelace" => 10_000}, datum: {:as_hash, Data.encode(4)})
       |> valid_from(current_posix_time)
       |> valid_to(current_posix_time + 20 * 60 * 1000)
-      |> build_tx(wallet_address: user_address)
+      |> build_tx!(wallet_address: user_address)
       |> sign_tx(["ed25519_sk1tmxtkw3ek64zyg9gtn3qkk355hfs9jnfjy33zwp87s8qkdmznd0qvukr43"])
       |> submit_tx()
 

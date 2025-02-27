@@ -255,4 +255,7 @@ defmodule Sutra.Cardano.Transaction.Witness do
     |> Cbor.as_nonempty_set()
     |> Cbor.as_indexed_map(4, acc)
   end
+
+  def init_redeemer(index, data, tag \\ :mint),
+    do: %Redeemer{index: index, tag: tag, data: data, exunits: {0, 0}}
 end

@@ -1,11 +1,12 @@
 defmodule Sutra.Cardano.Script.NativeScript do
   @moduledoc """
-   Cardano Native Script 
+   Cardano Native Script
   """
 
   alias Sutra.Cardano.Script
   alias Sutra.Cardano.Script.NativeScript
   alias Sutra.Data.Cbor
+  alias Sutra.Utils
 
   @type t() ::
           __MODULE__.ScriptPubkey.t()
@@ -43,7 +44,7 @@ defmodule Sutra.Cardano.Script.NativeScript do
   end
 
   def from_witness_set([0, pubkey]) do
-    %ScriptPubkey{pubkey_hash: pubkey}
+    %ScriptPubkey{pubkey_hash: Cbor.extract_value!(pubkey)}
   end
 
   def from_witness_set([1, native_scripts]) do
@@ -88,6 +89,15 @@ defmodule Sutra.Cardano.Script.NativeScript do
 
   def to_witness_set(%ScriptInvalidHereafter{slot: slot}) do
     [5, slot]
+  end
+
+  def from_cbor(cbor_hex) when is_binary(cbor_hex) do
+    {:ok, cbor, _} =
+      cbor_hex
+      |> Utils.safe_base16_decode()
+      |> CBOR.decode()
+
+    from_witness_set(cbor)
   end
 
   def from_json(script) when is_map(script) do

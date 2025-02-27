@@ -1,21 +1,24 @@
 defmodule Sutra.Provider.Kupogmios do
   @moduledoc """
-    Kupo & Ogmios Provider 
+    Kupo & Ogmios Provider
   """
-  alias Sutra.Data.Cbor
-  alias Sutra.Cardano.Transaction
-  alias Sutra.SlotConfig
-  alias Sutra.Cardano.Transaction.OutputReference
-  alias Sutra.Cardano.Transaction.Input
-  alias Sutra.Cardano.Asset
-  alias Sutra.Cardano.Transaction.Output
-  alias Sutra.Cardano.Transaction.Datum
-  alias Sutra.Utils
+
   alias Sutra.Cardano.Address
-  alias Sutra.Common.ExecutionUnits
-  alias Sutra.Common.ExecutionUnitPrice
+  alias Sutra.Cardano.Asset
   alias Sutra.Cardano.Gov.CostModels
+  alias Sutra.Cardano.Script
+  alias Sutra.Cardano.Script.NativeScript
+  alias Sutra.Cardano.Transaction
+  alias Sutra.Cardano.Transaction.Datum
+  alias Sutra.Cardano.Transaction.Input
+  alias Sutra.Cardano.Transaction.Output
+  alias Sutra.Cardano.Transaction.OutputReference
+  alias Sutra.Common.ExecutionUnitPrice
+  alias Sutra.Common.ExecutionUnits
+  alias Sutra.Data.Cbor
   alias Sutra.ProtocolParams
+  alias Sutra.SlotConfig
+  alias Sutra.Utils
 
   import Sutra.Common, only: [rational_from_binary: 1]
 
@@ -73,8 +76,8 @@ defmodule Sutra.Provider.Kupogmios do
     url = "#{fetch_env(:kupo_url)}/matches/#{pattern}"
 
     Req.get!(url).body
-    |> Enum.filter(fn %{"transaction_index" => indx} ->
-      Enum.find(indices, -1, &(&1 == indx)) >= 0
+    |> Enum.filter(fn %{"output_index" => indx} ->
+      Enum.find(indices, &(&1 == indx)) == indx
     end)
     |> Enum.map(&parse_output/1)
   end
@@ -111,7 +114,23 @@ defmodule Sutra.Provider.Kupogmios do
             else: %Datum{kind: :no_datum, value: nil}
       end
 
-    script = if is_map(script_resp), do: script_resp["script"], else: nil
+    script =
+      case {script_resp["script"], script_resp["language"]} do
+        {nil, _} ->
+          nil
+
+        {script, "plutus:v1"} ->
+          Script.new(script, :plutus_v1)
+
+        {script, "plutus:v2"} ->
+          Script.new(script, :plutus_v2)
+
+        {script, "plutus:v3"} ->
+          Script.new(script, :plutus_v3)
+
+        {script, "native"} ->
+          NativeScript.from_cbor(script)
+      end
 
     %Input{
       output_reference: %OutputReference{

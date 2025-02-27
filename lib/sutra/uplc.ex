@@ -43,14 +43,16 @@ defmodule Sutra.Uplc do
   end
 
   def evaluate(
-        %Transaction{tx_body: %TxBody{inputs: inputs}} = tx,
+        %Transaction{tx_body: %TxBody{inputs: inputs, reference_inputs: ref_inputs}} = tx,
         cost_models,
         slot_config
       ) do
+    ref_inputs = ref_inputs || []
+
     tx
     |> Transaction.to_cbor()
     |> CBOR.encode()
-    |> evaluate_raw(inputs, cost_models, slot_config)
+    |> evaluate_raw(inputs ++ ref_inputs, cost_models, slot_config)
   end
 
   # NIF function stub - actual implementation in Rust

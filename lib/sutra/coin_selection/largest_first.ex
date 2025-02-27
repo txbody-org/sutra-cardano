@@ -2,9 +2,11 @@ defmodule Sutra.CoinSelection.LargestFirst do
   @moduledoc """
     LargestFirst Coinselection algorithm
   """
+
   alias Sutra.Cardano.Asset
   alias Sutra.Cardano.Transaction
   alias Sutra.Cardano.Transaction.{Input, Output}
+  alias Sutra.Cardano.Transaction.TxBuilder.Error
   alias Sutra.CoinSelection
 
   @doc """
@@ -35,7 +37,12 @@ defmodule Sutra.CoinSelection.LargestFirst do
          }}
 
       Asset.policies(remaining_to_fill) != [] ->
-        {:error, "No inputs available to full assets"}
+        {:error,
+         Error.CannotBalanceTx.new(
+           remaining_to_fill
+           |> Asset.abs_value()
+           |> Asset.only_positive()
+         )}
 
       # Need to balance remaining lovelace
       # TODO: Make this function better

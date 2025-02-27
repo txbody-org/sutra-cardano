@@ -234,7 +234,12 @@ defmodule Sutra.Cardano.Transaction.TxBody do
 
   defp do_map_to_cbor({:reference_inputs, ref_inputs}, acc) do
     ref_inputs
-    |> Enum.map(&OutputReference.to_cbor/1)
+    |> Enum.map(fn r ->
+      case r do
+        %Input{} -> OutputReference.to_cbor(r.output_reference)
+        _ -> OutputReference.to_cbor(r)
+      end
+    end)
     |> Cbor.as_nonempty_set()
     |> Cbor.as_indexed_map(18, acc)
   end

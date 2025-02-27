@@ -30,10 +30,12 @@ assets = %{
 
 tx_id =
   new_tx()
-  |> mint_asset(policy_id, assets)
   |> attach_script(script)
-  |> pay_to_address(wallet_address, %{policy_id => assets})
-  |> build_tx(wallet_address: wallet_address)
+  |> mint_asset(policy_id, assets)
+  |> pay_to_address(wallet_address, %{
+    policy_id => assets
+  })
+  |> build_tx!(wallet_address: wallet_address)
   |> sign_tx([sig])
   |> submit_tx()
 

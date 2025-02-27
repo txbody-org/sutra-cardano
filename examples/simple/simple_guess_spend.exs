@@ -1,3 +1,4 @@
+alias Sutra.Cardano.Transaction.OutputReference
 alias Sutra.Provider.Kupogmios
 alias Sutra.Cardano.Transaction.Input
 alias Sutra.Cardano.Transaction
@@ -31,7 +32,7 @@ place = fn ->
 
   new_tx()
   |> pay_to_address(script_address, %{"lovelace" => 2_000_000}, datum: {:inline, Data.encode(42)})
-  |> build_tx(wallet_address: wallet_address)
+  |> build_tx!(wallet_address: wallet_address)
   |> sign_tx([sig])
 end
 
@@ -53,7 +54,7 @@ spend_tx =
   new_tx()
   |> spend(input_utxos, 42)
   |> attach_script(script)
-  |> build_tx(
+  |> build_tx!(
     wallet_utxos: new_wallet_utxos,
     wallet_address: wallet_address
   )

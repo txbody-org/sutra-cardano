@@ -47,6 +47,8 @@ defmodule Sutra.Utils do
   end
 
   def with_sorted_indexed_map(map) when is_map(map) do
+    map = Map.filter(map, fn {_k, v} -> not is_nil(v) end)
+
     for {{k, v}, i} <- Enum.with_index(map), into: %{} do
       if is_map(v) and not is_struct(v),
         do: {k, Map.put(v, :index, i)},
@@ -76,4 +78,20 @@ defmodule Sutra.Utils do
 
   def fst({a, _}), do: a
   def snd({_, b}), do: b
+
+  def instance_of?(v, l) when is_struct(v), do: v.__struct__ == l
+
+  def instance_of?([v | rest], l),
+    do: instance_of?(v, l) and (rest == [] or instance_of?(rest, l))
+
+  def instance_of?(_, _), do: false
+
+  def when_ok({:ok, result}, apply) when is_function(apply, 1) do
+    {:ok, apply.(result)}
+  end
+
+  def when_ok(result, _), do: result
+
+  def ok_or_error({:error, err}), do: {:error, err}
+  def ok_or_error(result), do: {:ok, result}
 end

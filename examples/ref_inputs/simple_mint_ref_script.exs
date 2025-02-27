@@ -10,7 +10,7 @@ alias Sutra.Cardano.Address
 
 import Sutra.Cardano.Transaction.TxBuilder
 
-blueprint = File.read!("./blueprint.json") |> :json.decode()
+blueprint = File.read!("./blueprint.json") |> :elixir_json.decode()
 
 user_address = "addr_test1vq28nc9dpkull96p5aeqz3xg2n6xq0mfdd4ahyrz4aa9rag83cs3c"
 

@@ -13,7 +13,7 @@ Code.eval_file("examples/setup_kupogmios_provider.exs")
 
 script_code =
   File.read!("./blueprint.json")
-  |> :json.decode()
+  |> :elixir_json.decode()
   |> Map.get("validators", [])
   |> Enum.find(fn v -> v["title"] == "simple.simple.spend" end)
   |> Map.get("compiledCode")

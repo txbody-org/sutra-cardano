@@ -9,7 +9,7 @@ defmodule Sutra.Examples.Advance.AlwaysSucceed do
 
   import Sutra.Cardano.Transaction.TxBuilder
 
-  def blueprint, do: File.read!("./blueprint.json") |> :json.decode()
+  def blueprint, do: File.read!("./blueprint.json") |> :elixir_json.decode()
 
   def get_script(title) do
     blueprint()

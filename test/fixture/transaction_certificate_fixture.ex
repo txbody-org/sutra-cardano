@@ -10,7 +10,7 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
   alias Sutra.Cardano.Transaction.Witness
 
   def get_certificate_cbors,
-    do: File.read!("test/fixture/transaction_certificate_cbor.json") |> :json.decode()
+    do: File.read!("test/fixture/transaction_certificate_cbor.json") |> :elixir_json.decode()
 
   # for TxId: 302da83fb39d6e900f31ecc6b53b2e02e87ea990836fd9dcd5186c93ac42d221  (preprod)
   def body_302dd221 do

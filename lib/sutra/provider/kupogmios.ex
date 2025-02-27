@@ -174,7 +174,7 @@ defmodule Sutra.Provider.Kupogmios do
 
     case Req.post!(fetch_env(:ogmios_url), json: data).body do
       %{"result" => %{"transaction" => tx_resp}} -> tx_resp["id"]
-      result -> :json.encode(result)
+      result -> :elixir_json.encode(result)
     end
   end
 

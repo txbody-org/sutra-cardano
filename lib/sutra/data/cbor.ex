@@ -21,8 +21,9 @@ defmodule Sutra.Data.Cbor do
     |> Utils.ok_or(fn -> raise "Invalid CBOR value: #{inspect(v)}" end)
   end
 
-  def as_byte(value) when is_binary(value),
-    do: %CBOR.Tag{tag: :bytes, value: Base.decode16!(value, case: :mixed)}
+  def as_byte(value) when is_binary(value) do
+    %CBOR.Tag{tag: :bytes, value: Utils.ok_or(Base.decode16(value, case: :mixed), value)}
+  end
 
   def as_nonempty_set(value), do: %CBOR.Tag{tag: 258, value: value}
   def as_set(value), do: %CBOR.Tag{tag: 258, value: value}
@@ -44,4 +45,6 @@ defmodule Sutra.Data.Cbor do
   end
 
   def as_tagged(value), do: value
+
+  def encode_hex(data), do: CBOR.encode(data) |> Base.encode16()
 end

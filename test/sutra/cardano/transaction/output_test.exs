@@ -112,6 +112,7 @@ defmodule Sutra.Cardano.Transaction.OutputTest do
                  }
                })
                |> Data.encode()
+               |> Base.encode16()
 
       assert @output_cbor["datum-hash-no-ref-script"] ==
                Output.to_plutus(%Output{
@@ -131,6 +132,7 @@ defmodule Sutra.Cardano.Transaction.OutputTest do
                  }
                })
                |> Data.encode()
+               |> Base.encode16()
 
       assert @output_cbor["inline-datum-no-ref-script"] ==
                Output.to_plutus(%Output{
@@ -150,6 +152,7 @@ defmodule Sutra.Cardano.Transaction.OutputTest do
                  }
                })
                |> Data.encode()
+               |> Base.encode16()
     end
   end
 end

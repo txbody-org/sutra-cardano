@@ -5,7 +5,7 @@ defmodule Sutra.Cardano.Address do
 
   use TypedStruct
 
-  alias Sutra.Data.Plutus
+  alias Sutra.Cardano.Script
   alias __MODULE__, as: Address
   alias Sutra.Cardano.Address.Credential
   alias Sutra.Cardano.Address.Parser
@@ -17,6 +17,7 @@ defmodule Sutra.Cardano.Address do
   @type address_type :: :shelley | :reward | :byron
   @type stake_credential :: Credential.t() | Pointer.t() | nil
   @type network :: :mainnet | :testnet
+  @type bech_32() :: binary()
 
   typedstruct module: Credential do
     @moduledoc """
@@ -30,9 +31,9 @@ defmodule Sutra.Cardano.Address do
     @moduledoc """
       Address Pointer
     """
-    field(:slot, Integer.t(), enforce: true)
-    field(:tx_index, Integer.t(), enforce: true)
-    field(:cert_index, Integer.t(), enforce: true)
+    field(:slot, pos_integer(), enforce: true)
+    field(:tx_index, pos_integer(), enforce: true)
+    field(:cert_index, pos_integer(), enforce: true)
   end
 
   typedstruct do
@@ -138,7 +139,7 @@ defmodule Sutra.Cardano.Address do
     %Credential{credential_type: credential_type, hash: stake_cred_hash}
   end
 
-  @spec to_plutus(Address.t()) :: Plutus.t()
+  @spec to_plutus(Address.t()) :: Sutra.Data.Plutus.t()
   def to_plutus(%Address{} = addr) do
     payment_credential =
       case addr.payment_credential do
@@ -207,4 +208,35 @@ defmodule Sutra.Cardano.Address do
   def to_cbor(%Address{} = addr) do
     %CBOR.Tag{tag: :bytes, value: Parser.encode(addr)}
   end
+
+  def from_script(_script, network)
+      when network not in [:mainnet, :testnet, :preview, :preprod],
+      do: {:error, "Invalid Network ID"}
+
+  def from_script(%Script{} = script, network) do
+    script_payment_key = Script.hash_script(script)
+    from_script(script_payment_key, network)
+  end
+
+  def from_script(script_hash, network) when is_binary(script_hash) do
+    %__MODULE__{
+      network: network,
+      address_type: :shelley,
+      payment_credential: %Credential{
+        credential_type: :script,
+        hash: script_hash
+      },
+      stake_credential: nil
+    }
+  end
+
+  def script_address?(%__MODULE__{
+        payment_credential: %Credential{credential_type: credential_type}
+      }),
+      do: credential_type == :script
+
+  def vkey_address?(%__MODULE__{
+        payment_credential: %Credential{credential_type: credential_type}
+      }),
+      do: credential_type == :vkey
 end

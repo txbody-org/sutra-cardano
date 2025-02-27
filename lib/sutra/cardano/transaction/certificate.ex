@@ -175,8 +175,8 @@ defmodule Sutra.Cardano.Transaction.Certificate do
     %PoolRegistration{
       pool_key_hash: extract_value!(pool_key),
       vrf_key_hash: extract_value!(vrf),
-      pledge: Asset.lovelace_of(pledge),
-      cost: Asset.lovelace_of(cost),
+      pledge: Asset.from_lovelace(pledge),
+      cost: Asset.from_lovelace(cost),
       margin: n / d,
       margin_ratio: {n, d},
       reward_account: extract_value!(reward_accont),
@@ -205,7 +205,7 @@ defmodule Sutra.Cardano.Transaction.Certificate do
   def decode([8, stake_credential, coin]) do
     %UnRegisterCert{
       stake_credential: decode_credential(stake_credential),
-      coin: Asset.lovelace_of(coin)
+      coin: Asset.from_lovelace(coin)
     }
   end
 
@@ -228,7 +228,7 @@ defmodule Sutra.Cardano.Transaction.Certificate do
     %StakeRegDelegCert{
       stake_credential: decode_credential(stake_cred),
       pool_keyhash: extract_value!(pool_key_hash),
-      deposit: Asset.lovelace_of(coin)
+      deposit: Asset.from_lovelace(coin)
     }
   end
 
@@ -237,7 +237,7 @@ defmodule Sutra.Cardano.Transaction.Certificate do
       stake_credential: decode_credential(stake_cred),
       pool_keyhash: extract_value!(pool_key_hash),
       drep: decode_drep(drep),
-      deposit: Asset.lovelace_of(coin)
+      deposit: Asset.from_lovelace(coin)
     }
   end
 
@@ -252,14 +252,14 @@ defmodule Sutra.Cardano.Transaction.Certificate do
     %VoteRegDelegCert{
       stake_credential: decode_credential(stake_cred),
       drep: decode_drep(drep),
-      deposit: Asset.lovelace_of(coin)
+      deposit: Asset.from_lovelace(coin)
     }
   end
 
   def decode([16, drep_cred, coin, anchor]) do
     %RegDrepCert{
       drep_credential: decode_credential(drep_cred),
-      deposit: Asset.lovelace_of(coin),
+      deposit: Asset.from_lovelace(coin),
       anchor: maybe(anchor, nil, fn [u, h] -> %{url: u, hash: h} end)
     }
   end
@@ -267,7 +267,7 @@ defmodule Sutra.Cardano.Transaction.Certificate do
   def decode([17, drep_cred, coin]) do
     %UnRegDrepCert{
       drep_credential: decode_credential(drep_cred),
-      deposit: Asset.lovelace_of(coin)
+      deposit: Asset.from_lovelace(coin)
     }
   end
 

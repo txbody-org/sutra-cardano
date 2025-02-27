@@ -25,6 +25,8 @@ defmodule Sutra.Data.Plutus do
 
     defstruct [:value]
 
+    @type t() :: %__MODULE__{value: [Plutus.t()]}
+
     defimpl CBOR.Encoder do
       @impl true
       def encode_into(%PList{value: []}, acc), do: <<acc::binary, 0x80>>
@@ -115,6 +117,5 @@ defmodule Sutra.Data.Plutus do
     data
     |> Cbor.as_tagged()
     |> CBOR.encode()
-    |> Base.encode16()
   end
 end

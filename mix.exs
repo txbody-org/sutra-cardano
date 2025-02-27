@@ -5,7 +5,7 @@ defmodule Sutra.MixProject do
     [
       app: :sutra_offchain,
       version: "0.1.0",
-      elixir: "~> 1.17.0",
+      elixir: "~> 1.18.1",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps()
@@ -28,11 +28,12 @@ defmodule Sutra.MixProject do
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
       {:cbor, "~> 1.0.1"},
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:blake2_elixir, "~> 0.8.1"},
       {:typed_struct, "~> 0.3.0"},
       {:rustler, "~> 0.35.0"},
-      {:bech32, "~> 1.0"}
+      {:bech32, "~> 1.0"},
+      {:req, "~> 0.5.7"},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end
 end

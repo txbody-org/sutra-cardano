@@ -39,6 +39,7 @@ defmodule Sutra.Data do
 
   alias Sutra.Data.MacroHelper.EnumMacro
   alias Sutra.Data.MacroHelper.ObjectMacro
+  alias Sutra.Data.Plutus.Constr
 
   defmacro __using__(_) do
     quote do
@@ -56,4 +57,6 @@ defmodule Sutra.Data do
   defdelegate encode(data), to: Sutra.Data.Plutus
   defdelegate decode(hex), to: Sutra.Data.Plutus
   defdelegate decode!(hex), to: Sutra.Data.Plutus
+
+  def void, do: %Constr{index: 0, fields: []}
 end

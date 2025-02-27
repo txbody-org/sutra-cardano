@@ -3,21 +3,35 @@ defmodule Sutra.Cardano.Transaction do
     Cardano Transaction
   """
 
+  alias __MODULE__.Output
   alias Sutra.Blake2b
+  alias Sutra.Cardano.Transaction.Input
+  alias Sutra.Cardano.Transaction.OutputReference
   alias Sutra.Cardano.Transaction.TxBody
   alias Sutra.Cardano.Transaction.Witness
   alias Sutra.Data.Cbor
-  alias Sutra.Data.Plutus.PList
 
   use Sutra.Data
 
   use TypedStruct
 
+  use Sutra.Data
+
+  @type input() :: %Input{
+          output_reference: OutputReference.t(),
+          output: Output.t()
+        }
+
   typedstruct do
     field(:tx_body, TxBody.t())
-    field(:witnesses, [Witness.t()])
+    field(:witnesses, Witness.t())
     field(:is_valid, boolean())
     field(:metadata, any())
+  end
+
+  defdata(name: Input) do
+    data(:output_reference, OutputReference)
+    data(:output, Output)
   end
 
   @doc """
@@ -28,38 +42,37 @@ defmodule Sutra.Cardano.Transaction do
 
     iex> from_hex("some-invalid-hex-transaction")
     {:error, :invalid_cbor}
-    
+
   """
-  def from_hex(cbor) when is_binary(cbor) do
-    case Sutra.Data.decode(cbor) do
-      {:ok, data} -> from_cbor(data)
-      {:error, _} -> {:error, :invalid_cbor}
+  def from_hex(cbor_hex) when is_binary(cbor_hex) do
+    decoded_cbor =
+      cbor_hex
+      |> Base.decode16!(case: :mixed)
+      |> CBOR.decode()
+
+    case decoded_cbor do
+      {:ok, cbor, _} -> from_cbor(cbor)
+      {:error, err} -> {:error, err}
     end
   end
 
   @doc """
     Generate transaction from cbor
 
-    iex> from_cbor(%PList{value: [valid_tx_body, valid_witness_cbor, true, metadata]})
+    iex> from_cbor([valid_tx_body, valid_witness_cbor, true, metadata])
     %Sutra.Cardano.Transaction{}
   """
-  @spec from_cbor(CBOR.Tag.t()) :: __MODULE__.t()
-  def from_cbor(%PList{value: [tx_body, witness_cbor, is_valid, metadata]})
+  def from_cbor([tx_body, witness_cbor, is_valid, metadata])
       when is_boolean(is_valid) do
-    witness =
-      Enum.reduce(Cbor.extract_value!(witness_cbor), [], fn w, acc ->
-        acc ++ Witness.decode(w)
-      end)
-
     %__MODULE__{
       tx_body: TxBody.decode(tx_body),
-      witnesses: witness,
+      witnesses: Witness.from_cbor(Cbor.extract_value!(witness_cbor)),
       is_valid: is_valid,
       metadata: metadata
     }
   end
 
-  def from_cbor(%PList{value: _values}) do
+  def from_cbor(_) do
     raise """
       Only Conway era transaction supported. Todo: support other eras.
     """
@@ -71,11 +84,10 @@ defmodule Sutra.Cardano.Transaction do
     iex> to_hex(%Sutra.Cardano.Transaction{})
     "some-valid-hex-encoded-cbor"
   """
-  @spec to_cbor(__MODULE__.t()) :: Cbor.t()
   def to_cbor(%__MODULE__{} = tx) do
     tx_body_cbor = TxBody.to_cbor(tx.tx_body)
 
-    %PList{value: [tx_body_cbor, Witness.to_cbor(tx.witnesses), tx.is_valid, tx.metadata]}
+    [tx_body_cbor, Witness.to_cbor(tx.witnesses), tx.is_valid, tx.metadata]
   end
 
   @doc """

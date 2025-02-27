@@ -5,6 +5,7 @@ defmodule Sutra.Cardano.Transaction.Output do
 
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Asset
+  alias Sutra.Cardano.Script
   alias Sutra.Cardano.Transaction.Datum
   alias Sutra.Data.Cbor
   alias Sutra.Utils
@@ -27,6 +28,10 @@ defmodule Sutra.Cardano.Transaction.Output do
     data(:reference_script, ~OPTION(:string))
   end
 
+  def new(%Address{} = addr, %{} = value, datum \\ nil, reference_script \\ nil) do
+    %__MODULE__{address: addr, value: value, datum: datum, reference_script: reference_script}
+  end
+
   @doc """
     decode CBOR data to Output
 
@@ -42,11 +47,13 @@ defmodule Sutra.Cardano.Transaction.Output do
   end
 
   def from_cbor(%{0 => %CBOR.Tag{tag: :bytes, value: addr_value}} = ops) do
+    ref_script = if is_nil(ops[3]), do: nil, else: Script.from_script_ref(ops[3])
+
     %__MODULE__{
       address: Address.Parser.decode(addr_value),
       value: Asset.from_cbor(ops[1]),
       datum: Datum.from_cbor(ops[2]),
-      reference_script: ops[3]
+      reference_script: ref_script
     }
   end
 
@@ -55,7 +62,15 @@ defmodule Sutra.Cardano.Transaction.Output do
 
     ## CDDL
   """
+
   # Pre babbage Era Output
+  def to_cbor(%__MODULE__{datum: nil, reference_script: nil} = output) do
+    [
+      Address.to_cbor(output.address),
+      Asset.to_cbor(output.value)
+    ]
+  end
+
   def to_cbor(%__MODULE__{datum: %Datum{} = dtm, reference_script: nil} = output)
       when dtm.kind != :inline_datum do
     datum_cbor = if dtm.kind == :datum_hash, do: [Datum.to_cbor(dtm)], else: []
@@ -67,7 +82,7 @@ defmodule Sutra.Cardano.Transaction.Output do
   end
 
   def to_cbor(%__MODULE__{} = output) do
-    Enum.reduce(Map.to_list(output) |> tl(), %{}, fn current_val, acc ->
+    Enum.reduce(Map.to_list(output), %{}, fn current_val, acc ->
       case current_val do
         {_, nil} ->
           acc
@@ -79,11 +94,23 @@ defmodule Sutra.Cardano.Transaction.Output do
           Map.put(acc, 1, Asset.to_cbor(asset_info))
 
         {:datum, datum_info} ->
-          datum_info |> Datum.to_cbor(encoding: :datum_option) |> maybe(acc, &Map.put(acc, 2, &1))
+          datum_info
+          |> Datum.to_cbor(encoding: :datum_option)
+          |> maybe(acc, &Map.put(acc, 2, &1))
 
         {:reference_script, script} ->
-          Map.put(acc, 3, script)
+          Map.put(acc, 3, Script.to_script_ref(script))
+
+        _ ->
+          acc
       end
     end)
+  end
+
+  def to_hex(%__MODULE__{} = output) do
+    output
+    |> __MODULE__.to_cbor()
+    |> CBOR.encode()
+    |> Base.encode16()
   end
 end

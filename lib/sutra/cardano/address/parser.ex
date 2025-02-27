@@ -52,7 +52,7 @@ defmodule Sutra.Cardano.Address.Parser do
   """
   @spec encode(Address.t()) :: binary()
   def encode(%Address{} = address) do
-    network = if address.network == :testnet, do: "0", else: "1"
+    network = if address.network == :mainnet, do: "1", else: "0"
 
     {header_type, payload} =
       do_encode_address(

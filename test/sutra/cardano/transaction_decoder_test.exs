@@ -6,12 +6,12 @@ defmodule Sutra.Cardano.TransactionDecoderTest do
   alias Sutra.Cardano.Transaction
   alias Sutra.Test.Fixture.TransactionCertificateFixture
 
-  @cert_cbor_info TransactionCertificateFixture.get_certificate_cbors()
-
   describe "Certificate Related transaction" do
     test "certificate from multiple certificate related transaction" do
-      Enum.map(Map.keys(@cert_cbor_info), fn k ->
-        assert %Transaction{} = tx = Transaction.from_hex(@cert_cbor_info[k]["cbor"])
+      cert_cbor_info = TransactionCertificateFixture.get_certificate_cbors()
+
+      Enum.map(Map.keys(cert_cbor_info), fn k ->
+        assert %Transaction{} = tx = Transaction.from_hex(cert_cbor_info[k]["cbor"])
 
         assert tx.tx_body ==
                  apply(TransactionCertificateFixture, String.to_atom("body_" <> k), [])

@@ -2,8 +2,9 @@
 
 ** Offchain transaction builder framework for cardano using Elixr.**
 
-## Roadmap 
-- 
+> [!WARNING]  
+> SDK is under heavy development and API might change until we have stable version.
+
 
 
 ## Installation

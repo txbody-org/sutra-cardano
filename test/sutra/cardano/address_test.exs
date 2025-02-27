@@ -254,24 +254,24 @@ defmodule Sutra.Cardano.AddressTest do
 
     test "to_plutus/1 encodes address to plutus cbor" do
       assert {:ok, addr1_v_v} = Address.from_plutus(@vkey_vkey)
-      assert @vkey_vkey == Address.to_plutus(addr1_v_v) |> Data.encode()
+      assert @vkey_vkey == Address.to_plutus(addr1_v_v) |> Data.encode() |> Base.encode16()
 
       assert {:ok, addr2_v_p} = Address.from_plutus(@vkey_pointer)
-      assert @vkey_pointer == Address.to_plutus(addr2_v_p) |> Data.encode()
+      assert @vkey_pointer == Address.to_plutus(addr2_v_p) |> Data.encode() |> Base.encode16()
 
       assert {:ok, addr3_s_p} = Address.from_plutus(@script_pointer)
 
-      assert @script_pointer == Address.to_plutus(addr3_s_p) |> Data.encode()
+      assert @script_pointer == Address.to_plutus(addr3_s_p) |> Data.encode() |> Base.encode16()
 
       assert {:ok, addr4_s_s} = Address.from_plutus(@script_script)
 
-      assert @script_script == Address.to_plutus(addr4_s_s) |> Data.encode()
+      assert @script_script == Address.to_plutus(addr4_s_s) |> Data.encode() |> Base.encode16()
 
       assert {:ok, addr5_v_n} = Address.from_plutus(@vkey_none)
-      assert @vkey_none == Address.to_plutus(addr5_v_n) |> Data.encode()
+      assert @vkey_none == Address.to_plutus(addr5_v_n) |> Data.encode() |> Base.encode16()
 
       assert {:ok, addr6_s_n} = Address.from_plutus(@script_none)
-      assert @script_none == Address.to_plutus(addr6_s_n) |> Data.encode()
+      assert @script_none == Address.to_plutus(addr6_s_n) |> Data.encode() |> Base.encode16()
     end
   end
 end

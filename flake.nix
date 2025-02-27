@@ -12,14 +12,12 @@
         pkgs = import nixpkgs { inherit system; };
 
         elixir = pkgs.beam.packages.erlang_27.elixir.override {
-          version = "1.17.3";
-          rev = "78f63d08313677a680868685701ae79a2459dcc1";
-          sha256 = "sha256-8rb2f4CvJzio3QgoxvCv1iz8HooXze0tWUJ4Sc13dxg=";
+          version = "1.18";
+          rev = "v1.18-latest";
+          sha256 = "sha256-SZaDCkdYTTLU1pqAZhbfQ2qwj9MgIcCJ1hTA0LsJA3A=";
         };
 
-      in
-      with pkgs;
-      {
+      in with pkgs; {
         devShell = pkgs.mkShell {
           buildInputs = [
             elixir
@@ -29,11 +27,9 @@
             rustc
 
           ] ++ optional stdenv.isLinux inotify-tools
-          ++ optional stdenv.isDarwin terminal-notifier
-          ++ optionals stdenv.isDarwin (with darwin.apple_sdk.frameworks; [
-            CoreFoundation
-            CoreServices
-          ]);
+            ++ optional stdenv.isDarwin terminal-notifier
+            ++ optionals stdenv.isDarwin
+            (with darwin.apple_sdk.frameworks; [ CoreFoundation CoreServices ]);
         };
       });
 }

@@ -26,6 +26,7 @@ defmodule Sutra.Cardano.Transaction.Output do
     data(:value, Asset)
     data(:datum, Datum)
     data(:reference_script, ~OPTION(:string))
+    data(:datum_raw, :string, virtual: true)
   end
 
   def new(%Address{} = addr, %{} = value, datum \\ nil, reference_script \\ nil) do

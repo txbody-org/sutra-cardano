@@ -3,7 +3,7 @@ defmodule Sutra.ProtocolParams do
     Protocol params Helper functions
   """
   alias Sutra.Cardano.Gov.CostModels
-  alias Sutra.Common.{ExecutionUnitPrice, ExecutionUnits, RationalNumber}
+  alias Sutra.Common.{ExecutionUnitPrice, ExecutionUnits}
 
   use TypedStruct
 
@@ -36,13 +36,13 @@ defmodule Sutra.ProtocolParams do
     field(:desired_number_of_stake_pool, pos_integer())
 
     ## -- 9
-    field(:pool_pledge_influence, RationalNumber.t())
+    field(:pool_pledge_influence, Sutra.Common.ratio())
 
     ## -- 10
-    field(:expansion_rate, RationalNumber.t())
+    field(:expansion_rate, Sutra.Common.ratio())
 
     ## -- 11
-    field(:treasury_growth_rate, RationalNumber.t())
+    field(:treasury_growth_rate, Sutra.Common.ratio())
 
     ## -- 16
     field(:min_pool_cost, pos_integer())

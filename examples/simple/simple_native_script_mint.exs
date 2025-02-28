@@ -1,3 +1,6 @@
+alias Sutra.Provider.Kupogmios
+alias Sutra.Data
+alias Sutra.Cardano.Asset
 alias Sutra.Cardano.Script
 alias Sutra.Cardano.Script.NativeScript
 alias Sutra.Cardano.Address
@@ -35,7 +38,10 @@ tx_id =
   |> pay_to_address(wallet_address, %{
     policy_id => assets
   })
-  |> build_tx!(wallet_address: wallet_address)
+  |> pay_to_address(Address.from_script(policy_id, :testnet), Asset.from_lovelace(1000),
+    datum: {:as_hash, Data.encode("check As Hash")}
+  )
+  |> build_tx!(wallet_address: [wallet_address])
   |> sign_tx([sig])
   |> submit_tx()
 

@@ -111,7 +111,11 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxBuilderTest do
                |> put_output(output, {:inline, Data.encode(24)})
 
       assert builder.outputs == [
-               %Output{output | datum: %Datum{kind: :inline_datum, value: Data.encode(24)}}
+               %Output{
+                 output
+                 | datum: %Datum{kind: :inline_datum, value: Data.encode(24)},
+                   datum_raw: 24
+               }
              ]
 
       assert builder.plutus_data == []
@@ -128,7 +132,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxBuilderTest do
       assert builder.outputs == [
                %Output{
                  output
-                 | datum: %Datum{kind: :datum_hash, value: Blake2b.blake2b_256(Data.encode(24))}
+                 | datum: %Datum{kind: :datum_hash, value: Blake2b.blake2b_256(Data.encode(24))},
+                   datum_raw: 24
                }
              ]
 
@@ -152,10 +157,13 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxBuilderTest do
                )
 
       assert builder.outputs == [
-               Output.new(Address.from_bech32(@addr1), Asset.from_lovelace(150), %Datum{
-                 kind: :datum_hash,
-                 value: Blake2b.blake2b_256(Data.encode("some-datum"))
-               })
+               %Output{
+                 Output.new(Address.from_bech32(@addr1), Asset.from_lovelace(150), %Datum{
+                   kind: :datum_hash,
+                   value: Blake2b.blake2b_256(Data.encode("some-datum"))
+                 })
+                 | datum_raw: %CBOR.Tag{tag: :bytes, value: "some-datum"}
+               }
              ]
 
       assert builder.plutus_data == [%CBOR.Tag{tag: :bytes, value: "some-datum"}]

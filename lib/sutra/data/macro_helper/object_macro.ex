@@ -31,6 +31,7 @@ defmodule Sutra.Data.MacroHelper.ObjectMacro do
     quote do
       Module.register_attribute(__MODULE__, :__fields, accumulate: true)
       Module.register_attribute(__MODULE__, :__required, accumulate: true)
+      Module.register_attribute(__MODULE__, :__encode_fields, accumulate: true)
 
       alias Sutra.Data
 
@@ -41,7 +42,7 @@ defmodule Sutra.Data.MacroHelper.ObjectMacro do
       quote do
         unquote(
           def __fields__ do
-            unquote(Enum.reverse(@__fields))
+            unquote(Enum.reverse(@__encode_fields))
           end
         )
       end
@@ -75,8 +76,10 @@ defmodule Sutra.Data.MacroHelper.ObjectMacro do
                   {:error,
                    %{
                      reason: :invalid_data_for_option_type,
-                     message:
-                       "Could not parse data for field: #{name}. \n Expected Constr with index 0 or 1 but got: #{inspect(plutus_field)}",
+                     message: """
+                      Could not parse data for field: #{name}.
+                      Expected Constr with index 0 or 1 but got: #{inspect(plutus_field)} 
+                     """,
                      field: name,
                      from: __MODULE__
                    }}
@@ -122,6 +125,7 @@ defmodule Sutra.Data.MacroHelper.ObjectMacro do
   @spec __setup_data__(atom(), any(), Keyword.t()) :: Macro.t()
   def __setup_data__(name, type, opts) do
     quote bind_quoted: [name: name, type: type, opts: opts] do
+      opts = opts || []
       mod = __ENV__.module
       fields = Module.get_attribute(mod, :__fields) || []
 
@@ -133,15 +137,20 @@ defmodule Sutra.Data.MacroHelper.ObjectMacro do
       if !MacroHelper.nullable?(type),
         do: Module.put_attribute(mod, :__required_fields, name)
 
-      with_encoded_decoded_info =
-        MacroHelper.with_encoder_decoder(type, opts) |> Keyword.put(:field_kind, type)
+      # Allow virtual field available to struct
+      if not Keyword.get(opts, :virtual, false) do
+        field_info =
+          MacroHelper.with_encoder_decoder(type, opts) |> Keyword.put(:field_kind, type)
 
-      quote do
-        unquote(
-          def unquote(:__field_info__)(unquote(name)) do
-            unquote(Macro.escape(with_encoded_decoded_info))
-          end
-        )
+        Module.put_attribute(mod, :__encode_fields, name)
+
+        quote do
+          unquote(
+            def unquote(:__field_info__)(unquote(name)) do
+              unquote(Macro.escape(field_info))
+            end
+          )
+        end
       end
     end
   end

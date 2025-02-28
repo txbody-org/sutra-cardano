@@ -58,7 +58,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxConfig do
           %__MODULE__{acc | wallet_address: Enum.map(addresses, &parse_address/1)}
 
         {:wallet_address, address} ->
-          %__MODULE__{acc | wallet_address: parse_address(address)}
+          %__MODULE__{acc | wallet_address: [parse_address(address)]}
 
         {:change_address, %Address{} = address} ->
           %__MODULE__{acc | change_address: address}
@@ -82,15 +82,13 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxConfig do
   """
 
   def __init(%__MODULE__{provider: nil} = cfg) do
-    provider =
-      case Application.get_env(:sutra, :provider) do
-        v when is_list(v) -> Keyword.get(v, :fetcher)
-        mod -> mod
-      end
+    case Provider.get_fetcher() do
+      {:ok, provider} ->
+        __init(%__MODULE__{cfg | provider: provider})
 
-    if Provider.provider?(provider),
-      do: __init(%__MODULE__{cfg | provider: provider}),
-      else: cfg
+      _ ->
+        cfg
+    end
   end
 
   def __init(%__MODULE__{} = cfg) do

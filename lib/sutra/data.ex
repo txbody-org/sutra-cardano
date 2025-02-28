@@ -5,7 +5,7 @@ defmodule Sutra.Data do
     For Example `OutputReference` from Aiken stdlib can be defined as follows:
 
     ```elixir
-      defdata module: OutputReference do
+      defdata name: OutputReference do
         data :transaction_id, :string
         data :output_index, :integer
       end
@@ -15,7 +15,7 @@ defmodule Sutra.Data do
     `encode_with` & `decode_with` option as
 
     ```elixir
-      defdata module: Input  do
+      defdata name: Input  do
         data :output_reference, OutputReference
         data :output, :output, encode_with: &custom_encode/1, decode_with: &custom_decode/1
       end

@@ -3,9 +3,10 @@ defmodule Sutra.Common do
     Common used types
   """
 
-  use TypedStruct
+  @type ratio() :: {integer(), pos_integer()}
+  @type ex_price() :: ratio()
 
-  @type ex_price() :: {pos_integer(), pos_integer()}
+  use TypedStruct
 
   typedstruct(module: RationalNumber) do
     field(:numerator, :integer, required: true)

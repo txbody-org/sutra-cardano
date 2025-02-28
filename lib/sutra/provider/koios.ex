@@ -11,27 +11,35 @@ defmodule Sutra.Provider.KoiosProvider do
   alias Sutra.Cardano.Transaction.{Datum, Input, Output, OutputReference}
   alias Sutra.Common.ExecutionUnitPrice
   alias Sutra.Common.ExecutionUnits
+  alias Sutra.Data
   alias Sutra.ProtocolParams
   alias Sutra.SlotConfig
+  alias Sutra.Utils
 
   defp fetch_env(key), do: Application.get_env(:sutra, :koios)[key]
 
   defp base_url do
     network_prefix = network() |> Atom.to_string() |> String.downcase()
-    "https://#{network_prefix}.koios.res/api/v1"
+    "https://#{network_prefix}.koios.rest/api/v1/"
   end
 
   @impl true
   def network, do: fetch_env(:network)
 
   @impl true
-  def utxos_at(bech32_addrs) do
+  def utxos_at(addrs) when is_list(addrs) do
+    normalized_addrs =
+      Enum.map(addrs, fn addr ->
+        if is_binary(addr), do: addr, else: Address.to_bech32(addr)
+      end)
+
     resp =
       Req.post!(base_url() <> "address_utxos",
-        json: %{"_addresses" => bech32_addrs, "_extended" => true}
+        json: %{"_addresses" => normalized_addrs, "_extended" => true}
       ).body
 
     Enum.map(resp, &parse_utxo/1)
+    |> attach_datum_raw_to_utxos()
   end
 
   @impl true
@@ -41,7 +49,49 @@ defmodule Sutra.Provider.KoiosProvider do
         json: %{"_utxo_refs" => refs, "_extended" => true}
       ).body
 
-    Enum.map(resp, &parse_utxo/1)
+    resp
+    |> Enum.map(&parse_utxo/1)
+    |> attach_datum_raw_to_utxos()
+  end
+
+  defp attach_datum_raw_to_utxos(utxos) when is_list(utxos) do
+    get_datum_hash = fn %Output{datum: %Datum{} = datum} ->
+      if datum.kind == :datum_hash, do: datum.value, else: nil
+    end
+
+    datum_hashes =
+      Enum.reduce(utxos, MapSet.new([]), fn %Input{output: %Output{} = o}, acc ->
+        Utils.maybe(get_datum_hash.(o), acc, &MapSet.put(acc, &1))
+      end)
+      |> MapSet.to_list()
+      |> datum_of()
+
+    put_raw_datum = fn %Output{} = output ->
+      Utils.maybe(get_datum_hash.(output), output, fn hash ->
+        %Output{
+          output
+          | datum_raw: Utils.maybe(datum_hashes[hash], nil, &Data.decode!/1)
+        }
+      end)
+    end
+
+    if datum_hashes == %{},
+      do: utxos,
+      else:
+        Enum.map(utxos, fn input ->
+          %Input{input | output: put_raw_datum.(input.output)}
+        end)
+  end
+
+  @impl true
+  def datum_of([]), do: %{}
+
+  def datum_of(datum_hashes) when is_list(datum_hashes) do
+    resp = Req.post!(base_url() <> "datum_info", json: %{"_datum_hashes" => datum_hashes}).body
+
+    for %{"datum_hash" => hash, "bytes" => raw_datum} <- resp, into: %{} do
+      {hash, raw_datum}
+    end
   end
 
   def chain_tip do
@@ -57,7 +107,6 @@ defmodule Sutra.Provider.KoiosProvider do
     |> parse_protocol_params()
   end
 
-  # TODO: parse more field to params
   defp parse_protocol_params(protocol_params_map) do
     %ProtocolParams{
       min_fee_A: protocol_params_map["min_fee_a"],
@@ -98,7 +147,6 @@ defmodule Sutra.Provider.KoiosProvider do
     }
   end
 
-  # TODO: Parse Datum
   defp parse_utxo(result) do
     %Input{
       output_reference: %OutputReference{

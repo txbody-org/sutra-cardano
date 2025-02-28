@@ -3,12 +3,48 @@ defmodule Sutra.Utils do
     Utils
   """
 
+  @doc """
+    Returns head of list. For empty list returns nil
+    
+    ## Examples
+
+      iex> safe_head([])
+      nil
+        
+      iex> safe_head([1,2,3])
+      1
+    
+  """
   def safe_head([]), do: nil
   def safe_head([head | _]), do: head
 
+  @doc """
+    Returns tails from list. For empty list returns empty list
+
+    ## Examples
+
+        iex> safe_tail([])
+        []
+
+        iex> safe_tail([1, 2, 3])
+        [2, 3]
+
+  """
   def safe_tail([]), do: []
   def safe_tail([_ | tail]), do: tail
 
+  @doc """
+    Decode Base16 encoded String. Returns original string for Invalid value
+    
+    ## Examples
+    
+        iex> safe_base16_decode("616263")
+        "abc"
+        
+        iex> safe_base16_decode("invalid-str")
+        "invalid-str"
+    
+  """
   def safe_base16_decode(val) when is_binary(val) do
     val
     |> Base.decode16(case: :mixed)
@@ -17,7 +53,46 @@ defmodule Sutra.Utils do
 
   def identity(x), do: x
 
+  @doc """
+    Apply function by fliping argument
+    
+    ## Example
+    
+      
+      iex> flip(1, 2, fn x, y -> [x, y] end)
+      [2, 1]
+      
+      iex> flip(2, 1, fn x, y -> [x, y] end)
+      [1, 2]
+      
+  """
   def flip(a, b, f), do: f.(b, a)
+
+  @doc """
+    return default value if value is nil or empty list. 
+
+    ## Examples
+        
+        iex> maybe(nil, [1,2,3])
+        [1, 2, 3]
+
+        iex> maybe([], [1,2,3])
+        [1, 2, 3]
+
+        iex> maybe(nil, fn -> [1, 2, 3] end)
+        [1, 2, 3] 
+
+        iex> maybe(["a"], [1, 2, 3])
+        ["a"]
+
+    
+    maybe can also be used to apply function on values
+    
+    ## Examples
+      
+        iex> maybe([1, 2, 3], nil, &Enum.join/1)
+        "1,2,3"
+  """
 
   def maybe(data, default, convertor \\ nil)
 

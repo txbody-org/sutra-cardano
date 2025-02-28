@@ -15,12 +15,14 @@ defmodule Sutra.Provider.Kupogmios do
   alias Sutra.Cardano.Transaction.OutputReference
   alias Sutra.Common.ExecutionUnitPrice
   alias Sutra.Common.ExecutionUnits
+  alias Sutra.Data
   alias Sutra.Data.Cbor
   alias Sutra.ProtocolParams
   alias Sutra.SlotConfig
   alias Sutra.Utils
 
   import Sutra.Common, only: [rational_from_binary: 1]
+  import Sutra.Utils, only: [maybe: 3]
 
   @behaviour Sutra.Provider
 
@@ -108,10 +110,11 @@ defmodule Sutra.Provider.Kupogmios do
         "inline" ->
           %Datum{kind: :inline, value: datum_resp}
 
+        "hash" ->
+          %Datum{kind: :datum_hash, value: result["datum_hash"]}
+
         _ ->
-          if is_binary(datum_resp),
-            do: %Datum{kind: :datum_hash, value: result["datum"]},
-            else: %Datum{kind: :no_datum, value: nil}
+          %Datum{kind: :no_datum, value: nil}
       end
 
     script =
@@ -143,7 +146,8 @@ defmodule Sutra.Provider.Kupogmios do
         value:
           Asset.from_seperator(result["value"]["assets"])
           |> Asset.add("lovelace", result["value"]["coins"]),
-        reference_script: script
+        reference_script: script,
+        datum_raw: maybe(datum_resp, nil, &Data.decode!/1)
       }
     }
   end
@@ -160,6 +164,12 @@ defmodule Sutra.Provider.Kupogmios do
       _ ->
         fetch_env(:slot_config)
     end
+  end
+
+  # TODO: Implement
+  @impl true
+  def datum_of(_datum_hashes) do
+    %{}
   end
 
   @impl true

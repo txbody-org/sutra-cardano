@@ -37,15 +37,33 @@ defmodule Sutra.Provider do
   @callback network() :: Address.network()
 
   @doc """
+    Fetch datum data from datum Hash
+  """
+  @callback datum_of([binary()]) :: %{binary() => binary()}
+
+  @doc """
     Submit Tx
   """
   @callback submit_tx(tx :: Transaction.t() | binary()) :: binary()
 
-  def provider?(mod),
-    do:
-      function_exported?(mod, :utxos_at, 1) and
-        function_exported?(mod, :utxos_at_refs, 1) and
-        function_exported?(mod, :protocol_params, 0) and
-        function_exported?(mod, :slot_config, 0) and
-        function_exported?(mod, :network, 0) and function_exported?(mod, :submit_tx, 1)
+  def provider?(mod) do
+    case mod.__info__(:attributes)[:behaviour] do
+      v when is_list(v) -> Enum.member?(v, __MODULE__)
+      _ -> false
+    end
+  end
+
+  def get_provider(provider_type) do
+    provider =
+      case Application.get_env(:sutra, :provider) do
+        v when is_list(v) -> v[provider_type]
+        mod -> mod
+      end
+
+    if provider?(provider), do: {:ok, provider}, else: {:error, "Provider Not found"}
+  end
+
+  def get_fetcher, do: get_provider(:fetch_with)
+
+  def get_submitter, do: get_provider(:submit_with)
 end

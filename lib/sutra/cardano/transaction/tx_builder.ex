@@ -22,6 +22,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   alias Sutra.Cardano.Transaction.Witness.VkeyWitness
   alias Sutra.Data
   alias Sutra.ProtocolParams
+  alias Sutra.Provider
 
   use TypedStruct
 
@@ -73,7 +74,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   """
   def new_tx do
     %__MODULE__{
-      config: %TxConfig{provider: Application.get_env(:sutra, :provider)}
+      config: %TxConfig{}
     }
   end
 
@@ -119,7 +120,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
         %Address{} = address,
         opts \\ []
       ) do
-    {new_plutus_data, change_datum} = set_datum(prev_plutus_data, opts[:datum])
+    {new_plutus_data, change_datum, _current_data} = set_datum(prev_plutus_data, opts[:datum])
 
     %__MODULE__{
       builder
@@ -140,9 +141,22 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
             Map.put(acc, {:spend, Internal.extract_ref(i)}, redeemer_data)
           end)
 
+    new_plutus_data =
+      Enum.reduce(inputs, builder.plutus_data, fn %Input{} = input, acc ->
+        case input.output do
+          %Output{datum: %Datum{kind: :datum_hash}, datum_raw: raw_data}
+          when not is_nil(raw_data) ->
+            [raw_data | acc]
+
+          _ ->
+            acc
+        end
+      end)
+
     %__MODULE__{
       builder
       | inputs: builder.inputs ++ inputs,
+        plutus_data: new_plutus_data,
         redeemer_lookup: new_redeemer
     }
   end
@@ -151,11 +165,11 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   appends output
   """
   def put_output(%__MODULE__{} = builder, %Output{} = output, datum \\ nil) do
-    {new_plutus_data, datum} = set_datum(builder.plutus_data, datum)
+    {new_plutus_data, datum, new_data} = set_datum(builder.plutus_data, datum)
 
     %__MODULE__{
       builder
-      | outputs: [%Output{output | datum: datum} | builder.outputs],
+      | outputs: [%Output{output | datum: datum, datum_raw: new_data} | builder.outputs],
         plutus_data: new_plutus_data
     }
   end
@@ -188,18 +202,19 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
     put_output(builder, output)
   end
 
-  defp set_datum(prev_plutus_data, nil), do: {prev_plutus_data, nil}
+  defp set_datum(prev_plutus_data, nil), do: {prev_plutus_data, nil, nil}
 
   defp set_datum(prev_plutus_data, {:inline, data}) when is_binary(data),
-    do: {prev_plutus_data, %Datum{kind: :inline_datum, value: data}}
+    do: {prev_plutus_data, %Datum{kind: :inline_datum, value: data}, Data.decode!(data)}
 
   defp set_datum(prev_plutus_data, {:as_hash, data}) when is_binary(data) do
-    plutus_data = [Data.decode!(data) | prev_plutus_data]
-    {plutus_data, %Datum{kind: :datum_hash, value: Blake2b.blake2b_256(data)}}
+    decoded_data = Data.decode!(data)
+    plutus_data = [decoded_data | prev_plutus_data]
+    {plutus_data, %Datum{kind: :datum_hash, value: Blake2b.blake2b_256(data)}, decoded_data}
   end
 
   defp set_datum(prev_plutus_data, {:hash, hashed_data}) when is_binary(hashed_data) do
-    {prev_plutus_data, %Datum{kind: :datum_hash, value: hashed_data}}
+    {prev_plutus_data, %Datum{kind: :datum_hash, value: hashed_data}, nil}
   end
 
   def attach_metadata(%__MODULE__{} = builder, label, metadata)
@@ -305,7 +320,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
       builder
       | config: final_cfg,
         ref_inputs: ref_inputs,
-        inputs: inputs
+        inputs: inputs,
+        plutus_data: Enum.uniq(builder.plutus_data)
     }
 
     collateral_ref = opts[:collateral_ref]
@@ -320,9 +336,14 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
 
   def build_tx!(%__MODULE__{} = builder, opts \\ []) do
     case build_tx(builder, opts) do
-      {:ok, tx} -> tx
-      {:error, mod} when is_struct(mod) -> raise(mod.reason)
-      {:error, err} -> raise inspect(err)
+      {:ok, tx} ->
+        tx
+
+      {:error, mod} when is_struct(mod) ->
+        raise(mod.reason)
+
+      {:error, err} ->
+        raise inspect(err)
     end
   end
 
@@ -419,8 +440,9 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   end
 
   def submit_tx(%Transaction{} = signed_tx) do
-    provider = Application.get_env(:sutra, :provider)
-    submit_tx(signed_tx, provider)
+    with {:ok, provider} <- Provider.get_submitter() do
+      submit_tx(signed_tx, provider)
+    end
   end
 
   def submit_tx(%Transaction{} = signed_tx, provider) do

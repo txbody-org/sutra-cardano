@@ -535,9 +535,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
   # include the redeemers field, the script data format becomes (in hex):
   # [ A0 | datums | A0 ]
   defp calculate_script_data_hash(_cost_models, _script_lookup, datums, nil)
-       when is_list(datums) and datums != [] do
+       when not is_nil(datums) do
     ("\xA0" <> CBOR.encode(datums) <> "\xA0")
-    |> Base.encode16(case: :lower)
     |> Blake2b.blake2b_256()
   end
 

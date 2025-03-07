@@ -57,6 +57,11 @@ defmodule Sutra.Crypto.Key do
     end
   end
 
+  def address(%__MODULE__.Ed25519key{} = ed25519_key, network, _acct_indx, _addr_indx) do
+    pubkey_hash(ed25519_key)
+    |> Address.from_verification_key(network)
+  end
+
   def address(%__MODULE__.ExtendedKey{} = extended_key, network, _acct_indx, _addr_indx) do
     payment_key_hash =
       public_key(extended_key, :payment_key) |> maybe(nil, &Blake2b.blake2b_224/1)
@@ -154,7 +159,7 @@ defmodule Sutra.Crypto.Key do
     public_key(key) |> Blake2b.blake2b_224()
   end
 
-  def pubkey_hash(%__MODULE__.Ed25519key{} = key), do: public_key(key)
+  def pubkey_hash(%__MODULE__.Ed25519key{} = key), do: public_key(key) |> Blake2b.blake2b_224()
 
   defp do_derive_child_key(index, %__MODULE__.RootKey{} = key) do
     # Extract the scalar and iv parts from the extended private key

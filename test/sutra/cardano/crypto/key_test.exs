@@ -43,5 +43,16 @@ defmodule Sutra.Cardano.Crypto.KeyTest do
                Key.address(@root_key, :preprod, 1, 1)
                |> Utils.when_ok(&Address.to_bech32/1)
     end
+
+    test "derive address from Ed25519key" do
+      assert addr =
+               Key.from_bech32(
+                 "ed25519_sk1tmxtkw3ek64zyg9gtn3qkk355hfs9jnfjy33zwp87s8qkdmznd0qvukr43"
+               )
+               |> Key.address(:preprod)
+               |> Address.to_bech32()
+
+      assert addr == "addr_test1vq28nc9dpkull96p5aeqz3xg2n6xq0mfdd4ahyrz4aa9rag83cs3c"
+    end
   end
 end

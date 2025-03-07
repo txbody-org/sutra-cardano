@@ -91,7 +91,7 @@ defmodule Sutra.Utils do
     ## Examples
       
         iex> maybe([1, 2, 3], nil, &Enum.join/1)
-        "1,2,3"
+        "123"
   """
 
   def maybe(data, default, convertor \\ nil)
@@ -162,7 +162,7 @@ defmodule Sutra.Utils do
   def instance_of?(_, _), do: false
 
   def when_ok({:ok, result}, apply) when is_function(apply, 1) do
-    {:ok, apply.(result)}
+    apply.(result)
   end
 
   def when_ok(result, _), do: result

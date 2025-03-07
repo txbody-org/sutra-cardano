@@ -7,7 +7,7 @@ defmodule Sutra.Crypto do
   def derive_privkey_from_bech32("ed25519_sk" <> _ = bech32_str) do
     case Bech32.decode(bech32_str) do
       {:ok, _hrp, data} -> {:ok, data}
-      _ -> {"Invalid Bech32 Private Key"}
+      _ -> {:error, "Invalid Bech32 Private Key"}
     end
   end
 

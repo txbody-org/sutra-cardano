@@ -42,7 +42,7 @@ defmodule Sutra.Crypto.Key do
   end
 
   def from_bech32("ed25519_sk", data) when is_binary(data),
-    do: %__MODULE__.Ed25519key{private_key: data}
+    do: {:ok, %__MODULE__.Ed25519key{private_key: data}}
 
   @doc """
     Fetch address from Keys
@@ -58,8 +58,9 @@ defmodule Sutra.Crypto.Key do
   end
 
   def address(%__MODULE__.Ed25519key{} = ed25519_key, network, _acct_indx, _addr_indx) do
-    pubkey_hash(ed25519_key)
-    |> Address.from_verification_key(network)
+    {:ok,
+     pubkey_hash(ed25519_key)
+     |> Address.from_verification_key(network)}
   end
 
   def address(%__MODULE__.ExtendedKey{} = extended_key, network, _acct_indx, _addr_indx) do
@@ -160,6 +161,34 @@ defmodule Sutra.Crypto.Key do
   end
 
   def pubkey_hash(%__MODULE__.Ed25519key{} = key), do: public_key(key) |> Blake2b.blake2b_224()
+
+  def sign(%__MODULE__.ExtendedKey{payment_key: payment_key}, payload)
+      when is_binary(payload) do
+    <<scalar::binary-size(32), iv::binary-size(32), _chain_code::binary>> = payment_key
+
+    pub_key = :libsodium_crypto_scalarmult_ed25519.base_noclamp(scalar)
+
+    nonce =
+      (iv <> payload)
+      |> :libsodium_crypto_hash_sha512.crypto_hash_sha512()
+      |> :libsodium_crypto_core_ed25519.scalar_reduce()
+
+    r = :libsodium_crypto_scalarmult_ed25519.base_noclamp(nonce)
+
+    s =
+      (r <> pub_key <> payload)
+      |> :libsodium_crypto_hash_sha512.crypto_hash_sha512()
+      |> :libsodium_crypto_core_ed25519.scalar_reduce()
+      |> :libsodium_crypto_core_ed25519.scalar_mul(scalar)
+      |> :libsodium_crypto_core_ed25519.scalar_add(nonce)
+
+    r <> s
+  end
+
+  def sign(%__MODULE__.Ed25519key{private_key: key}, payload) when is_binary(payload) do
+    priv_key = :binary.part(key, 0, 32)
+    :crypto.sign(:eddsa, :none, payload, [priv_key, :ed25519])
+  end
 
   defp do_derive_child_key(index, %__MODULE__.RootKey{} = key) do
     # Extract the scalar and iv parts from the extended private key

@@ -3,10 +3,10 @@ defmodule Sutra.Cardano.Wallet do
     Wallet Helper function
   """
 
-  alias Sutra.Crypto.Key.RootKey
   alias Sutra.Blake2b
   alias Sutra.Cardano.Address
   alias Sutra.Crypto.Key
+  alias Sutra.Crypto.Key.RootKey
 
   import Sutra.Utils, only: [maybe: 2, when_ok: 2]
 

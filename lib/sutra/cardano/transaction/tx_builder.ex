@@ -20,6 +20,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   alias Sutra.Cardano.Transaction.Witness.PlutusData
   alias Sutra.Cardano.Transaction.Witness.Redeemer
   alias Sutra.Cardano.Transaction.Witness.VkeyWitness
+  alias Sutra.Crypto.Key
   alias Sutra.Data
   alias Sutra.ProtocolParams
   alias Sutra.Provider
@@ -422,15 +423,18 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
 
     new_vkey_witness =
       Enum.reduce(signers, MapSet.new(witness.vkey_witness), fn sk, acc ->
-        {:ok, raw_key} =
-          Sutra.Crypto.derive_privkey_from_bech32(sk)
+        signing_key = if is_binary(sk), do: Key.from_bech32(sk), else: {:ok, sk}
 
-        {pub_key, priv_key} = Sutra.Crypto.derive_keys(raw_key)
+        case signing_key do
+          {:ok, key} ->
+            MapSet.put(acc, %VkeyWitness{
+              vkey: Key.public_key(key),
+              signature: Key.sign(key, tx_hash)
+            })
 
-        MapSet.put(acc, %VkeyWitness{
-          vkey: pub_key,
-          signature: Sutra.Crypto.sign(tx_hash, priv_key)
-        })
+          _ ->
+            acc
+        end
       end)
 
     %Transaction{

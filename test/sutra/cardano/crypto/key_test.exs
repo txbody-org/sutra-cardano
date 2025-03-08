@@ -4,8 +4,8 @@ defmodule Sutra.Cardano.Crypto.KeyTest do
   use ExUnit.Case
 
   alias Sutra.Cardano.Address
-  alias Sutra.Utils
   alias Sutra.Crypto.Key
+  alias Sutra.Utils
 
   @mnemonic "assume pumpkin dream peace basket fire wage obscure once level prefer garden fresh more erode violin poet focus brush reflect famous neck city radar"
 
@@ -49,10 +49,43 @@ defmodule Sutra.Cardano.Crypto.KeyTest do
                Key.from_bech32(
                  "ed25519_sk1tmxtkw3ek64zyg9gtn3qkk355hfs9jnfjy33zwp87s8qkdmznd0qvukr43"
                )
+               |> Utils.when_ok(&Utils.identity/1)
                |> Key.address(:preprod)
-               |> Address.to_bech32()
+               |> Utils.when_ok(&Address.to_bech32/1)
 
       assert addr == "addr_test1vq28nc9dpkull96p5aeqz3xg2n6xq0mfdd4ahyrz4aa9rag83cs3c"
+    end
+  end
+
+  describe "Sign Payload Using Key" do
+    test "sign/2 gives signature for extended Keys" do
+      assert payload =
+               Base.decode16!("282aa52c7824c48576138b96924a91f2eea5de99155932196761ea330fb5c51c",
+                 case: :mixed
+               )
+
+      assert {:ok, extended_key} = Key.derive_child(@root_key, 0, 0)
+      assert signature = Key.sign(extended_key, payload)
+
+      assert Base.encode16(signature, case: :lower) ==
+               "b09380f76cc08c93596f2f5cf0fa41f188e44cdec09f7c052712e47c5bd3f0d2cede3ffb3ebd51c8a29b72377801be53e7aa9b4a0cf3fb32584d299c5b078209"
+    end
+
+    test "sign/2 gives signature for Ed25519key " do
+      assert payload =
+               Base.decode16!("93cb072c413e32a474460ec532f730fd5adbddfe5c92fd3df3c92b5c3c2f108c",
+                 case: :mixed
+               )
+
+      assert {:ok, ed25519_key} =
+               Key.from_bech32(
+                 "ed25519_sk1tmxtkw3ek64zyg9gtn3qkk355hfs9jnfjy33zwp87s8qkdmznd0qvukr43"
+               )
+
+      assert signature = Key.sign(ed25519_key, payload)
+
+      assert Base.encode16(signature, case: :lower) ==
+               "3c7a0018e581f692170f5fb8abcf2d1e4c5438317874f53f006d976d17677cae5cfca0cc197196c3fa6ff08a08bbaee660077bf790a77ed4ab27fbedf6f89908"
     end
   end
 end

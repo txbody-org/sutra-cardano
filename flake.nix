@@ -25,6 +25,10 @@
             glibcLocales
             cargo
             rustc
+            libtool
+            autoconf
+            automake
+            libsodium
 
           ] ++ optional stdenv.isLinux inotify-tools
             ++ optional stdenv.isDarwin terminal-notifier

@@ -19,8 +19,6 @@ permissions:
 
 jobs:
   test:
-    # Set up a Postgres DB service. By default, Phoenix applications
-    # use Postgres. This creates a database for running tests.
     # Additional services can be defined here if required.
 
     runs-on: ubuntu-latest
@@ -32,6 +30,12 @@ jobs:
         otp: ["25.0.4"] # Define the OTP version [required]
         elixir: ["1.18.2"] # Define the elixir version [required]
     steps:
+      - name: Setup Libsodium
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential
+          sudo apt-get install -y libsodium-dev
+
       # Step: Setup Elixir + Erlang image as the base.
       - name: Set up Elixir
         uses: erlef/setup-beam@v1

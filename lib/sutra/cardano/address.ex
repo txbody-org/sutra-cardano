@@ -13,11 +13,15 @@ defmodule Sutra.Cardano.Address do
   alias Sutra.Data
   alias Sutra.Data.Plutus.Constr
 
+  import Sutra.Utils, only: [maybe: 3]
+
   @type credential_type :: :vkey | :script
   @type address_type :: :shelley | :reward | :byron
   @type stake_credential :: Credential.t() | Pointer.t() | nil
   @type network :: :mainnet | :testnet
   @type bech_32() :: binary()
+
+  @valid_network [:mainnet, :preprod, :preview, :custom, :testnet]
 
   typedstruct module: Credential do
     @moduledoc """
@@ -227,6 +231,24 @@ defmodule Sutra.Cardano.Address do
         hash: script_hash
       },
       stake_credential: nil
+    }
+  end
+
+  def from_verification_key(vkey, stake_key \\ nil, network)
+      when is_binary(vkey) and network in @valid_network do
+    stake_key_cred =
+      maybe(stake_key, nil, fn hash ->
+        %Credential{credential_type: :vkey, hash: hash}
+      end)
+
+    %__MODULE__{
+      network: network,
+      address_type: :shelley,
+      payment_credential: %Credential{
+        credential_type: :vkey,
+        hash: vkey
+      },
+      stake_credential: stake_key_cred
     }
   end
 

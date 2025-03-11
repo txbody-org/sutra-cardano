@@ -36,6 +36,7 @@ defmodule Sutra.MixProject do
       {:mnemonic, git: "https://github.com/piyushthapa/mnemonic"},
       # Using custom fixed version until strnLen issue is fixed upstream
       {:libsodium, git: "https://github.com/piyushthapa/erlang-libsodium"},
+      {:ex_doc, "~> 0.21", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end

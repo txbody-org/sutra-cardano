@@ -11,6 +11,8 @@ defmodule Sutra.Cardano.Crypto.KeyTest do
 
   @root_key Key.root_key_from_mnemonic(@mnemonic) |> Utils.ok_or(nil)
 
+  @xprv "xprv1cplmptgu8v8ppse7q0vcvraydc3l7wlvrxjq5t4x0dsce7jad98rudhksqp7jr4tfdmdzgytq4qh9m53q5nrh673pwyfqwmjenetrck92ngu4etf8grs594tc5euxldqw39u0cezqj9auq022urj6u3pxgj0yxns"
+
   @address %{
     # accountIndx<>AddrIndx => Bech32 Address
     "00" =>
@@ -54,6 +56,17 @@ defmodule Sutra.Cardano.Crypto.KeyTest do
                |> Utils.when_ok(&Address.to_bech32/1)
 
       assert addr == "addr_test1vq28nc9dpkull96p5aeqz3xg2n6xq0mfdd4ahyrz4aa9rag83cs3c"
+    end
+
+    test "derive addres from xprv Bech32 Key" do
+      assert addr =
+               Key.from_bech32(@xprv)
+               |> Utils.when_ok(&Utils.identity/1)
+               |> Key.address(:preprod)
+               |> Utils.when_ok(&Address.to_bech32/1)
+
+      assert addr ==
+               "addr_test1qrd72klh2n7y7h8v052hl8jewyuzq53yep97u904jzckx93tkqyq4e0wcgvykc6dxzd66kt9796mupn92q2py09cz3as42u3zd"
     end
   end
 

@@ -44,6 +44,16 @@ defmodule Sutra.Crypto.Key do
   def from_bech32("ed25519_sk", data) when is_binary(data),
     do: {:ok, %__MODULE__.Ed25519key{private_key: data}}
 
+  def from_bech32("xprv", data) when is_binary(data) do
+    <<l_key::binary-size(32), r_key::binary-size(32), rest::binary>> = data
+
+    {:ok,
+     %__MODULE__.RootKey{
+       xprv: <<l_key::binary, r_key::binary>>,
+       chain_code: rest
+     }}
+  end
+
   @doc """
     Fetch address from Keys
   """

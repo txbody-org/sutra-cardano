@@ -1,5 +1,5 @@
 # Use Provider
-Code.eval_file("examples/setup_kupogmios_provider.exs")
+Code.eval_file("examples/setup_yaci_provider.exs")
 
 defmodule Sutra.Examples.Advance.AlwaysSucceed do
   alias Sutra.Cardano.Address

@@ -185,7 +185,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
             tx.tx_body
             | collateral: collateral_refs,
               collateral_return: collateral_retun,
-              total_collateral: total_asset_used
+              total_collateral: Asset.from_lovelace(collateral_fee)
           }
       }
     end

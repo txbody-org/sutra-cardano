@@ -40,4 +40,8 @@ defmodule Sutra.Cardano.Transaction.Datum do
         nil
     end
   end
+
+  def inline(datum_value), do: %__MODULE__{kind: :inline_datum, value: datum_value}
+  def datum_hash(datum_hash), do: %__MODULE__{kind: :datum_hash, value: datum_hash}
+  def no_datum, do: %__MODULE__{kind: :no_datum}
 end

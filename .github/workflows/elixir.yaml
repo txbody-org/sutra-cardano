@@ -30,6 +30,30 @@ jobs:
         otp: ["25.0.4"] # Define the OTP version [required]
         elixir: ["1.18.2"] # Define the elixir version [required]
     steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.8.0"
+
+      - name: Install Yaci DevKit
+        run: npm install -g @bloxbean/yaci-devkit
+
+      - name: Start Yaci DevKit in background
+        run: nohup  yaci-devkit up --enable-yaci-store &
+
+      - name: Wait for Yaci DevKit to start
+        run: |
+          for i in {1..30}; do
+            if nc -z localhost 8080; then
+              echo "Yaci DevKit is up!"
+              exit 0
+            fi
+            echo "Waiting for Yaci DevKit to start..."
+            sleep 5
+          done
+          echo "Yaci DevKit failed to start" >&2
+          exit 1
+
       - name: Setup Libsodium
         run: |
           sudo apt-get update

@@ -1,7 +1,7 @@
 defmodule Sutra.Cardano.Crypto.KeyTest do
   @moduledoc false
 
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   alias Sutra.Cardano.Address
   alias Sutra.Crypto.Key
@@ -22,6 +22,8 @@ defmodule Sutra.Cardano.Crypto.KeyTest do
     "11" =>
       "addr_test1qp9xh5yg8pu9fs42xfhcvzewuhtz6pup96u9x0dzz0ex4sq6f6p4yuq6lyqsln794uxrlx7jtdyj97zv3f5patg9t5xscwpfgl"
   }
+
+  @xprv "xprv1cplmptgu8v8ppse7q0vcvraydc3l7wlvrxjq5t4x0dsce7jad98rudhksqp7jr4tfdmdzgytq4qh9m53q5nrh673pwyfqwmjenetrck92ngu4etf8grs594tc5euxldqw39u0cezqj9auq022urj6u3pxgj0yxns"
 
   describe "derive address From Key" do
     test "address/4 derives address from root Key" do
@@ -54,6 +56,17 @@ defmodule Sutra.Cardano.Crypto.KeyTest do
                |> Utils.when_ok(&Address.to_bech32/1)
 
       assert addr == "addr_test1vq28nc9dpkull96p5aeqz3xg2n6xq0mfdd4ahyrz4aa9rag83cs3c"
+    end
+
+    test "derive addres from xprv Bech32 Key" do
+      assert addr =
+               Key.from_bech32(@xprv)
+               |> Utils.when_ok(&Utils.identity/1)
+               |> Key.address(:preprod)
+               |> Utils.when_ok(&Address.to_bech32/1)
+
+      assert addr ==
+               "addr_test1qrd72klh2n7y7h8v052hl8jewyuzq53yep97u904jzckx93tkqyq4e0wcgvykc6dxzd66kt9796mupn92q2py09cz3as42u3zd"
     end
   end
 

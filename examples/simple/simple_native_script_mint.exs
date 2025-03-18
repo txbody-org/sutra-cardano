@@ -1,14 +1,12 @@
-alias Sutra.Provider.Kupogmios
-alias Sutra.Data
+alias Sutra.Cardano.Address
 alias Sutra.Cardano.Asset
 alias Sutra.Cardano.Script
 alias Sutra.Cardano.Script.NativeScript
-alias Sutra.Cardano.Address
+alias Sutra.Data
 
 import Sutra.Cardano.Transaction.TxBuilder
-
 # Use Provider
-Code.eval_file("examples/setup_kupogmios_provider.exs")
+Code.eval_file("examples/setup_yaci_provider.exs")
 
 wallet_address = "addr_test1vq28nc9dpkull96p5aeqz3xg2n6xq0mfdd4ahyrz4aa9rag83cs3c"
 sig = "ed25519_sk1tmxtkw3ek64zyg9gtn3qkk355hfs9jnfjy33zwp87s8qkdmznd0qvukr43"

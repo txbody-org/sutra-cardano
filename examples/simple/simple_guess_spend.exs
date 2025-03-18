@@ -6,7 +6,7 @@ alias Sutra.Provider
 import Sutra.Cardano.Transaction.TxBuilder
 
 # Use Provider
-Code.eval_file("examples/setup_kupogmios_provider.exs")
+Code.eval_file("examples/setup_yaci_provider.exs")
 
 script_code =
   File.read!("./blueprint.json")

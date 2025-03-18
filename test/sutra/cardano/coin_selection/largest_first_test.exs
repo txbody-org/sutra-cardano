@@ -1,14 +1,14 @@
 defmodule Sutra.Cardano.CoinSelection.LargestFirstTest do
   @moduledoc false
 
+  use ExUnit.Case, async: true
+
   alias Sutra.Cardano.Asset
   alias Sutra.Cardano.Transaction.Input
   alias Sutra.Cardano.Transaction.Output
   alias Sutra.Cardano.Transaction.OutputReference
   alias Sutra.CoinSelection
   alias Sutra.CoinSelection.LargestFirst
-
-  use ExUnit.Case
 
   describe "LargestFirst with Lovelace" do
     test "returns selected inputs with correct change" do

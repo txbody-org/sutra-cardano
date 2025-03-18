@@ -43,7 +43,14 @@ defmodule Sutra.Provider.YaciProvider do
   end
 
   def fetch_protocol_params(retry \\ 0) do
-    url = "#{fetch_endpoint(:general)}/epochs/latest/parameters"
+    url = "#{fetch_endpoint(:admin)}/epochs/parameters"
+
+    # Map with size greater than 32, keys are not sorted by default
+    sorted_map_list = fn map ->
+      Map.keys(map)
+      |> Enum.sort()
+      |> Enum.map(&Map.get(map, &1))
+    end
 
     case Req.get(url, max_retries: retry, retry_log_level: false) do
       {:ok, %Req.Response{status: 200, body: resp}} ->
@@ -59,9 +66,9 @@ defmodule Sutra.Provider.YaciProvider do
           ada_per_utxo_byte: String.to_integer(resp["coins_per_utxo_size"]),
           min_pool_cost: String.to_integer(resp["min_pool_cost"]),
           cost_models: %CostModels{
-            plutus_v1: resp["cost_models"]["PlutusV1"] |> Map.values(),
-            plutus_v2: resp["cost_models"]["PlutusV2"] |> Map.values(),
-            plutus_v3: resp["cost_models"]["PlutusV3"] |> Map.values()
+            plutus_v1: resp["cost_models"]["PlutusV1"] |> sorted_map_list.(),
+            plutus_v2: resp["cost_models"]["PlutusV2"] |> sorted_map_list.(),
+            plutus_v3: resp["cost_models"]["PlutusV3"] |> sorted_map_list.()
           },
           execution_costs: %ExecutionUnitPrice{
             mem_price: Float.ratio(resp["price_mem"]),
@@ -135,16 +142,20 @@ defmodule Sutra.Provider.YaciProvider do
           {Datum.no_datum(), nil}
       end
 
+    address = Utils.maybe(resp["address"], resp["owner_addr"]) |> Address.from_bech32()
+
+    assets = Utils.maybe(resp["amount"], resp["amounts"]) |> parse_asset()
+
     %Input{
       output_reference: %OutputReference{
         transaction_id: resp["tx_hash"],
         output_index: resp["output_index"]
       },
       output: %Output{
-        address: Address.from_bech32(resp["address"]),
+        address: address,
         reference_script: ref_script,
         datum: datum,
-        value: parse_asset(resp["amount"]),
+        value: assets,
         datum_raw: raw
       }
     }
@@ -167,7 +178,7 @@ defmodule Sutra.Provider.YaciProvider do
 
   @impl true
   def utxos_at_refs(refs) do
-    Enum.map(refs, &do_fetch_utxo_at_address/1)
+    Enum.map(refs, &do_fetch_utxo_at_ref/1)
   end
 
   def do_fetch_utxo_at_ref(<<t_id::binary-size(64), _::binary-size(1), indx::binary>>) do

@@ -1,7 +1,7 @@
 defmodule Sutra.Cardano.Crypto.KeyTest do
   @moduledoc false
 
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   alias Sutra.Cardano.Address
   alias Sutra.Crypto.Key

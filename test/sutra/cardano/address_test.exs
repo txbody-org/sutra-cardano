@@ -1,6 +1,6 @@
 defmodule Sutra.Cardano.AddressTest do
   @moduledoc false
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Address.Credential

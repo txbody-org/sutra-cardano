@@ -1,6 +1,6 @@
 defmodule Sutra.Cardano.Transaction.DatumTest do
   @moduledoc false
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   alias Sutra.Cardano.Transaction.Datum
   alias Sutra.Data

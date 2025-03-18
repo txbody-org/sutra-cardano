@@ -8,7 +8,7 @@ defmodule Sutra.CoinSelection.LargestFirstTest do
   alias Sutra.CoinSelection
   alias Sutra.CoinSelection.LargestFirst
 
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   describe "LargestFirst with Lovelace" do
     test "returns selected inputs with correct change" do

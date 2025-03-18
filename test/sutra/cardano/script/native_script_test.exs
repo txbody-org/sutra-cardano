@@ -1,7 +1,7 @@
 defmodule Sutra.Cardano.Script.NativeScriptTest do
   @moduledoc false
 
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Script.NativeScript

@@ -1,7 +1,7 @@
 defmodule Sutra.Cardano.TransactionDecoderTest do
   @moduledoc false
 
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   alias Sutra.Cardano.Transaction
   alias Sutra.Test.Fixture.TransactionCertificateFixture

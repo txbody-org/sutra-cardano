@@ -1,4 +1,4 @@
-defmodule Sutra.TxExamples.SimpleSendTokenTest do
+defmodule Sutra.TxExamples.Simple.SimpleSendTokenTest do
   @moduledoc false
 
   use Sutra.PrivnetTest
@@ -7,6 +7,7 @@ defmodule Sutra.TxExamples.SimpleSendTokenTest do
   alias Sutra.Cardano.Script
   alias Sutra.Cardano.Script.NativeScript
   alias Sutra.Cardano.Transaction
+  alias Sutra.Data
   alias Sutra.Provider.YaciProvider
 
   import Sutra.Cardano.Transaction.TxBuilder
@@ -55,7 +56,9 @@ defmodule Sutra.TxExamples.SimpleSendTokenTest do
         tx =
           new_tx()
           |> mint_asset(@policy_id, @mint_token)
-          |> pay_to_address(recv_addr, %{@policy_id => @mint_token})
+          |> pay_to_address(recv_addr, %{@policy_id => @mint_token},
+            datum: {:as_hash, Data.encode(58)}
+          )
           |> attach_script(@mint_script)
           |> valid_from(System.os_time(:millisecond))
           |> build_tx!(wallet_address: [addr])

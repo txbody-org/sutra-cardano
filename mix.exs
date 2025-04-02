@@ -4,11 +4,17 @@ defmodule Sutra.MixProject do
   def project do
     [
       app: :sutra_offchain,
-      version: "0.1.0",
+      version: "0.2.1-alpha",
       elixir: "~> 1.18.1",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+
+      # Docs
+      name: "Sutra",
+      source_url: "https://github.com/txbody-org/sutra-cardano",
+      homepage_url: "https://github.com/txbody-org/sutra-cardano",
+      docs: &docs/0
     ]
   end
 
@@ -34,9 +40,44 @@ defmodule Sutra.MixProject do
       {:bech32, "~> 1.0"},
       {:req, "~> 0.5.7"},
       {:mnemonic, git: "https://github.com/piyushthapa/mnemonic"},
+
       # Using custom fixed version until strnLen issue is fixed upstream
       {:libsodium, git: "https://github.com/piyushthapa/erlang-libsodium"},
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.21", only: :dev, runtime: false}
+    ]
+  end
+
+  defp docs do
+    [
+      # The main page in the docs
+      main: "overview",
+      extras: extras(),
+      groups_for_extras: groups_for_extras()
+    ]
+  end
+
+  defp extras do
+    [
+      "guides/overview.md",
+      # Provider Guides
+      "guides/provider_integration/yaci_devkit.md",
+      "guides/provider_integration/kupogmios.md",
+      "guides/provider_integration/koios.md",
+
+      # Transaction Building
+      "guides/transaction_building/simple_tx.md",
+      "guides/transaction_building/mint_asset.md",
+      "guides/transaction_building/deploy_script.md",
+      "guides/transaction_building/reference_inputs.md"
+    ]
+  end
+
+  defp groups_for_extras do
+    [
+      Provider: ~r/guides\/provider_integration\/.?/,
+      Script: ~r/guides\/script\/.?/,
+      Transaction: ~r/guides\/transaction_building\/.?/
     ]
   end
 end

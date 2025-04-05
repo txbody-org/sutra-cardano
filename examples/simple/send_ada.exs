@@ -1,9 +1,15 @@
+# Sample data
+Code.eval_file("examples/setup_sample_data.exs")
+
 alias Sutra.Cardano.Address
 alias Sutra.Data
 alias Sutra.Cardano.Asset
 alias Sutra.Crypto.Key
+alias SampleData
 
 import Sutra.Cardano.Transaction.TxBuilder
+
+data = SampleData.sample_info() |> SampleData.to_plutus() |> Data.encode()
 
 # Use Provider
 Code.eval_file("examples/setup_yaci_provider.exs")
@@ -25,9 +31,7 @@ tx_id =
   |> pay_to_address(to_addr, Asset.from_lovelace(1000),
     datum: {:as_hash, Data.encode("check As Hash")}
   )
-  |> pay_to_address(to_addr, Asset.from_lovelace(1000),
-    datum: {:inline, Data.encode("Inline Datum")}
-  )
+  |> pay_to_address(to_addr, Asset.from_lovelace(1000), datum: {:inline, data})
   |> build_tx!(wallet_address: [wallet_address])
   |> sign_tx([extended_key])
   |> submit_tx()

@@ -33,7 +33,7 @@ defmodule Sutra.Cardano.Transaction.Datum do
           do: [0, Cbor.as_byte(datum_hash)],
           else: Cbor.as_byte(datum_hash)
 
-      %__MODULE__{kind: :inline_datum, value: data} ->
+      %__MODULE__{kind: :inline_datum, value: data} when is_binary(data) ->
         [1, %CBOR.Tag{tag: 24, value: Cbor.as_byte(data)}]
 
       _ ->

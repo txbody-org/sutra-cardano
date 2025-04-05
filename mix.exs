@@ -3,7 +3,7 @@ defmodule Sutra.MixProject do
 
   def project do
     [
-      app: :sutra_offchain,
+      app: :sutra,
       version: "0.2.1-alpha",
       elixir: "~> 1.18.1",
       elixirc_paths: elixirc_paths(Mix.env()),

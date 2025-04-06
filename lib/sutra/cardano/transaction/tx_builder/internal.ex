@@ -316,6 +316,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
       reference_inputs: builder.ref_inputs,
       collateral: maybe(collateral_input, nil, fn i -> [i.output_reference] end),
       total_collateral: maybe(collateral_input, nil, fn i -> i.output.value end),
+      required_signers: MapSet.to_list(builder.required_signers),
       # TODO: use proper Auxiliary Data format
       auxiliary_data_hash: set_auxiliary_data_hash(builder.metadata),
       script_data_hash: Blake2b.blake2b_256("")

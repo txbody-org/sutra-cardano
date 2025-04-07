@@ -31,6 +31,10 @@ defmodule Sutra.Data.Plutus do
       @impl true
       def encode_into(%PList{value: []}, acc), do: <<acc::binary, 0x80>>
 
+      def encode_into(%PList{value: %PList{} = val}, acc) do
+        CBOR.Encoder.encode_into(val, acc)
+      end
+
       def encode_into(%PList{value: list}, acc) do
         Enum.reduce(list, <<acc::binary, 0x9F>>, fn v, acc ->
           CBOR.Encoder.encode_into(v, acc)

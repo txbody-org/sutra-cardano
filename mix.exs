@@ -9,6 +9,7 @@ defmodule Sutra.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      consolidate_protocols: Mix.env() != :test,
 
       # Docs
       name: "Sutra",

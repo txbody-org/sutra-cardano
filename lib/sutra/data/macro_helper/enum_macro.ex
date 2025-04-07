@@ -57,6 +57,12 @@ defmodule Sutra.Data.MacroHelper.EnumMacro do
         )
       end
 
+      defimpl CBOR.Encoder do
+        @impl true
+        def encode_into(v, acc),
+          do: v.__struct__.to_plutus(v) |> CBOR.Encoder.encode_into(acc)
+      end
+
       def from_plutus(data) when is_binary(data) do
         case Sutra.Data.decode(data) do
           {:ok, decoded} -> from_plutus(decoded)

@@ -5,7 +5,6 @@ defmodule Sutra.Data.MacroHelper.ObjectMacro do
 
   alias __MODULE__, as: ObjectMacro
   alias Sutra.Data.MacroHelper
-  alias Sutra.Data.Option
   alias Sutra.Data.Plutus.Constr
 
   def __define_object__(opts, block) do
@@ -62,31 +61,7 @@ defmodule Sutra.Data.MacroHelper.ObjectMacro do
             fn plutus_field, name ->
               field_info = __MODULE__.__field_info__(name)
 
-              case {field_info[:field_kind], plutus_field} do
-                {%Option{}, %Constr{index: 1}} ->
-                  {:ok, nil}
-
-                {%Option{}, %Constr{index: 0, fields: [option_field]}} ->
-                  field_info[:decode_with].(option_field)
-
-                {%Option{}, %Constr{index: 0, fields: option_fields}} ->
-                  field_info[:decode_with].(option_fields)
-
-                {%Option{}, _} ->
-                  {:error,
-                   %{
-                     reason: :invalid_data_for_option_type,
-                     message: """
-                      Could not parse data for field: #{name}.
-                      Expected Constr with index 0 or 1 but got: #{inspect(plutus_field)} 
-                     """,
-                     field: name,
-                     from: __MODULE__
-                   }}
-
-                _ ->
-                  field_info[:decode_with].(plutus_field)
-              end
+              MacroHelper.handle_from_plutus(field_info, name, plutus_field)
             end
           )
 
@@ -100,17 +75,7 @@ defmodule Sutra.Data.MacroHelper.ObjectMacro do
           Enum.reduce(__MODULE__.__fields__(), [], fn name, acc ->
             field_info = __MODULE__.__field_info__(name)
             value = Map.get(mod, name)
-
-            case {field_info[:field_kind], value} do
-              {%Option{}, nil} ->
-                [%Constr{index: 1, fields: []} | acc]
-
-              {%Option{}, _} ->
-                [%Constr{index: 1, fields: [field_info[:encode_with]]} | acc]
-
-              _ ->
-                [field_info[:encode_with].(value) | acc]
-            end
+            [MacroHelper.handle_to_plutus(field_info, value) | acc]
           end)
 
         %Constr{index: 0, fields: Enum.reverse(fields)}
@@ -140,7 +105,7 @@ defmodule Sutra.Data.MacroHelper.ObjectMacro do
       # Allow virtual field available to struct
       if not Keyword.get(opts, :virtual, false) do
         field_info =
-          MacroHelper.with_encoder_decoder(type, opts) |> Keyword.put(:field_kind, type)
+          MacroHelper.with_encoder_decoder(type, opts) |> Keyword.put_new(:field_kind, type)
 
         Module.put_attribute(mod, :__encode_fields, name)
 

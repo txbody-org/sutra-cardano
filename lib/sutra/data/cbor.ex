@@ -10,7 +10,7 @@ defmodule Sutra.Data.Cbor do
   alias Sutra.Utils
 
   def extract_value(%CBOR.Tag{tag: :bytes, value: value}),
-    do: {:ok, Base.encode16(value)}
+    do: {:ok, Base.encode16(value, case: :lower)}
 
   def extract_value(%CBOR.Tag{value: value}), do: {:ok, value}
   def extract_value(%Sutra.Data.Plutus.PList{value: value}), do: {:ok, value}
@@ -41,7 +41,6 @@ defmodule Sutra.Data.Cbor do
   end
 
   def as_tagged(value) when is_binary(value), do: as_byte(value)
-
   def as_tagged(value), do: value
 
   def encode_hex(data), do: CBOR.encode(data) |> Base.encode16()

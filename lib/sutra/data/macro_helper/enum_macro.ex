@@ -89,6 +89,8 @@ defmodule Sutra.Data.MacroHelper.EnumMacro do
         end
       end
 
+      def from_plutus(nil), do: {:error, %{reason: :invalid_enum_data_to_parse_from_nil}}
+
       def to_plutus(%__MODULE__{} = mod) do
         field_info = apply(__MODULE__, :__enum_field__, [mod.kind])
 

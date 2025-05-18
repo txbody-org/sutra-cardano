@@ -80,8 +80,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   end
 
   @doc """
-    overrides provider 
-    
+    overrides provider
+
     ## Examples
 
       iex(1)> new_tx()  |> use_provider(KoiosProvider)
@@ -94,9 +94,9 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
 
   @doc """
     use custom protocol params
-    
+
     ## Examples
-    
+
         iex(1)>  new_tx() |> set_protocol_params(%ProtocolParams{})
         %TxBuilder{}
   """
@@ -105,8 +105,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   end
 
   @doc """
-    Set Wallet address 
-     
+    Set Wallet address
+
   """
   def set_wallet_address(%__MODULE__{config: cfg} = builder, %Address{} = address) do
     %__MODULE__{builder | config: TxConfig.__set_cfg(cfg, :wallet_address, [address])}
@@ -375,12 +375,12 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
 
   @doc """
     Adds Reference inputs
-    
+
     ## examples
 
       iex> reference_inputs(%TxBuilder{}, [%Input{}, %Input{}])
       %TxBuilder{}
-    
+
   """
   @spec reference_inputs(__MODULE__.t(), [Transaction.input()]) :: __MODULE__.t()
   def reference_inputs(%__MODULE__{} = builder, inputs) when is_list(inputs) do

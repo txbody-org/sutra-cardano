@@ -12,28 +12,33 @@ defmodule Sutra.CoinSelection.LargestFirst do
   @doc """
   Selects Utxos based on LargestFirst CoinSelection Algorithm
   """
-  @spec select_utxos([Transaction.input()], Asset.t()) ::
+  @spec select_utxos([Transaction.input()], Asset.t(), Asset.t()) ::
           {:ok, CoinSelection.t()} | {:error, String.t()}
-  def select_utxos(_, %{} = asset) when map_size(asset) == 0,
-    do: {:ok, %CoinSelection{selected_inputs: [], change: %{}}}
 
-  def select_utxos(inputs, %{"lovelace" => lovelace_amt} = asset) when map_size(asset) == 1,
-    do: CoinSelection.select_utxos_for_lovelace(inputs, lovelace_amt)
+  def select_utxos(inputs, to_fill, left_over \\ %{})
 
-  def select_utxos(inputs, to_fill_asset) do
+  def select_utxos(_, %{} = to_fill, left_over) when map_size(to_fill) == 0,
+    do: {:ok, %CoinSelection{selected_inputs: [], change: left_over}}
+
+  def select_utxos(inputs, %{"lovelace" => lovelace_amt} = to_fill, left_over)
+      when map_size(to_fill) == 1,
+      do: CoinSelection.select_utxos_for_lovelace(inputs, lovelace_amt, left_over)
+
+  def select_utxos(inputs, to_fill_asset, left_over) do
     sorted_inputs = CoinSelection.sort_by_lovelace(inputs)
-
     initial_state = {[], %{}, Asset.negate(to_fill_asset)}
 
     {used_inputs, change, remaining_to_fill} =
       Enum.reduce_while(sorted_inputs, initial_state, &do_calc_change_asset/2)
+
+    change_with_leftover = Map.merge(change, left_over)
 
     cond do
       remaining_to_fill == %{} ->
         {:ok,
          %CoinSelection{
            selected_inputs: used_inputs,
-           change: Asset.only_positive(change)
+           change: change_with_leftover
          }}
 
       Asset.policies(remaining_to_fill) != [] ->
@@ -51,7 +56,11 @@ defmodule Sutra.CoinSelection.LargestFirst do
         remaing_lovelace = Asset.lovelace_of(remaining_to_fill)
 
         with {:ok, %CoinSelection{selected_inputs: sel_inputs} = new_selection} <-
-               CoinSelection.select_utxos_for_lovelace(remaining_inputs, remaing_lovelace, change) do
+               CoinSelection.select_utxos_for_lovelace(
+                 remaining_inputs,
+                 remaing_lovelace,
+                 change_with_leftover
+               ) do
           {:ok,
            %CoinSelection{
              new_selection

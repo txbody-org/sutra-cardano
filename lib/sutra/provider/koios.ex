@@ -148,6 +148,11 @@ defmodule Sutra.Provider.KoiosProvider do
   end
 
   defp parse_utxo(result) do
+    datum = extract_datum(result)
+
+    datum_raw =
+      if datum.kind == :inline_datum, do: datum.value, else: nil
+
     %Input{
       output_reference: %OutputReference{
         transaction_id: result["tx_hash"],
@@ -155,8 +160,9 @@ defmodule Sutra.Provider.KoiosProvider do
       },
       output: %Output{
         address: Address.from_bech32(result["address"]),
-        datum: extract_datum(result),
+        datum: datum,
         reference_script: result["reference_script"],
+        datum_raw: datum_raw,
         value: parse_asset_list(result["value"], result["asset_list"])
       }
     }

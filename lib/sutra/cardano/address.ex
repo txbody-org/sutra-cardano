@@ -5,6 +5,7 @@ defmodule Sutra.Cardano.Address do
 
   use TypedStruct
 
+  alias Sutra.Data.Cbor
   alias Sutra.Cardano.Script
   alias __MODULE__, as: Address
   alias Sutra.Cardano.Address.Credential
@@ -120,9 +121,9 @@ defmodule Sutra.Cardano.Address do
      }}
   end
 
-  defp fetch_payment_credential(%Constr{index: indx, fields: [%CBOR.Tag{value: v}]}) do
+  defp fetch_payment_credential(%Constr{index: indx, fields: [vkey_hash]}) do
     credential_type = if indx == 0, do: :vkey, else: :script
-    %Credential{credential_type: credential_type, hash: v}
+    %Credential{credential_type: credential_type, hash: Cbor.extract_value!(vkey_hash)}
   end
 
   defp fetch_stake_credential(%Constr{index: 1}), do: nil
@@ -135,12 +136,12 @@ defmodule Sutra.Cardano.Address do
   defp fetch_stake_credential(%Constr{
          fields: [
            %Constr{
-             fields: [%Constr{fields: [%CBOR.Tag{value: stake_cred_hash}], index: indx}]
+             fields: [%Constr{fields: [stake_cred_hash], index: indx}]
            }
          ]
        }) do
     credential_type = if indx == 0, do: :vkey, else: :script
-    %Credential{credential_type: credential_type, hash: stake_cred_hash}
+    %Credential{credential_type: credential_type, hash: Cbor.extract_value!(stake_cred_hash)}
   end
 
   @spec to_plutus(Address.t()) :: Sutra.Data.Plutus.t()
@@ -148,10 +149,10 @@ defmodule Sutra.Cardano.Address do
     payment_credential =
       case addr.payment_credential do
         %Credential{credential_type: :vkey, hash: hash} ->
-          %Constr{index: 0, fields: [%CBOR.Tag{value: hash, tag: :bytes}]}
+          %Constr{index: 0, fields: [Cbor.as_byte(hash)]}
 
         %Credential{credential_type: :script, hash: hash} ->
-          %Constr{index: 1, fields: [%CBOR.Tag{value: hash, tag: :bytes}]}
+          %Constr{index: 1, fields: [Cbor.as_byte(hash)]}
       end
 
     stake_credential =
@@ -176,7 +177,7 @@ defmodule Sutra.Cardano.Address do
                 fields: [
                   %Constr{
                     index: 0,
-                    fields: [%CBOR.Tag{value: hash, tag: :bytes}]
+                    fields: [Cbor.as_byte(hash)]
                   }
                 ]
               }
@@ -192,7 +193,7 @@ defmodule Sutra.Cardano.Address do
                 fields: [
                   %Constr{
                     index: 1,
-                    fields: [%CBOR.Tag{value: hash, tag: :bytes}]
+                    fields: [Cbor.as_byte(hash)]
                   }
                 ]
               }

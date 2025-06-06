@@ -17,20 +17,23 @@ defmodule Sutra.Provider.YaciProvider do
   alias Sutra.SlotConfig
   alias Sutra.Utils
 
-  @default_yaci_general_api_url "http://localhost:8080"
-  @default_yaci_admin_api_url "http://localhost:10000"
+  defp yaci_general_api_url do
+    Application.fetch_env!(:sutra, :yaci_general_api_url)
+  end
+
+  defp yaci_admin_api_url do
+    Application.fetch_env!(:sutra, :yaci_admin_api_url)
+  end
 
   @behaviour Sutra.Provider
 
   defp fetch_endpoint(endpoint_type) when endpoint_type in [:general, :admin] do
-    yaci_cfg = Application.get_env(:sutra, :yaci) || []
-
     case endpoint_type do
       :general ->
-        Keyword.get(yaci_cfg, :general_api, @default_yaci_general_api_url) <> "/api/v1"
+        yaci_general_api_url() <> "/api/v1"
 
       :admin ->
-        Keyword.get(yaci_cfg, :admin_api, @default_yaci_admin_api_url) <> "/local-cluster/api"
+        yaci_admin_api_url() <> "/local-cluster/api"
     end
   end
 

@@ -80,7 +80,7 @@ defmodule Sutra.PrivnetTest do
 
   setup _tags do
     if Application.get_env(:sutra, :provider) != YaciProvider,
-      do: Application.put_env(:sutra, :provider, YaciProvider)
+      do: set_yaci_provider_env()
 
     if not YaciProvider.running?(),
       do:
@@ -89,5 +89,21 @@ defmodule Sutra.PrivnetTest do
         """)
 
     :ok
+  end
+
+  defp set_yaci_provider_env do
+    Application.put_env(:sutra, :provider, YaciProvider)
+
+    Application.put_env(
+      :sutra,
+      :yaci_general_api_url,
+      System.get_env("YACI_GENERAL_API_URL", "http://localhost:8080")
+    )
+
+    Application.put_env(
+      :sutra,
+      :yaci_admin_api_url,
+      System.get_env("YACI_ADMIN_API_URL", "http://localhost:10000")
+    )
   end
 end

@@ -8,7 +8,7 @@ defmodule Sutra.Uplc do
   alias Sutra.Cardano.Transaction.{Input, Output, OutputReference, TxBody, Witness}
   alias Sutra.Data
 
-  use Rustler, otp_app: :sutra_offchain, crate: "sutra_uplc"
+  use Rustler, otp_app: :sutra, crate: "sutra_uplc"
 
   def evaluate_raw(tx_cbor, inputs, %CostModels{} = cost_models, slot_config)
       when is_binary(tx_cbor) do

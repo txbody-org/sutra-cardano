@@ -37,12 +37,10 @@ defmodule Sutra.Data.Cbor do
   end
 
   def as_tagged(values) when is_list(values) do
-    Enum.map(values, &as_tagged/1)
+    %PList{value: Enum.map(values, &as_tagged/1)}
   end
 
-  def as_tagged(value) when is_binary(value) do
-    %CBOR.Tag{tag: :bytes, value: value}
-  end
+  def as_tagged(value) when is_binary(value), do: as_byte(value)
 
   def as_tagged(value), do: value
 

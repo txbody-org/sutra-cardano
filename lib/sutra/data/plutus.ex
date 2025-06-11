@@ -31,6 +31,10 @@ defmodule Sutra.Data.Plutus do
       @impl true
       def encode_into(%PList{value: []}, acc), do: <<acc::binary, 0x80>>
 
+      def encode_into(%PList{value: %PList{} = val}, acc) do
+        CBOR.Encoder.encode_into(val, acc)
+      end
+
       def encode_into(%PList{value: list}, acc) do
         Enum.reduce(list, <<acc::binary, 0x9F>>, fn v, acc ->
           CBOR.Encoder.encode_into(v, acc)
@@ -113,7 +117,15 @@ defmodule Sutra.Data.Plutus do
   defp decode_cbor_tag(%CBOR.Tag{tag: tag}), do: raise("Not Implemented: tag: #{tag}")
   defp decode_cbor_tag(tag), do: tag
 
-  def encode(data) do
+  def encode(struct) when is_struct(struct) do
+    if function_exported?(struct.__struct__, :to_plutus, 1),
+      do: struct.__struct__.to_plutus(struct) |> do_encode(),
+      else: do_encode(struct)
+  end
+
+  def encode(data), do: do_encode(data)
+
+  defp do_encode(data) do
     data
     |> Cbor.as_tagged()
     |> CBOR.encode()

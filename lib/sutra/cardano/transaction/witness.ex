@@ -258,4 +258,29 @@ defmodule Sutra.Cardano.Transaction.Witness do
 
   def init_redeemer(index, data, tag \\ :mint),
     do: %Redeemer{index: index, tag: tag, data: data, exunits: {0, 0}}
+
+  @doc """
+    Checks if signature provided in witness is signed by correct Signing Key
+    
+    ## Examples 
+      
+      iex> verify_signature(%VkeyWitness{}, valid_payload)
+      :ok
+
+      iex> verify_signature(%VkeyWitness{signature: invalid_signature}, payload)
+      {:error, :INVALID_SIGNATURE}
+
+      iex> verify_signature(invalid_witness, payload)
+      {:error, :INVALID_VKEY_WITNESS}
+  """
+  def verify_signature(%__MODULE__.VkeyWitness{vkey: v_key, signature: sig}, tx_id)
+      when is_binary(tx_id) and byte_size(v_key) == 32 and byte_size(sig) == 64 do
+    tx_id_byte = Cbor.as_byte(tx_id).value
+
+    if :crypto.verify(:eddsa, :none, tx_id_byte, sig, [v_key, :ed25519]),
+      do: :ok,
+      else: {:error, :INVALID_SIGNATURE}
+  end
+
+  def verify_signature?(_), do: {:error, :INVALID_VKEY_WITNESS}
 end

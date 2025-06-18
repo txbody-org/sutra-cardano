@@ -99,8 +99,8 @@ defmodule Sutra.Cardano.Transaction.Witness do
   def decode({0, %CBOR.Tag{tag: 258, value: vkey_witnesses}}), do: decode({0, vkey_witnesses})
 
   def decode({0, vkey_witnesses}) do
-    Enum.map(vkey_witnesses, fn [vkey, signature] ->
-      %VkeyWitness{vkey: extract_value!(vkey), signature: extract_value!(signature)}
+    Enum.map(vkey_witnesses, fn [%CBOR.Tag{} = vkey, %CBOR.Tag{} = signature] ->
+      %VkeyWitness{vkey: vkey.value, signature: signature.value}
     end)
   end
 
@@ -261,9 +261,9 @@ defmodule Sutra.Cardano.Transaction.Witness do
 
   @doc """
     Checks if signature provided in witness is signed by correct Signing Key
-    
-    ## Examples 
-      
+
+    ## Examples
+
       iex> verify_signature(%VkeyWitness{}, valid_payload)
       :ok
 

@@ -80,8 +80,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   end
 
   @doc """
-    overrides provider 
-    
+    overrides provider
+
     ## Examples
 
       iex(1)> new_tx()  |> use_provider(KoiosProvider)
@@ -94,9 +94,9 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
 
   @doc """
     use custom protocol params
-    
+
     ## Examples
-    
+
         iex(1)>  new_tx() |> set_protocol_params(%ProtocolParams{})
         %TxBuilder{}
   """
@@ -105,8 +105,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   end
 
   @doc """
-    Set Wallet address 
-     
+    Set Wallet address
+
   """
   def set_wallet_address(%__MODULE__{config: cfg} = builder, %Address{} = address) do
     %__MODULE__{builder | config: TxConfig.__set_cfg(cfg, :wallet_address, [address])}
@@ -305,9 +305,40 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   end
 
   @doc """
-    Build Final
+  Builds the transaction based on the current state of the TxBuilder.
+
+  ## Parameters
+
+    - `%TxBuilder{}` - The TxBuilder instance containing the transaction details.
+    - `opts` - Optional parameters to customize the transaction building process.
+
+  ## Options
+
+    - `:collateral_utxo` - Reference to the collateral utxos, if any.
+    - `:wallet_utxos` - Reference to the wallet utxos, if any.
+    - `:provider` - Provider to use for submitting the transaction. If not provided, the default provider from TxConfig will be used.
+    - `:wallet_address` - If provided, it will query the wallet address for UTXOs.
+    - `:change_address` - If provided, it will be used as the change address for the transaction.
+
+  ## Returns
+
+    - `{:ok, %Transaction{}}` on success.
+    - `{:error, any()}` on failure.
+
+  ## Examples
+
+      iex> tx_builder = new_tx() |> pay_to_address("addr1...", %{lovelace: 1000000})
+      iex> {:ok, %Transaction{}} = build_tx(tx_builder)
   """
-  def build_tx(%__MODULE__{} = builder, opts \\ []) do
+  @type build_tx_options :: [
+          collateral_utxo: [String.t()],
+          wallet_utxos: [String.t()],
+          wallet_address: [Address.t()] | Address.t() | String.t() | [String.t()],
+          change_address: Address.t() | String.t()
+        ]
+
+  @spec build_tx(__MODULE__.t(), build_tx_options()) :: {:ok, Transaction.t()} | {:error, any()}
+  def build_tx(%__MODULE__{} = builder, opts) do
     final_cfg = TxConfig.__setup(builder.config, opts) |> TxConfig.__init()
 
     inputs = Enum.uniq_by(builder.inputs, fn i -> i.output_reference end)
@@ -325,15 +356,23 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
         plutus_data: Enum.uniq(builder.plutus_data)
     }
 
-    collateral_ref = opts[:collateral_ref]
+    collateral_utxos = opts[:collateral_utxos]
 
     with :ok <- check_mint_balanced(final_builder),
          {:ok, %TxConfig{}} <- TxConfig.validate(final_cfg),
          do:
            Keyword.get(opts, :wallet_utxos)
            |> maybe(fn -> load_wallet_utxos(final_cfg) end)
-           |> Internal.finalize_tx(final_builder, collateral_ref)
+           |> Internal.finalize_tx(final_builder, collateral_utxos)
   end
+
+  @doc """
+    Builds the transaction based on the current state of the TxBuilder.
+
+    See `build_tx/2` for more details.
+  """
+  @spec build_tx(__MODULE__.t()) :: {:ok, Transaction.t()} | {:error, any()}
+  def build_tx(%__MODULE__{} = builder), do: build_tx(builder, [])
 
   def build_tx!(%__MODULE__{} = builder, opts \\ []) do
     case build_tx(builder, opts) do
@@ -375,13 +414,14 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
 
   @doc """
     Adds Reference inputs
-    
+
     ## examples
 
       iex> reference_inputs(%TxBuilder{}, [%Input{}, %Input{}])
       %TxBuilder{}
-    
+
   """
+
   @spec reference_inputs(__MODULE__.t(), [Transaction.input()]) :: __MODULE__.t()
   def reference_inputs(%__MODULE__{} = builder, inputs) when is_list(inputs) do
     #

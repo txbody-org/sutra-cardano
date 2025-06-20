@@ -330,9 +330,10 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
       iex> tx_builder = new_tx() |> pay_to_address("addr1...", %{lovelace: 1000000})
       iex> {:ok, %Transaction{}} = build_tx(tx_builder)
   """
+  @type out_ref_binary() :: String.t()
   @type build_tx_options :: [
-          collateral_utxo: [String.t()],
-          wallet_utxos: [String.t()],
+          collateral_utxo: [OutputReference.t() | out_ref_binary()],
+          wallet_utxos: [OutputReference.t() | out_ref_binary()],
           wallet_address: [Address.t()] | Address.t() | String.t() | [String.t()],
           change_address: Address.t() | String.t()
         ]

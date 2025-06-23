@@ -498,7 +498,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
       {:ok,
        %CoinSelection{
          selected_inputs: [],
-         change: Asset.diff(total_output_assets, total_input_assets)
+         change: Asset.diff(total_output_assets, total_input_assets) |> Asset.only_positive()
        }}
     else
       # Fetch Utxos for remaining Asset to cover

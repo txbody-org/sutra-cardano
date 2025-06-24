@@ -33,8 +33,8 @@ defmodule Sutra.DataTest.SimpleTupleDataTest do
   test "from_plutus/1 converts plutus data to struct" do
     assert {:ok,
             %__MODULE__{
-              pub_key: "C55DB574",
-              asset: {"C132", "C133", 100}
+              pub_key: "c55db574",
+              asset: {"c132", "c133", 100}
             }} == from_plutus(@expected_hex)
   end
 end

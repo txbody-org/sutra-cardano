@@ -23,13 +23,13 @@ defmodule Sutra.DataTest.TupleInOptionTest do
   @expected_hex "D8799FD8799F9F42C12342C1221864FFFFFF"
 
   test "to_plutus/1 converts optional data with tuple type" do
-    opt = %__MODULE__{optional: {"C123", "C122", 100}}
+    opt = %__MODULE__{optional: {"c123", "c122", 100}}
 
     assert to_plutus(opt) |> Cbor.encode_hex() == @expected_hex
   end
 
   test "from_plutus/1 converts optional data with tuple" do
-    opt = %__MODULE__{optional: {"C123", "C122", 100}}
+    opt = %__MODULE__{optional: {"c123", "c122", 100}}
     assert {:ok, opt} == from_plutus(@expected_hex)
   end
 end

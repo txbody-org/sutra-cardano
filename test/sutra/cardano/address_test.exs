@@ -196,11 +196,11 @@ defmodule Sutra.Cardano.AddressTest do
                   address_type: :shelley,
                   payment_credential: %Credential{
                     credential_type: :vkey,
-                    hash: "pay_vkey"
+                    hash: "7061795f766b6579"
                   },
                   stake_credential: %Credential{
                     credential_type: :vkey,
-                    hash: "stake_vkey"
+                    hash: "7374616b655f766b6579"
                   }
                 }}
 
@@ -211,7 +211,7 @@ defmodule Sutra.Cardano.AddressTest do
                   address_type: :shelley,
                   payment_credential: %Credential{
                     credential_type: :vkey,
-                    hash: "pay_vkey"
+                    hash: "7061795f766b6579"
                   },
                   stake_credential: %Sutra.Cardano.Address.Pointer{
                     slot: 2_498_243,
@@ -227,7 +227,7 @@ defmodule Sutra.Cardano.AddressTest do
                   address_type: :shelley,
                   payment_credential: %Credential{
                     credential_type: :script,
-                    hash: "pay_script"
+                    hash: "7061795f736372697074"
                   },
                   stake_credential: %Sutra.Cardano.Address.Pointer{
                     slot: 2_498_243,
@@ -243,11 +243,11 @@ defmodule Sutra.Cardano.AddressTest do
                   address_type: :shelley,
                   payment_credential: %Credential{
                     credential_type: :script,
-                    hash: "pay_script"
+                    hash: "7061795f736372697074"
                   },
                   stake_credential: %Credential{
                     credential_type: :script,
-                    hash: "stake_script"
+                    hash: "7374616b655f736372697074"
                   }
                 }}
     end

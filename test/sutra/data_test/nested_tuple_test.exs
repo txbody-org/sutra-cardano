@@ -39,7 +39,7 @@ defmodule Sutra.DataTest.NestedTupleTest do
 
   test "from_plutus/1 converts nested tuple" do
     nested = %__MODULE__.NestedTuple{
-      options: {{"AAAA", "BBBB"}, {1, 2}},
+      options: {{"aaaa", "bbbb"}, {1, 2}},
       simple: {{0, "0000"}, {"1111", 1}}
     }
 

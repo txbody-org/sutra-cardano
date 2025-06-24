@@ -141,6 +141,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
     {:ok, {new_tx, wallet_utxos -- tx.tx_body.inputs}}
   end
 
+  # TODO: Handle collateral better
   defp with_collateral(
          %Transaction{tx_body: %TxBody{collateral: nil}} = tx,
          wallet_utxos,
@@ -152,7 +153,11 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
     collateral_fee = 5_000_000
 
     sorted_by_val =
-      Enum.sort_by(available_utxos, fn %Input{output: %Output{value: val}} ->
+      available_utxos
+      |> Enum.filter(fn %Input{output: %Output{value: v}} ->
+        Asset.lovelace_of(v) > 0 and map_size(v) == 1
+      end)
+      |> Enum.sort_by(fn %Input{output: %Output{value: val}} ->
         Asset.lovelace_of(val)
       end)
 
@@ -174,10 +179,14 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
 
       change = Asset.add(total_asset_used, "lovelace", -collateral_fee)
 
-      collateral_retun =
-        if Asset.is_positive_asset(change),
-          do: Output.new(config.change_address, change),
-          else: nil
+      # TODO: Handle better collateral return
+      {tot_collateral_used, collateral_retun} =
+        if Asset.lovelace_of(change) > 1_000_000,
+          do:
+            {Asset.from_lovelace(collateral_fee),
+             Output.new(config.change_address, change)
+             |> calculate_min_ada_for_output(config.protocol_params)},
+          else: {total_asset_used, nil}
 
       %Transaction{
         tx
@@ -185,7 +194,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
             tx.tx_body
             | collateral: collateral_refs,
               collateral_return: collateral_retun,
-              total_collateral: Asset.from_lovelace(collateral_fee)
+              total_collateral: tot_collateral_used
           }
       }
     end
@@ -341,8 +350,13 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
       (tx_body.inputs ++ selected_coin.selected_inputs)
       |> Enum.sort_by(&extract_ref(&1.output_reference))
 
+    # IO.inspect(tx_body.outputs, label: "Curr Output")
+    # IO.inspect(selected_coin.change, label: "ALL CHANGE")
+
+    # IO.inspect(Asset.only_positive(selected_coin.change), label: "positive change")
+
     change_output =
-      Output.new(cfg.change_address, selected_coin.change, cfg.change_datum)
+      Output.new(cfg.change_address, Asset.only_positive(selected_coin.change), cfg.change_datum)
       |> calculate_min_ada_for_output(cfg.protocol_params)
 
     vkey_witnesses =
@@ -387,7 +401,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
          wallet_utxos,
          %Witness{} = witness_set
        ) do
-    with {:ok, %CoinSelection{} = c_selection} <- select_coin(tx_body, wallet_utxos),
+    with {:ok, %CoinSelection{} = c_selection} <- balance_tx(tx_body, wallet_utxos),
          {:ok, %Transaction{} = tx} <- derive_tx(tx_body, c_selection, builder, witness_set),
          {:ok, {final_tx, _rem_utxos}} <- with_collateral(tx, wallet_utxos, builder) do
       # Calculate new Tx Fee
@@ -398,12 +412,12 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
       else
         %TxBody{
           tx_body
-          | inputs: final_tx.tx_body.inputs,
-            fee: Asset.from_lovelace(ceil(tx_fee * 1.06))
+          | fee: Asset.from_lovelace(ceil(tx_fee * 1.06)),
+            required_signers: final_tx.tx_body.required_signers
         }
         |> create_tx(
           builder,
-          wallet_utxos -- final_tx.tx_body.inputs,
+          wallet_utxos,
           tx.witnesses
         )
       end
@@ -476,34 +490,33 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
     end)
   end
 
-  defp select_coin(
+  defp balance_tx(
          %TxBody{inputs: inputs, outputs: outputs, mint: mint, fee: fee},
          wallet_utxos
        ) do
-    total_input_assets =
-      Enum.reduce(inputs, %{}, fn i, acc ->
+    total_with_mint =
+      Enum.reduce(inputs, mint, fn i, acc ->
         Asset.merge(i.output.value, acc)
       end)
-
-    positive_mint = Asset.only_positive(mint)
-    total_with_mint = Asset.merge(total_input_assets, positive_mint)
 
     total_output_assets =
       Enum.reduce(outputs, fee, fn o, acc -> Asset.merge(o.value, acc) end)
 
-    diff_asset = Asset.diff(total_with_mint, total_output_assets)
+    to_fill_asset = Asset.diff(total_with_mint, total_output_assets) |> Asset.only_positive()
 
-    if Asset.only_positive(diff_asset) == %{} do
+    leftover_asset = Asset.diff(total_output_assets, total_with_mint) |> Asset.only_positive()
+
+    if Asset.zero?(to_fill_asset) do
       # current inputs is enough to cover output
       {:ok,
        %CoinSelection{
          selected_inputs: [],
-         change: Asset.diff(total_output_assets, total_input_assets) |> Asset.only_positive()
+         change: leftover_asset
        }}
     else
       # Fetch Utxos for remaining Asset to cover
       diff_inputs = wallet_utxos -- inputs
-      LargestFirst.select_utxos(diff_inputs, diff_asset)
+      LargestFirst.select_utxos(diff_inputs, to_fill_asset, leftover_asset)
     end
   end
 

@@ -76,6 +76,8 @@ defmodule Sutra.Data.MacroHelper.ObjectMacro do
         end
       end
 
+      def from_plutus(nil), do: {:error, %{reason: :cannot_parse_data_nil}}
+
       def to_plutus(%__MODULE__{} = mod) do
         fields =
           Enum.reduce(__MODULE__.__fields__(), [], fn name, acc ->

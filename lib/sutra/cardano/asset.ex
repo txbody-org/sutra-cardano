@@ -29,8 +29,8 @@ defmodule Sutra.Cardano.Asset do
       {:ok,
           %{
                 "lovelace" => 1_000_000,
-                "706F6C6963792D69642D31" => %{"746B6E31" => 100, "746B6E32" => 200},
-                "706F6C6963792D69642D32" => %{"746B6E33" => 300}
+                "706f6c6963792d69642d31" => %{"746b6e31" => 100, "746b6e32" => 200},
+                "706f6c6963792d69642d32" => %{"746b6e33" => 300}
           }
       }
 
@@ -173,8 +173,12 @@ defmodule Sutra.Cardano.Asset do
 
   """
   def merge(asset1, asset2) when is_map(asset1) and is_map(asset2) do
-    Map.merge(asset1, asset2, fn _k, v1, v2 ->
-      if is_number(v1), do: v1 + v2, else: merge(v1, v2)
+    merge(asset1, asset2, fn _k, v1, v2 -> v1 + v2 end)
+  end
+
+  def merge(asset1, asset2, with_func) when is_function(with_func, 3) do
+    Map.merge(asset1, asset2, fn k, v1, v2 ->
+      if is_number(v1), do: with_func.(k, v1, v2), else: merge(v1, v2, with_func)
     end)
   end
 
@@ -203,6 +207,8 @@ defmodule Sutra.Cardano.Asset do
     end)
     |> Enum.into(%{})
   end
+
+  def zero?(asset) when is_map(asset), do: asset == %{}
 
   @doc """
   checks if assets has positive amount
@@ -457,7 +463,7 @@ defmodule Sutra.Cardano.Asset do
       ...(1)>   }
       ...(1)> ]
       iex(1)> from_cbor(cbor)
-      %{"lovelace" => 100, "706F6C696379" => %{"6173736574" => 1}}
+      %{"lovelace" => 100, "706f6c696379" => %{"6173736574" => 1}}
 
       iex> from_cbor(10)
       %{"lovelace" => 10}

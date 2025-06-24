@@ -27,7 +27,7 @@ defmodule Sutra.Cardano.Transaction.OutputTest do
                   network: nil,
                   payment_credential: %Address.Credential{
                     credential_type: :vkey,
-                    hash: "some-key"
+                    hash: "736f6d652d6b6579"
                   },
                   stake_credential: nil
                 },
@@ -45,11 +45,11 @@ defmodule Sutra.Cardano.Transaction.OutputTest do
                   network: nil,
                   payment_credential: %Address.Credential{
                     credential_type: :vkey,
-                    hash: "some-key"
+                    hash: "736f6d652d6b6579"
                   },
                   stake_credential: nil
                 },
-                datum: %Datum{kind: :datum_hash, value: "736F6D652D68617368"},
+                datum: %Datum{kind: :datum_hash, value: "736f6d652d68617368"},
                 reference_script: nil,
                 value: %{
                   "lovelace" => 1_000_000
@@ -63,11 +63,11 @@ defmodule Sutra.Cardano.Transaction.OutputTest do
                   network: nil,
                   payment_credential: %Address.Credential{
                     credential_type: :vkey,
-                    hash: "some-key"
+                    hash: "736f6d652d6b6579"
                   },
                   stake_credential: nil
                 },
-                datum: %Datum{kind: :inline_datum, value: "D8799F01FF"},
+                datum: %Datum{kind: :inline_datum, value: "d8799f01ff"},
                 reference_script: nil,
                 value: %{
                   "lovelace" => 1_000_000
@@ -81,12 +81,12 @@ defmodule Sutra.Cardano.Transaction.OutputTest do
                   network: nil,
                   payment_credential: %Address.Credential{
                     credential_type: :vkey,
-                    hash: "some-key"
+                    hash: "736f6d652d6b6579"
                   },
                   stake_credential: nil
                 },
-                datum: %Datum{kind: :inline_datum, value: "D8799F01FF"},
-                reference_script: "736F6D652D7265662D736372697074",
+                datum: %Datum{kind: :inline_datum, value: "d8799f01ff"},
+                reference_script: "736f6d652d7265662d736372697074",
                 value: %{
                   "lovelace" => 1_000_000
                 }

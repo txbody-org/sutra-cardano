@@ -13,10 +13,10 @@ defmodule Sutra.Cardano.Transaction.DatumTest do
     test "from_plutus/1" do
       assert {:ok, %Datum{kind: :no_datum, value: nil}} == Datum.from_plutus(@no_datum_cbor)
 
-      assert {:ok, %Datum{kind: :inline_datum, value: "9F010203FF"}} ==
+      assert {:ok, %Datum{kind: :inline_datum, value: "9f010203ff"}} ==
                Datum.from_plutus(@inline_datum_cbor)
 
-      assert {:ok, %Datum{kind: :datum_hash, value: "736F6D652D646174756D2D68617368"}} ==
+      assert {:ok, %Datum{kind: :datum_hash, value: "736f6d652d646174756d2d68617368"}} ==
                Datum.from_plutus(@datum_hash_cbor)
     end
 

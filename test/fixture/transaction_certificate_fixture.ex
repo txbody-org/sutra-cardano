@@ -3,7 +3,6 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
     This modules procides helper function and setup transactions for testing
   """
 
-  alias Sutra.Cardano.Script
   alias Sutra.Cardano.Transaction
   alias Sutra.Cardano.Transaction.Certificate
   alias Sutra.Cardano.Transaction.TxBody
@@ -14,47 +13,51 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
 
   # for TxId: 302da83fb39d6e900f31ecc6b53b2e02e87ea990836fd9dcd5186c93ac42d221  (preprod)
   def body_302dd221 do
-    %TxBody{
+    %Sutra.Cardano.Transaction.TxBody{
       auxiliary_data_hash: nil,
       certificates: [
-        %Certificate.PoolRegistration{
+        %Sutra.Cardano.Transaction.Certificate.PoolRegistration{
           cost: %{"lovelace" => 170_000_000},
           margin: 0.05,
           margin_ratio: {1, 20},
           metadata: %{
-            hash: "7DE1A14FD91A5C307C9816FDBC970BDD724C62C7EA1EB2BA97AC89EE0FB9FB7A",
+            hash: "7de1a14fd91a5c307c9816fdbc970bdd724c62c7ea1eb2ba97ac89ee0fb9fb7a",
             url: "https://upstream.org.uk/assets/preprod/metadata.json"
           },
-          owners: ["EC65E4249708B5DAFD1E91D23F2D2D38C460E4D206F78FA18760EFC7"],
+          owners: ["ec65e4249708b5dafd1e91d23f2d2d38c460e4d206f78fa18760efc7"],
           pledge: %{"lovelace" => 5_000_000_000},
-          pool_key_hash: "202D6DF929B8A626BC39DE9E96EF5BFC8122A70265BFC85469CE31DA",
+          pool_key_hash: "202d6df929b8a626bc39de9e96ef5bfc8122a70265bfc85469ce31da",
           relays: [
             %Sutra.Cardano.Common.PoolRelay.SingleHostName{
               dns_name: "8.tcp.eu.ngrok.io",
               port: 28_965
             }
           ],
-          reward_account: "E0EC65E4249708B5DAFD1E91D23F2D2D38C460E4D206F78FA18760EFC7",
-          vrf_key_hash: "33C789BD8A61318481C9869EC4D45D2BFB649D0BC8D175F66A6587CF3EDC27DC"
+          reward_account: "e0ec65e4249708b5dafd1e91d23f2d2d38c460e4d206f78fa18760efc7",
+          vrf_key_hash: "33c789bd8a61318481c9869ec4d45d2bfb649d0bc8d175f66a6587cf3edc27dc"
         },
-        %Certificate.StakeDelegation{
-          pool_keyhash: "202D6DF929B8A626BC39DE9E96EF5BFC8122A70265BFC85469CE31DA",
+        %Sutra.Cardano.Transaction.Certificate.StakeDelegation{
+          pool_keyhash: "202d6df929b8a626bc39de9e96ef5bfc8122a70265bfc85469ce31da",
           stake_credential: %Sutra.Cardano.Address.Credential{
             credential_type: :vkey,
-            hash: "EC65E4249708B5DAFD1E91D23F2D2D38C460E4D206F78FA18760EFC7"
+            hash: "ec65e4249708b5dafd1e91d23f2d2d38c460e4d206f78fa18760efc7"
           }
         }
       ],
+      collateral: nil,
+      collateral_return: nil,
+      current_treasury_value: nil,
       fee: %{"lovelace" => 189_173},
       inputs: [
-        %Transaction.OutputReference{
+        %Sutra.Cardano.Transaction.OutputReference{
           output_index: 0,
-          transaction_id: "55E2606FD2FAA05415C721A846767FA1B37FCB477800851F5C2AFCA234604470"
+          transaction_id: "55e2606fd2faa05415c721a846767fa1b37fcb477800851f5c2afca234604470"
         }
       ],
       mint: nil,
+      network_id: nil,
       outputs: [
-        %Transaction.Output{
+        %Sutra.Cardano.Transaction.Output{
           address: %Sutra.Cardano.Address{
             address_type: :shelley,
             network: :testnet,
@@ -67,12 +70,23 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
               hash: "ec65e4249708b5dafd1e91d23f2d2d38c460e4d206f78fa18760efc7"
             }
           },
-          datum: %Transaction.Datum{kind: :no_datum, value: nil},
+          datum: %Sutra.Cardano.Transaction.Datum{kind: :no_datum, value: nil},
+          datum_raw: nil,
           reference_script: nil,
           value: %{"lovelace" => 9_497_638_770}
         }
       ],
-      ttl: 75_103_845
+      proposal_procedures: nil,
+      reference_inputs: nil,
+      required_signers: nil,
+      script_data_hash: nil,
+      total_collateral: nil,
+      treasury_donation: nil,
+      ttl: 75_103_845,
+      update: nil,
+      validaty_interval_start: nil,
+      voting_procedures: nil,
+      withdrawals: nil
     }
   end
 
@@ -126,7 +140,7 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
       inputs: [
         %Transaction.OutputReference{
           output_index: 0,
-          transaction_id: "0AC7C67527386E1E4E939497C92D442F6B0D9A46BB18C545F8FD1601AA625A24"
+          transaction_id: "0ac7c67527386e1e4e939497c92d442f6b0d9a46bb18c545f8fd1601aa625a24"
         }
       ],
       mint: nil,
@@ -179,49 +193,66 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
 
   # For TxId: b67026a02bb1235e466fe56d64c0cd7155abccc2b0f3c646e8cc6bd4a0cf3275 (preprod)
   def body_b6703275 do
-    %Transaction.TxBody{
+    %Sutra.Cardano.Transaction.TxBody{
+      auxiliary_data_hash: nil,
       certificates: [
-        %Certificate.StakeRegistration{
+        %Sutra.Cardano.Transaction.Certificate.StakeRegistration{
           stake_credential: %Sutra.Cardano.Address.Credential{
-            hash: "6DE8BE2814A24B0F2BD8918FAF3D07685078B94E14303D5333FF4CB1",
-            credential_type: :vkey
+            credential_type: :vkey,
+            hash: "6de8be2814a24b0f2bd8918faf3d07685078b94e14303d5333ff4cb1"
           }
         },
-        %Certificate.StakeDelegation{
-          pool_keyhash: "9ED23A4A839826D08D7D10F277A91F0E2373EA90251FB33664D52C94",
+        %Sutra.Cardano.Transaction.Certificate.StakeDelegation{
+          pool_keyhash: "9ed23a4a839826d08d7d10f277a91f0e2373ea90251fb33664d52c94",
           stake_credential: %Sutra.Cardano.Address.Credential{
-            hash: "6DE8BE2814A24B0F2BD8918FAF3D07685078B94E14303D5333FF4CB1",
-            credential_type: :vkey
+            credential_type: :vkey,
+            hash: "6de8be2814a24b0f2bd8918faf3d07685078b94e14303d5333ff4cb1"
           }
         }
       ],
-      ttl: 75_697_799,
+      collateral: nil,
+      collateral_return: nil,
+      current_treasury_value: nil,
       fee: %{"lovelace" => 174_477},
-      outputs: [
-        %Transaction.Output{
-          reference_script: nil,
-          datum: %Transaction.Datum{kind: :no_datum, value: nil},
-          value: %{"lovelace" => 8_876_150_847},
-          address: %Sutra.Cardano.Address{
-            stake_credential: %Sutra.Cardano.Address.Credential{
-              hash: "6de8be2814a24b0f2bd8918faf3d07685078b94e14303d5333ff4cb1",
-              credential_type: :vkey
-            },
-            payment_credential: %Sutra.Cardano.Address.Credential{
-              hash: "7eb505be585918dea709480a7b3ff664c72b77f28e8337e7c92d71e1",
-              credential_type: :vkey
-            },
-            address_type: :shelley,
-            network: :testnet
-          }
+      inputs: [
+        %Sutra.Cardano.Transaction.OutputReference{
+          output_index: 1,
+          transaction_id: "b929989211af8ca57e2efb4c178ea50978d25b2a15e35ba2ef30d69022c1924e"
         }
       ],
-      inputs: [
-        %Transaction.OutputReference{
-          output_index: 1,
-          transaction_id: "B929989211AF8CA57E2EFB4C178EA50978D25B2A15E35BA2EF30D69022C1924E"
+      mint: nil,
+      network_id: nil,
+      outputs: [
+        %Sutra.Cardano.Transaction.Output{
+          address: %Sutra.Cardano.Address{
+            address_type: :shelley,
+            network: :testnet,
+            payment_credential: %Sutra.Cardano.Address.Credential{
+              credential_type: :vkey,
+              hash: "7eb505be585918dea709480a7b3ff664c72b77f28e8337e7c92d71e1"
+            },
+            stake_credential: %Sutra.Cardano.Address.Credential{
+              credential_type: :vkey,
+              hash: "6de8be2814a24b0f2bd8918faf3d07685078b94e14303d5333ff4cb1"
+            }
+          },
+          datum: %Sutra.Cardano.Transaction.Datum{kind: :no_datum, value: nil},
+          datum_raw: nil,
+          reference_script: nil,
+          value: %{"lovelace" => 8_876_150_847}
         }
-      ]
+      ],
+      proposal_procedures: nil,
+      reference_inputs: nil,
+      required_signers: nil,
+      script_data_hash: nil,
+      total_collateral: nil,
+      treasury_donation: nil,
+      ttl: 75_697_799,
+      update: nil,
+      validaty_interval_start: nil,
+      voting_procedures: nil,
+      withdrawals: nil
     }
   end
 
@@ -251,42 +282,59 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
 
   # for TxId: 531f441ddaa4d6753ec1011eff5c0b060b53c2b2c51d4b2cefaad05c0ed04c12  (preprod)
   def body_531f4c12 do
-    %TxBody{
+    %Sutra.Cardano.Transaction.TxBody{
+      auxiliary_data_hash: nil,
       certificates: [
-        %Certificate.StakeDeRegistration{
+        %Sutra.Cardano.Transaction.Certificate.StakeDeRegistration{
           stake_credential: %Sutra.Cardano.Address.Credential{
-            hash: "BEF0E133D1C6F1E1C5401162F355E334909B022480A2C2EBC9225E58",
-            credential_type: :vkey
+            credential_type: :vkey,
+            hash: "bef0e133d1c6f1e1c5401162f355e334909b022480a2c2ebc9225e58"
           }
         }
       ],
+      collateral: nil,
+      collateral_return: nil,
+      current_treasury_value: nil,
       fee: %{"lovelace" => 171_661},
       inputs: [
-        %Transaction.OutputReference{
+        %Sutra.Cardano.Transaction.OutputReference{
           output_index: 5,
-          transaction_id: "7F946BFB9BBE8135C68D1096B7A52A0F47E715916D501440E7B6DAE59D243CB8"
+          transaction_id: "7f946bfb9bbe8135c68d1096b7a52a0f47e715916d501440e7b6dae59d243cb8"
         }
       ],
+      mint: nil,
+      network_id: nil,
       outputs: [
-        %Transaction.Output{
-          reference_script: nil,
-          datum: %Transaction.Datum{kind: :no_datum, value: nil},
-          value: %{"lovelace" => 13_919_017_408},
+        %Sutra.Cardano.Transaction.Output{
           address: %Sutra.Cardano.Address{
-            stake_credential: %Sutra.Cardano.Address.Credential{
-              hash: "bef0e133d1c6f1e1c5401162f355e334909b022480a2c2ebc9225e58",
-              credential_type: :vkey
-            },
-            payment_credential: %Sutra.Cardano.Address.Credential{
-              hash: "ea68ee897733ba2aa41af1a8f1b9b1838d70dfcc61763a74328e6cef",
-              credential_type: :vkey
-            },
             address_type: :shelley,
-            network: :testnet
-          }
+            network: :testnet,
+            payment_credential: %Sutra.Cardano.Address.Credential{
+              credential_type: :vkey,
+              hash: "ea68ee897733ba2aa41af1a8f1b9b1838d70dfcc61763a74328e6cef"
+            },
+            stake_credential: %Sutra.Cardano.Address.Credential{
+              credential_type: :vkey,
+              hash: "bef0e133d1c6f1e1c5401162f355e334909b022480a2c2ebc9225e58"
+            }
+          },
+          datum: %Sutra.Cardano.Transaction.Datum{kind: :no_datum, value: nil},
+          datum_raw: nil,
+          reference_script: nil,
+          value: %{"lovelace" => 13_919_017_408}
         }
       ],
-      ttl: 77_298_745
+      proposal_procedures: nil,
+      reference_inputs: nil,
+      required_signers: nil,
+      script_data_hash: nil,
+      total_collateral: nil,
+      treasury_donation: nil,
+      ttl: 77_298_745,
+      update: nil,
+      validaty_interval_start: nil,
+      voting_procedures: nil,
+      withdrawals: nil
     }
   end
 
@@ -317,78 +365,96 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
   # for txId: c87744872b89df20ef5b2363aaa04eab037c144a64388408b990da06d9d86215 (preprod)
 
   def body_c8776215 do
-    %TxBody{
+    %Sutra.Cardano.Transaction.TxBody{
+      auxiliary_data_hash: nil,
       certificates: [
-        %Certificate.StakeRegDelegCert{
+        %Sutra.Cardano.Transaction.Certificate.StakeRegDelegCert{
           deposit: %{"lovelace" => 2_000_000},
-          pool_keyhash: "9ED23A4A839826D08D7D10F277A91F0E2373EA90251FB33664D52C94",
+          pool_keyhash: "9ed23a4a839826d08d7d10f277a91f0e2373ea90251fb33664d52c94",
           stake_credential: %Sutra.Cardano.Address.Credential{
-            hash: "5064B671634D14CB8D543E71DD8EB437A47EFB47B0B22882866C420D",
-            credential_type: :vkey
+            credential_type: :vkey,
+            hash: "5064b671634d14cb8d543e71dd8eb437a47efb47b0b22882866c420d"
           }
         }
       ],
+      collateral: nil,
+      collateral_return: nil,
+      current_treasury_value: nil,
       fee: %{"lovelace" => 198_677},
+      inputs: [
+        %Sutra.Cardano.Transaction.OutputReference{
+          output_index: 0,
+          transaction_id: "a4b94f6a211dd03dfe43e66a798ef4268285ec707a65e645c447fd96980e0601"
+        }
+      ],
+      mint: nil,
+      network_id: nil,
       outputs: [
-        %Transaction.Output{
-          reference_script: nil,
-          datum: %Transaction.Datum{kind: :no_datum, value: nil},
-          value: %{
-            "0D26F1DECEE50C24498585CB9CBA2B6AA629C83023B327BB10FB67B9" => %{
-              "4D696E745769746864726177" => 43
-            },
-            "1C05CAED08DDD5C9F233F4CB497EEB6E5F685E8E7B842B08897D1DFE" => %{
-              "4D794D696E746564546F6B656E" => 1
-            },
-            "22691D3D969ECF5802226290C2FB98E2BC08522D5B726C1F5F400105" => %{"54657374" => 21},
-            "4613DAC79011EBFA5D5837E32B8A8DB70B57CBD7FFD89BA108AF81AB" => %{
-              "4346544F4B454E" => 276
-            },
-            "501B8B9DCE8D7C1247A14BB69D416C621267DAA72EBD6C8194293192" => %{
-              "4D794D696E746564546F6B656E" => 1
-            },
-            "61D96F9000BF5D325DA17258EE0693E19D441CECEE64825289EE6B7D" => %{
-              "4D696E745769746864726177" => 33
-            },
-            "665D4DBEA856001B880D5749E94384CC486D8C4EE99540D2F65D1570" => %{
-              "4D794D696E746564546F6B656E" => 1
-            },
-            "CAC67DD80F706E084B2AAC605288B2FF793475EA43B2313E1ED384AB" => %{
-              "4275726E61626C65546F6B656E506C75747573" => 1,
-              "54657374" => 42,
-              "ACCBFB633F637E3BB1ABEE40C9539D1EFFD742CD2716B3B1DB9DE3AAF3F37794" => 1
-            },
-            "EB8B660CF939281C277264389C4086E7C79BAF78E08D0C48668420AB" => %{
-              "4D794D696E746564546F6B656E" => 1
-            },
-            "EF6ED47A6917A3CBBEB46561E8853DA969343794D66128598A34AF2C" => %{
-              "4275726E61626C65546F6B656E" => 144,
-              "4275726E61626C65546F6B656E32" => 414,
-              "ACCBFB633F637E3BB1ABEE40C9539D1EFFD742CD2716B3B1DB9DE3AAF3F37794" => 1
-            },
-            "F654F6A31F6C4CC2C39A169F2C022404AA9F19D43137B0448B219A3E" => %{"54657374" => 101},
-            "lovelace" => 7_111_913_314
-          },
+        %Sutra.Cardano.Transaction.Output{
           address: %Sutra.Cardano.Address{
-            stake_credential: %Sutra.Cardano.Address.Credential{
-              hash: "5064b671634d14cb8d543e71dd8eb437a47efb47b0b22882866c420d",
-              credential_type: :vkey
-            },
-            payment_credential: %Sutra.Cardano.Address.Credential{
-              hash: "9fc430ea1f3adc20eebb813b2649e85c934ea5bc13d7b7fbe2b24e50",
-              credential_type: :vkey
-            },
             address_type: :shelley,
-            network: :testnet
+            network: :testnet,
+            payment_credential: %Sutra.Cardano.Address.Credential{
+              credential_type: :vkey,
+              hash: "9fc430ea1f3adc20eebb813b2649e85c934ea5bc13d7b7fbe2b24e50"
+            },
+            stake_credential: %Sutra.Cardano.Address.Credential{
+              credential_type: :vkey,
+              hash: "5064b671634d14cb8d543e71dd8eb437a47efb47b0b22882866c420d"
+            }
+          },
+          datum: %Sutra.Cardano.Transaction.Datum{kind: :no_datum, value: nil},
+          datum_raw: nil,
+          reference_script: nil,
+          value: %{
+            "lovelace" => 7_111_913_314,
+            "0d26f1decee50c24498585cb9cba2b6aa629c83023b327bb10fb67b9" => %{
+              "4d696e745769746864726177" => 43
+            },
+            "1c05caed08ddd5c9f233f4cb497eeb6e5f685e8e7b842b08897d1dfe" => %{
+              "4d794d696e746564546f6b656e" => 1
+            },
+            "22691d3d969ecf5802226290c2fb98e2bc08522d5b726c1f5f400105" => %{"54657374" => 21},
+            "4613dac79011ebfa5d5837e32b8a8db70b57cbd7ffd89ba108af81ab" => %{
+              "4346544f4b454e" => 276
+            },
+            "501b8b9dce8d7c1247a14bb69d416c621267daa72ebd6c8194293192" => %{
+              "4d794d696e746564546f6b656e" => 1
+            },
+            "61d96f9000bf5d325da17258ee0693e19d441cecee64825289ee6b7d" => %{
+              "4d696e745769746864726177" => 33
+            },
+            "665d4dbea856001b880d5749e94384cc486d8c4ee99540d2f65d1570" => %{
+              "4d794d696e746564546f6b656e" => 1
+            },
+            "cac67dd80f706e084b2aac605288b2ff793475ea43b2313e1ed384ab" => %{
+              "4275726e61626c65546f6b656e506c75747573" => 1,
+              "54657374" => 42,
+              "accbfb633f637e3bb1abee40c9539d1effd742cd2716b3b1db9de3aaf3f37794" => 1
+            },
+            "eb8b660cf939281c277264389c4086e7c79baf78e08d0c48668420ab" => %{
+              "4d794d696e746564546f6b656e" => 1
+            },
+            "ef6ed47a6917a3cbbeb46561e8853da969343794d66128598a34af2c" => %{
+              "4275726e61626c65546f6b656e" => 144,
+              "4275726e61626c65546f6b656e32" => 414,
+              "accbfb633f637e3bb1abee40c9539d1effd742cd2716b3b1db9de3aaf3f37794" => 1
+            },
+            "f654f6a31f6c4cc2c39a169f2c022404aa9f19d43137b0448b219a3e" => %{"54657374" => 101}
           }
         }
       ],
-      inputs: [
-        %Transaction.OutputReference{
-          output_index: 0,
-          transaction_id: "A4B94F6A211DD03DFE43E66A798EF4268285EC707A65E645C447FD96980E0601"
-        }
-      ]
+      proposal_procedures: nil,
+      reference_inputs: nil,
+      required_signers: nil,
+      script_data_hash: nil,
+      total_collateral: nil,
+      treasury_donation: nil,
+      ttl: nil,
+      update: nil,
+      validaty_interval_start: nil,
+      voting_procedures: nil,
+      withdrawals: nil
     }
   end
 
@@ -419,79 +485,97 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
   # for TxId: 6ed61d474544baa4c9bbee01a0b706756581319e3569445fec08a3456213cedc (Preprod)
 
   def body_6ed6cedc do
-    %TxBody{
+    %Sutra.Cardano.Transaction.TxBody{
+      auxiliary_data_hash: nil,
       certificates: [
-        %Certificate.StakeVoteRegDelegCert{
+        %Sutra.Cardano.Transaction.Certificate.StakeVoteRegDelegCert{
           deposit: %{"lovelace" => 2_000_000},
-          drep: %Certificate.Drep{drep_value: nil, drep_type: 2},
-          pool_keyhash: "9ED23A4A839826D08D7D10F277A91F0E2373EA90251FB33664D52C94",
+          drep: %Sutra.Cardano.Transaction.Certificate.Drep{drep_type: 2, drep_value: nil},
+          pool_keyhash: "9ed23a4a839826d08d7d10f277a91f0e2373ea90251fb33664d52c94",
           stake_credential: %Sutra.Cardano.Address.Credential{
-            hash: "5064B671634D14CB8D543E71DD8EB437A47EFB47B0B22882866C420D",
-            credential_type: :vkey
+            credential_type: :vkey,
+            hash: "5064b671634d14cb8d543e71dd8eb437a47efb47b0b22882866c420d"
           }
         }
       ],
+      collateral: nil,
+      collateral_return: nil,
+      current_treasury_value: nil,
       fee: %{"lovelace" => 198_765},
+      inputs: [
+        %Sutra.Cardano.Transaction.OutputReference{
+          output_index: 0,
+          transaction_id: "7604e9b3b02f1c67955cacc6049fd70f69547a09ad347c85052aec5d7fd07195"
+        }
+      ],
+      mint: nil,
+      network_id: nil,
       outputs: [
-        %Transaction.Output{
-          reference_script: nil,
-          datum: %Transaction.Datum{kind: :no_datum, value: nil},
-          value: %{
-            "0D26F1DECEE50C24498585CB9CBA2B6AA629C83023B327BB10FB67B9" => %{
-              "4D696E745769746864726177" => 43
-            },
-            "1C05CAED08DDD5C9F233F4CB497EEB6E5F685E8E7B842B08897D1DFE" => %{
-              "4D794D696E746564546F6B656E" => 1
-            },
-            "22691D3D969ECF5802226290C2FB98E2BC08522D5B726C1F5F400105" => %{"54657374" => 21},
-            "4613DAC79011EBFA5D5837E32B8A8DB70B57CBD7FFD89BA108AF81AB" => %{
-              "4346544F4B454E" => 276
-            },
-            "501B8B9DCE8D7C1247A14BB69D416C621267DAA72EBD6C8194293192" => %{
-              "4D794D696E746564546F6B656E" => 1
-            },
-            "61D96F9000BF5D325DA17258EE0693E19D441CECEE64825289EE6B7D" => %{
-              "4D696E745769746864726177" => 33
-            },
-            "665D4DBEA856001B880D5749E94384CC486D8C4EE99540D2F65D1570" => %{
-              "4D794D696E746564546F6B656E" => 1
-            },
-            "CAC67DD80F706E084B2AAC605288B2FF793475EA43B2313E1ED384AB" => %{
-              "4275726E61626C65546F6B656E506C75747573" => 1,
-              "54657374" => 42,
-              "ACCBFB633F637E3BB1ABEE40C9539D1EFFD742CD2716B3B1DB9DE3AAF3F37794" => 1
-            },
-            "EB8B660CF939281C277264389C4086E7C79BAF78E08D0C48668420AB" => %{
-              "4D794D696E746564546F6B656E" => 1
-            },
-            "EF6ED47A6917A3CBBEB46561E8853DA969343794D66128598A34AF2C" => %{
-              "4275726E61626C65546F6B656E" => 144,
-              "4275726E61626C65546F6B656E32" => 414,
-              "ACCBFB633F637E3BB1ABEE40C9539D1EFFD742CD2716B3B1DB9DE3AAF3F37794" => 1
-            },
-            "F654F6A31F6C4CC2C39A169F2C022404AA9F19D43137B0448B219A3E" => %{"54657374" => 101},
-            "lovelace" => 7_110_331_950
-          },
+        %Sutra.Cardano.Transaction.Output{
           address: %Sutra.Cardano.Address{
-            stake_credential: %Sutra.Cardano.Address.Credential{
-              hash: "5064b671634d14cb8d543e71dd8eb437a47efb47b0b22882866c420d",
-              credential_type: :vkey
-            },
-            payment_credential: %Sutra.Cardano.Address.Credential{
-              hash: "9fc430ea1f3adc20eebb813b2649e85c934ea5bc13d7b7fbe2b24e50",
-              credential_type: :vkey
-            },
             address_type: :shelley,
-            network: :testnet
+            network: :testnet,
+            payment_credential: %Sutra.Cardano.Address.Credential{
+              credential_type: :vkey,
+              hash: "9fc430ea1f3adc20eebb813b2649e85c934ea5bc13d7b7fbe2b24e50"
+            },
+            stake_credential: %Sutra.Cardano.Address.Credential{
+              credential_type: :vkey,
+              hash: "5064b671634d14cb8d543e71dd8eb437a47efb47b0b22882866c420d"
+            }
+          },
+          datum: %Sutra.Cardano.Transaction.Datum{kind: :no_datum, value: nil},
+          datum_raw: nil,
+          reference_script: nil,
+          value: %{
+            "lovelace" => 7_110_331_950,
+            "0d26f1decee50c24498585cb9cba2b6aa629c83023b327bb10fb67b9" => %{
+              "4d696e745769746864726177" => 43
+            },
+            "1c05caed08ddd5c9f233f4cb497eeb6e5f685e8e7b842b08897d1dfe" => %{
+              "4d794d696e746564546f6b656e" => 1
+            },
+            "22691d3d969ecf5802226290c2fb98e2bc08522d5b726c1f5f400105" => %{"54657374" => 21},
+            "4613dac79011ebfa5d5837e32b8a8db70b57cbd7ffd89ba108af81ab" => %{
+              "4346544f4b454e" => 276
+            },
+            "501b8b9dce8d7c1247a14bb69d416c621267daa72ebd6c8194293192" => %{
+              "4d794d696e746564546f6b656e" => 1
+            },
+            "61d96f9000bf5d325da17258ee0693e19d441cecee64825289ee6b7d" => %{
+              "4d696e745769746864726177" => 33
+            },
+            "665d4dbea856001b880d5749e94384cc486d8c4ee99540d2f65d1570" => %{
+              "4d794d696e746564546f6b656e" => 1
+            },
+            "cac67dd80f706e084b2aac605288b2ff793475ea43b2313e1ed384ab" => %{
+              "4275726e61626c65546f6b656e506c75747573" => 1,
+              "54657374" => 42,
+              "accbfb633f637e3bb1abee40c9539d1effd742cd2716b3b1db9de3aaf3f37794" => 1
+            },
+            "eb8b660cf939281c277264389c4086e7c79baf78e08d0c48668420ab" => %{
+              "4d794d696e746564546f6b656e" => 1
+            },
+            "ef6ed47a6917a3cbbeb46561e8853da969343794d66128598a34af2c" => %{
+              "4275726e61626c65546f6b656e" => 144,
+              "4275726e61626c65546f6b656e32" => 414,
+              "accbfb633f637e3bb1abee40c9539d1effd742cd2716b3b1db9de3aaf3f37794" => 1
+            },
+            "f654f6a31f6c4cc2c39a169f2c022404aa9f19d43137b0448b219a3e" => %{"54657374" => 101}
           }
         }
       ],
-      inputs: [
-        %Transaction.OutputReference{
-          output_index: 0,
-          transaction_id: "7604E9B3B02F1C67955CACC6049FD70F69547A09AD347C85052AEC5D7FD07195"
-        }
-      ]
+      proposal_procedures: nil,
+      reference_inputs: nil,
+      required_signers: nil,
+      script_data_hash: nil,
+      total_collateral: nil,
+      treasury_donation: nil,
+      ttl: nil,
+      update: nil,
+      validaty_interval_start: nil,
+      voting_procedures: nil,
+      withdrawals: nil
     }
   end
 
@@ -525,9 +609,9 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
       certificates: [
         %Certificate.StakeVoteDelegCert{
           drep: %Certificate.Drep{drep_value: nil, drep_type: 2},
-          pool_keyhash: "9ED23A4A839826D08D7D10F277A91F0E2373EA90251FB33664D52C94",
+          pool_keyhash: "9ed23a4a839826d08d7d10f277a91f0e2373ea90251fb33664d52c94",
           stake_credential: %Sutra.Cardano.Address.Credential{
-            hash: "5064B671634D14CB8D543E71DD8EB437A47EFB47B0B22882866C420D",
+            hash: "5064b671634d14cb8d543e71dd8eb437a47efb47b0b22882866c420d",
             credential_type: :vkey
           }
         }
@@ -538,40 +622,40 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
           reference_script: nil,
           datum: %Transaction.Datum{kind: :no_datum, value: nil},
           value: %{
-            "0D26F1DECEE50C24498585CB9CBA2B6AA629C83023B327BB10FB67B9" => %{
-              "4D696E745769746864726177" => 43
+            "lovelace" => 7_112_901_903,
+            "0d26f1decee50c24498585cb9cba2b6aa629c83023b327bb10fb67b9" => %{
+              "4d696e745769746864726177" => 43
             },
-            "1C05CAED08DDD5C9F233F4CB497EEB6E5F685E8E7B842B08897D1DFE" => %{
-              "4D794D696E746564546F6B656E" => 1
+            "1c05caed08ddd5c9f233f4cb497eeb6e5f685e8e7b842b08897d1dfe" => %{
+              "4d794d696e746564546f6b656e" => 1
             },
-            "22691D3D969ECF5802226290C2FB98E2BC08522D5B726C1F5F400105" => %{"54657374" => 21},
-            "4613DAC79011EBFA5D5837E32B8A8DB70B57CBD7FFD89BA108AF81AB" => %{
-              "4346544F4B454E" => 276
+            "22691d3d969ecf5802226290c2fb98e2bc08522d5b726c1f5f400105" => %{"54657374" => 21},
+            "4613dac79011ebfa5d5837e32b8a8db70b57cbd7ffd89ba108af81ab" => %{
+              "4346544f4b454e" => 276
             },
-            "501B8B9DCE8D7C1247A14BB69D416C621267DAA72EBD6C8194293192" => %{
-              "4D794D696E746564546F6B656E" => 1
+            "501b8b9dce8d7c1247a14bb69d416c621267daa72ebd6c8194293192" => %{
+              "4d794d696e746564546f6b656e" => 1
             },
-            "61D96F9000BF5D325DA17258EE0693E19D441CECEE64825289EE6B7D" => %{
-              "4D696E745769746864726177" => 33
+            "61d96f9000bf5d325da17258ee0693e19d441cecee64825289ee6b7d" => %{
+              "4d696e745769746864726177" => 33
             },
-            "665D4DBEA856001B880D5749E94384CC486D8C4EE99540D2F65D1570" => %{
-              "4D794D696E746564546F6B656E" => 1
+            "665d4dbea856001b880d5749e94384cc486d8c4ee99540d2f65d1570" => %{
+              "4d794d696e746564546f6b656e" => 1
             },
-            "CAC67DD80F706E084B2AAC605288B2FF793475EA43B2313E1ED384AB" => %{
-              "4275726E61626C65546F6B656E506C75747573" => 1,
+            "cac67dd80f706e084b2aac605288b2ff793475ea43b2313e1ed384ab" => %{
+              "4275726e61626c65546f6b656e506c75747573" => 1,
               "54657374" => 42,
-              "ACCBFB633F637E3BB1ABEE40C9539D1EFFD742CD2716B3B1DB9DE3AAF3F37794" => 1
+              "accbfb633f637e3bb1abee40c9539d1effd742cd2716b3b1db9de3aaf3f37794" => 1
             },
-            "EB8B660CF939281C277264389C4086E7C79BAF78E08D0C48668420AB" => %{
-              "4D794D696E746564546F6B656E" => 1
+            "eb8b660cf939281c277264389c4086e7c79baf78e08d0c48668420ab" => %{
+              "4d794d696e746564546f6b656e" => 1
             },
-            "EF6ED47A6917A3CBBEB46561E8853DA969343794D66128598A34AF2C" => %{
-              "4275726E61626C65546F6B656E" => 144,
-              "4275726E61626C65546F6B656E32" => 414,
-              "ACCBFB633F637E3BB1ABEE40C9539D1EFFD742CD2716B3B1DB9DE3AAF3F37794" => 1
+            "ef6ed47a6917a3cbbeb46561e8853da969343794d66128598a34af2c" => %{
+              "4275726e61626c65546f6b656e" => 144,
+              "4275726e61626c65546f6b656e32" => 414,
+              "accbfb633f637e3bb1abee40c9539d1effd742cd2716b3b1db9de3aaf3f37794" => 1
             },
-            "F654F6A31F6C4CC2C39A169F2C022404AA9F19D43137B0448B219A3E" => %{"54657374" => 101},
-            "lovelace" => 7_112_901_903
+            "f654f6a31f6c4cc2c39a169f2c022404aa9f19d43137b0448b219a3e" => %{"54657374" => 101}
           },
           address: %Sutra.Cardano.Address{
             stake_credential: %Sutra.Cardano.Address.Credential{
@@ -590,7 +674,7 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
       inputs: [
         %Transaction.OutputReference{
           output_index: 0,
-          transaction_id: "37E9AA9B258DEB306431E09A862F86CF3D59085EA025BF27A3064E06D0858A77"
+          transaction_id: "37e9aa9b258deb306431e09a862f86cf3d59085ea025bf27a3064e06d0858a77"
         }
       ]
     }
@@ -623,78 +707,96 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
   # For TxId: a48080fccb70399e145c7aa556b4e8abbed9fa588ec0cde0a29f471317ac9f97 (Preprod)
 
   def body_a4809f97 do
-    %TxBody{
+    %Sutra.Cardano.Transaction.TxBody{
+      auxiliary_data_hash: nil,
       certificates: [
-        %Certificate.VoteRegDelegCert{
+        %Sutra.Cardano.Transaction.Certificate.VoteRegDelegCert{
           deposit: %{"lovelace" => 2_000_000},
-          drep: %Certificate.Drep{drep_value: nil, drep_type: 2},
+          drep: %Sutra.Cardano.Transaction.Certificate.Drep{drep_type: 2, drep_value: nil},
           stake_credential: %Sutra.Cardano.Address.Credential{
-            hash: "5064B671634D14CB8D543E71DD8EB437A47EFB47B0B22882866C420D",
-            credential_type: :vkey
+            credential_type: :vkey,
+            hash: "5064b671634d14cb8d543e71dd8eb437a47efb47b0b22882866c420d"
           }
         }
       ],
+      collateral: nil,
+      collateral_return: nil,
+      current_treasury_value: nil,
       fee: %{"lovelace" => 197_445},
+      inputs: [
+        %Sutra.Cardano.Transaction.OutputReference{
+          output_index: 0,
+          transaction_id: "130663f385984456f5d3f9b1c7eda359f942f325a30218cadeb23413ddaaf6b8"
+        }
+      ],
+      mint: nil,
+      network_id: nil,
       outputs: [
-        %Transaction.Output{
-          reference_script: nil,
-          datum: %Transaction.Datum{kind: :no_datum, value: nil},
-          value: %{
-            "0D26F1DECEE50C24498585CB9CBA2B6AA629C83023B327BB10FB67B9" => %{
-              "4D696E745769746864726177" => 43
-            },
-            "1C05CAED08DDD5C9F233F4CB497EEB6E5F685E8E7B842B08897D1DFE" => %{
-              "4D794D696E746564546F6B656E" => 1
-            },
-            "22691D3D969ECF5802226290C2FB98E2BC08522D5B726C1F5F400105" => %{"54657374" => 21},
-            "4613DAC79011EBFA5D5837E32B8A8DB70B57CBD7FFD89BA108AF81AB" => %{
-              "4346544F4B454E" => 276
-            },
-            "501B8B9DCE8D7C1247A14BB69D416C621267DAA72EBD6C8194293192" => %{
-              "4D794D696E746564546F6B656E" => 1
-            },
-            "61D96F9000BF5D325DA17258EE0693E19D441CECEE64825289EE6B7D" => %{
-              "4D696E745769746864726177" => 33
-            },
-            "665D4DBEA856001B880D5749E94384CC486D8C4EE99540D2F65D1570" => %{
-              "4D794D696E746564546F6B656E" => 1
-            },
-            "CAC67DD80F706E084B2AAC605288B2FF793475EA43B2313E1ED384AB" => %{
-              "4275726E61626C65546F6B656E506C75747573" => 1,
-              "54657374" => 42,
-              "ACCBFB633F637E3BB1ABEE40C9539D1EFFD742CD2716B3B1DB9DE3AAF3F37794" => 1
-            },
-            "EB8B660CF939281C277264389C4086E7C79BAF78E08D0C48668420AB" => %{
-              "4D794D696E746564546F6B656E" => 1
-            },
-            "EF6ED47A6917A3CBBEB46561E8853DA969343794D66128598A34AF2C" => %{
-              "4275726E61626C65546F6B656E" => 144,
-              "4275726E61626C65546F6B656E32" => 414,
-              "ACCBFB633F637E3BB1ABEE40C9539D1EFFD742CD2716B3B1DB9DE3AAF3F37794" => 1
-            },
-            "F654F6A31F6C4CC2C39A169F2C022404AA9F19D43137B0448B219A3E" => %{"54657374" => 101},
-            "lovelace" => 7_110_728_072
-          },
+        %Sutra.Cardano.Transaction.Output{
           address: %Sutra.Cardano.Address{
-            stake_credential: %Sutra.Cardano.Address.Credential{
-              hash: "5064b671634d14cb8d543e71dd8eb437a47efb47b0b22882866c420d",
-              credential_type: :vkey
-            },
-            payment_credential: %Sutra.Cardano.Address.Credential{
-              hash: "9fc430ea1f3adc20eebb813b2649e85c934ea5bc13d7b7fbe2b24e50",
-              credential_type: :vkey
-            },
             address_type: :shelley,
-            network: :testnet
+            network: :testnet,
+            payment_credential: %Sutra.Cardano.Address.Credential{
+              credential_type: :vkey,
+              hash: "9fc430ea1f3adc20eebb813b2649e85c934ea5bc13d7b7fbe2b24e50"
+            },
+            stake_credential: %Sutra.Cardano.Address.Credential{
+              credential_type: :vkey,
+              hash: "5064b671634d14cb8d543e71dd8eb437a47efb47b0b22882866c420d"
+            }
+          },
+          datum: %Sutra.Cardano.Transaction.Datum{kind: :no_datum, value: nil},
+          datum_raw: nil,
+          reference_script: nil,
+          value: %{
+            "lovelace" => 7_110_728_072,
+            "0d26f1decee50c24498585cb9cba2b6aa629c83023b327bb10fb67b9" => %{
+              "4d696e745769746864726177" => 43
+            },
+            "1c05caed08ddd5c9f233f4cb497eeb6e5f685e8e7b842b08897d1dfe" => %{
+              "4d794d696e746564546f6b656e" => 1
+            },
+            "22691d3d969ecf5802226290c2fb98e2bc08522d5b726c1f5f400105" => %{"54657374" => 21},
+            "4613dac79011ebfa5d5837e32b8a8db70b57cbd7ffd89ba108af81ab" => %{
+              "4346544f4b454e" => 276
+            },
+            "501b8b9dce8d7c1247a14bb69d416c621267daa72ebd6c8194293192" => %{
+              "4d794d696e746564546f6b656e" => 1
+            },
+            "61d96f9000bf5d325da17258ee0693e19d441cecee64825289ee6b7d" => %{
+              "4d696e745769746864726177" => 33
+            },
+            "665d4dbea856001b880d5749e94384cc486d8c4ee99540d2f65d1570" => %{
+              "4d794d696e746564546f6b656e" => 1
+            },
+            "cac67dd80f706e084b2aac605288b2ff793475ea43b2313e1ed384ab" => %{
+              "4275726e61626c65546f6b656e506c75747573" => 1,
+              "54657374" => 42,
+              "accbfb633f637e3bb1abee40c9539d1effd742cd2716b3b1db9de3aaf3f37794" => 1
+            },
+            "eb8b660cf939281c277264389c4086e7c79baf78e08d0c48668420ab" => %{
+              "4d794d696e746564546f6b656e" => 1
+            },
+            "ef6ed47a6917a3cbbeb46561e8853da969343794d66128598a34af2c" => %{
+              "4275726e61626c65546f6b656e" => 144,
+              "4275726e61626c65546f6b656e32" => 414,
+              "accbfb633f637e3bb1abee40c9539d1effd742cd2716b3b1db9de3aaf3f37794" => 1
+            },
+            "f654f6a31f6c4cc2c39a169f2c022404aa9f19d43137b0448b219a3e" => %{"54657374" => 101}
           }
         }
       ],
-      inputs: [
-        %Transaction.OutputReference{
-          output_index: 0,
-          transaction_id: "130663F385984456F5D3F9B1C7EDA359F942F325A30218CADEB23413DDAAF6B8"
-        }
-      ]
+      proposal_procedures: nil,
+      reference_inputs: nil,
+      required_signers: nil,
+      script_data_hash: nil,
+      total_collateral: nil,
+      treasury_donation: nil,
+      ttl: nil,
+      update: nil,
+      validaty_interval_start: nil,
+      voting_procedures: nil,
+      withdrawals: nil
     }
   end
 
@@ -725,60 +827,78 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
   # For TxId: 9271711c197696af2f16070071927e2e20a6354f1240b2aa39ccd2f22d8b4dd1 (Preprod)
 
   def body_92714dd1 do
-    %TxBody{
+    %Sutra.Cardano.Transaction.TxBody{
+      auxiliary_data_hash: nil,
       certificates: [
-        %Certificate.VoteDelegCert{
-          drep: %Certificate.Drep{drep_value: nil, drep_type: 3},
+        %Sutra.Cardano.Transaction.Certificate.VoteDelegCert{
+          drep: %Sutra.Cardano.Transaction.Certificate.Drep{drep_type: 3, drep_value: nil},
           stake_credential: %Sutra.Cardano.Address.Credential{
-            hash: "1C66AFB2B2FFF29FE041F9A870EA617D926D1F6C558DA5941819FBDD",
-            credential_type: :vkey
+            credential_type: :vkey,
+            hash: "1c66afb2b2fff29fe041f9a870ea617d926d1f6c558da5941819fbdd"
           }
         }
       ],
-      ttl: nil,
+      collateral: nil,
+      collateral_return: nil,
+      current_treasury_value: nil,
       fee: %{"lovelace" => 174_169},
-      outputs: [
-        %Transaction.Output{
-          reference_script: nil,
-          datum: %Transaction.Datum{kind: :no_datum, value: nil},
-          value: %{"lovelace" => 1_000_000},
-          address: %Sutra.Cardano.Address{
-            stake_credential: %Sutra.Cardano.Address.Credential{
-              hash: "1c66afb2b2fff29fe041f9a870ea617d926d1f6c558da5941819fbdd",
-              credential_type: :vkey
-            },
-            payment_credential: %Sutra.Cardano.Address.Credential{
-              hash: "c7ae56052edfd929202f5146f0fa2d3583a79edb1485f05ff623cbe2",
-              credential_type: :vkey
-            },
-            address_type: :shelley,
-            network: :testnet
-          }
-        },
-        %Transaction.Output{
-          reference_script: nil,
-          datum: %Transaction.Datum{kind: :no_datum, value: nil},
-          value: %{"lovelace" => 8_657_514},
-          address: %Sutra.Cardano.Address{
-            stake_credential: %Sutra.Cardano.Address.Credential{
-              hash: "1c66afb2b2fff29fe041f9a870ea617d926d1f6c558da5941819fbdd",
-              credential_type: :vkey
-            },
-            payment_credential: %Sutra.Cardano.Address.Credential{
-              hash: "998d4e8fe3a8b3193ce56407f0803fe0801c7e5765117548a629f660",
-              credential_type: :vkey
-            },
-            address_type: :shelley,
-            network: :testnet
-          }
+      inputs: [
+        %Sutra.Cardano.Transaction.OutputReference{
+          output_index: 1,
+          transaction_id: "fc3cb52653c3f2e0b983ebc10b7634a88816aa1ea01d68aacc40c4b08a669a84"
         }
       ],
-      inputs: [
-        %Transaction.OutputReference{
-          output_index: 1,
-          transaction_id: "FC3CB52653C3F2E0B983EBC10B7634A88816AA1EA01D68AACC40C4B08A669A84"
+      mint: nil,
+      network_id: nil,
+      outputs: [
+        %Sutra.Cardano.Transaction.Output{
+          address: %Sutra.Cardano.Address{
+            address_type: :shelley,
+            network: :testnet,
+            payment_credential: %Sutra.Cardano.Address.Credential{
+              credential_type: :vkey,
+              hash: "c7ae56052edfd929202f5146f0fa2d3583a79edb1485f05ff623cbe2"
+            },
+            stake_credential: %Sutra.Cardano.Address.Credential{
+              credential_type: :vkey,
+              hash: "1c66afb2b2fff29fe041f9a870ea617d926d1f6c558da5941819fbdd"
+            }
+          },
+          datum: %Sutra.Cardano.Transaction.Datum{kind: :no_datum, value: nil},
+          datum_raw: nil,
+          reference_script: nil,
+          value: %{"lovelace" => 1_000_000}
+        },
+        %Sutra.Cardano.Transaction.Output{
+          address: %Sutra.Cardano.Address{
+            address_type: :shelley,
+            network: :testnet,
+            payment_credential: %Sutra.Cardano.Address.Credential{
+              credential_type: :vkey,
+              hash: "998d4e8fe3a8b3193ce56407f0803fe0801c7e5765117548a629f660"
+            },
+            stake_credential: %Sutra.Cardano.Address.Credential{
+              credential_type: :vkey,
+              hash: "1c66afb2b2fff29fe041f9a870ea617d926d1f6c558da5941819fbdd"
+            }
+          },
+          datum: %Sutra.Cardano.Transaction.Datum{kind: :no_datum, value: nil},
+          datum_raw: nil,
+          reference_script: nil,
+          value: %{"lovelace" => 8_657_514}
         }
-      ]
+      ],
+      proposal_procedures: nil,
+      reference_inputs: nil,
+      required_signers: nil,
+      script_data_hash: nil,
+      total_collateral: nil,
+      treasury_donation: nil,
+      ttl: nil,
+      update: nil,
+      validaty_interval_start: nil,
+      voting_procedures: nil,
+      withdrawals: nil
     }
   end
 
@@ -814,7 +934,7 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
           anchor: nil,
           deposit: %{"lovelace" => 500_000_000},
           drep_credential: %Sutra.Cardano.Address.Credential{
-            hash: "EC47423FF6F9114A36FFFCFADA2EA1956028EF9FF287CA30F4A860C7",
+            hash: "ec47423ff6f9114a36fffcfada2ea1956028ef9ff287ca30f4a860c7",
             credential_type: :vkey
           }
         }
@@ -843,7 +963,7 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
       inputs: [
         %Transaction.OutputReference{
           output_index: 0,
-          transaction_id: "9E8EF69967AE9FB1234D4210453DE1C8A5882952EE7FC0B90877AF1368239327"
+          transaction_id: "9e8ef69967ae9fb1234d4210453de1c8a5882952ee7fc0b90877af1368239327"
         }
       ]
     }
@@ -876,246 +996,275 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
   # For TxId: 4ab1cfa507e15828a4eb4ccd004635042c932b29ac97aec72ff409c50fd8f4ed  (preprod)
 
   def body_4ab1f4ed do
-    %Transaction.TxBody{
-      total_collateral: %{"lovelace" => 5_000_000},
-      collateral_return: %Transaction.Output{
-        reference_script: nil,
-        datum: %Transaction.Datum{kind: :no_datum, value: nil},
-        value: %{
-          "0D26F1DECEE50C24498585CB9CBA2B6AA629C83023B327BB10FB67B9" => %{
-            "4D696E745769746864726177" => 43
-          },
-          "1C05CAED08DDD5C9F233F4CB497EEB6E5F685E8E7B842B08897D1DFE" => %{
-            "4D794D696E746564546F6B656E" => 1
-          },
-          "22691D3D969ECF5802226290C2FB98E2BC08522D5B726C1F5F400105" => %{"54657374" => 21},
-          "4613DAC79011EBFA5D5837E32B8A8DB70B57CBD7FFD89BA108AF81AB" => %{
-            "4346544F4B454E" => 276
-          },
-          "501B8B9DCE8D7C1247A14BB69D416C621267DAA72EBD6C8194293192" => %{
-            "4D794D696E746564546F6B656E" => 1
-          },
-          "61D96F9000BF5D325DA17258EE0693E19D441CECEE64825289EE6B7D" => %{
-            "4D696E745769746864726177" => 33
-          },
-          "665D4DBEA856001B880D5749E94384CC486D8C4EE99540D2F65D1570" => %{
-            "4D794D696E746564546F6B656E" => 1
-          },
-          "CAC67DD80F706E084B2AAC605288B2FF793475EA43B2313E1ED384AB" => %{
-            "4275726E61626C65546F6B656E506C75747573" => 1,
-            "54657374" => 42,
-            "ACCBFB633F637E3BB1ABEE40C9539D1EFFD742CD2716B3B1DB9DE3AAF3F37794" => 1
-          },
-          "EB8B660CF939281C277264389C4086E7C79BAF78E08D0C48668420AB" => %{
-            "4D794D696E746564546F6B656E" => 1
-          },
-          "EF6ED47A6917A3CBBEB46561E8853DA969343794D66128598A34AF2C" => %{
-            "4275726E61626C65546F6B656E" => 145,
-            "4275726E61626C65546F6B656E32" => 417,
-            "ACCBFB633F637E3BB1ABEE40C9539D1EFFD742CD2716B3B1DB9DE3AAF3F37794" => 1
-          },
-          "F654F6A31F6C4CC2C39A169F2C022404AA9F19D43137B0448B219A3E" => %{"54657374" => 102},
-          "lovelace" => 6_664_066_838
-        },
-        address: %Sutra.Cardano.Address{
-          stake_credential: %Sutra.Cardano.Address.Credential{
-            hash: "5064b671634d14cb8d543e71dd8eb437a47efb47b0b22882866c420d",
-            credential_type: :vkey
-          },
-          payment_credential: %Sutra.Cardano.Address.Credential{
-            hash: "9fc430ea1f3adc20eebb813b2649e85c934ea5bc13d7b7fbe2b24e50",
-            credential_type: :vkey
-          },
-          address_type: :shelley,
-          network: :testnet
-        }
-      },
-      collateral: [
-        %Transaction.OutputReference{
-          output_index: 0,
-          transaction_id: "4EDEDD73B30FC7C7140BB79ECC072CE800617356809850968E4E5EB2699A465E"
-        }
-      ],
-      script_data_hash: "25757B59C698464BACCF51976CDC4BCC3E53116CEF264082EC8DF08E3ED1994A",
+    %Sutra.Cardano.Transaction.TxBody{
+      auxiliary_data_hash: nil,
       certificates: [
-        %Certificate.UnRegDrepCert{
+        %Sutra.Cardano.Transaction.Certificate.UnRegDrepCert{
           deposit: %{"lovelace" => 500_000_000},
           drep_credential: %Sutra.Cardano.Address.Credential{
-            hash: "99E21871B90D685CB26C4171169A54E5ED4F26F39DFC161B35FB8112",
-            credential_type: :script
+            credential_type: :script,
+            hash: "99e21871b90d685cb26c4171169a54e5ed4f26f39dfc161b35fb8112"
           }
         }
       ],
-      ttl: nil,
-      fee: %{"lovelace" => 230_512},
-      outputs: [
-        %Transaction.Output{
-          reference_script: nil,
-          datum: %Transaction.Datum{kind: :no_datum, value: nil},
-          value: %{
-            "0D26F1DECEE50C24498585CB9CBA2B6AA629C83023B327BB10FB67B9" => %{
-              "4D696E745769746864726177" => 43
-            },
-            "1C05CAED08DDD5C9F233F4CB497EEB6E5F685E8E7B842B08897D1DFE" => %{
-              "4D794D696E746564546F6B656E" => 1
-            },
-            "22691D3D969ECF5802226290C2FB98E2BC08522D5B726C1F5F400105" => %{"54657374" => 21},
-            "4613DAC79011EBFA5D5837E32B8A8DB70B57CBD7FFD89BA108AF81AB" => %{
-              "4346544F4B454E" => 276
-            },
-            "501B8B9DCE8D7C1247A14BB69D416C621267DAA72EBD6C8194293192" => %{
-              "4D794D696E746564546F6B656E" => 1
-            },
-            "61D96F9000BF5D325DA17258EE0693E19D441CECEE64825289EE6B7D" => %{
-              "4D696E745769746864726177" => 33
-            },
-            "665D4DBEA856001B880D5749E94384CC486D8C4EE99540D2F65D1570" => %{
-              "4D794D696E746564546F6B656E" => 1
-            },
-            "CAC67DD80F706E084B2AAC605288B2FF793475EA43B2313E1ED384AB" => %{
-              "4275726E61626C65546F6B656E506C75747573" => 1,
-              "54657374" => 42,
-              "ACCBFB633F637E3BB1ABEE40C9539D1EFFD742CD2716B3B1DB9DE3AAF3F37794" => 1
-            },
-            "EB8B660CF939281C277264389C4086E7C79BAF78E08D0C48668420AB" => %{
-              "4D794D696E746564546F6B656E" => 1
-            },
-            "EF6ED47A6917A3CBBEB46561E8853DA969343794D66128598A34AF2C" => %{
-              "4275726E61626C65546F6B656E" => 145,
-              "4275726E61626C65546F6B656E32" => 417,
-              "ACCBFB633F637E3BB1ABEE40C9539D1EFFD742CD2716B3B1DB9DE3AAF3F37794" => 1
-            },
-            "F654F6A31F6C4CC2C39A169F2C022404AA9F19D43137B0448B219A3E" => %{"54657374" => 102},
-            "lovelace" => 7_168_836_326
-          },
-          address: %Sutra.Cardano.Address{
-            stake_credential: %Sutra.Cardano.Address.Credential{
-              hash: "5064b671634d14cb8d543e71dd8eb437a47efb47b0b22882866c420d",
-              credential_type: :vkey
-            },
-            payment_credential: %Sutra.Cardano.Address.Credential{
-              hash: "9fc430ea1f3adc20eebb813b2649e85c934ea5bc13d7b7fbe2b24e50",
-              credential_type: :vkey
-            },
-            address_type: :shelley,
-            network: :testnet
-          }
-        }
-      ],
-      inputs: [
-        %Transaction.OutputReference{
+      collateral: [
+        %Sutra.Cardano.Transaction.OutputReference{
           output_index: 0,
-          transaction_id: "4EDEDD73B30FC7C7140BB79ECC072CE800617356809850968E4E5EB2699A465E"
+          transaction_id: "4ededd73b30fc7c7140bb79ecc072ce800617356809850968e4e5eb2699a465e"
         }
-      ]
+      ],
+      collateral_return: %Sutra.Cardano.Transaction.Output{
+        address: %Sutra.Cardano.Address{
+          address_type: :shelley,
+          network: :testnet,
+          payment_credential: %Sutra.Cardano.Address.Credential{
+            credential_type: :vkey,
+            hash: "9fc430ea1f3adc20eebb813b2649e85c934ea5bc13d7b7fbe2b24e50"
+          },
+          stake_credential: %Sutra.Cardano.Address.Credential{
+            credential_type: :vkey,
+            hash: "5064b671634d14cb8d543e71dd8eb437a47efb47b0b22882866c420d"
+          }
+        },
+        datum: %Sutra.Cardano.Transaction.Datum{kind: :no_datum, value: nil},
+        datum_raw: nil,
+        reference_script: nil,
+        value: %{
+          "lovelace" => 6_664_066_838,
+          "0d26f1decee50c24498585cb9cba2b6aa629c83023b327bb10fb67b9" => %{
+            "4d696e745769746864726177" => 43
+          },
+          "1c05caed08ddd5c9f233f4cb497eeb6e5f685e8e7b842b08897d1dfe" => %{
+            "4d794d696e746564546f6b656e" => 1
+          },
+          "22691d3d969ecf5802226290c2fb98e2bc08522d5b726c1f5f400105" => %{"54657374" => 21},
+          "4613dac79011ebfa5d5837e32b8a8db70b57cbd7ffd89ba108af81ab" => %{"4346544f4b454e" => 276},
+          "501b8b9dce8d7c1247a14bb69d416c621267daa72ebd6c8194293192" => %{
+            "4d794d696e746564546f6b656e" => 1
+          },
+          "61d96f9000bf5d325da17258ee0693e19d441cecee64825289ee6b7d" => %{
+            "4d696e745769746864726177" => 33
+          },
+          "665d4dbea856001b880d5749e94384cc486d8c4ee99540d2f65d1570" => %{
+            "4d794d696e746564546f6b656e" => 1
+          },
+          "cac67dd80f706e084b2aac605288b2ff793475ea43b2313e1ed384ab" => %{
+            "4275726e61626c65546f6b656e506c75747573" => 1,
+            "54657374" => 42,
+            "accbfb633f637e3bb1abee40c9539d1effd742cd2716b3b1db9de3aaf3f37794" => 1
+          },
+          "eb8b660cf939281c277264389c4086e7c79baf78e08d0c48668420ab" => %{
+            "4d794d696e746564546f6b656e" => 1
+          },
+          "ef6ed47a6917a3cbbeb46561e8853da969343794d66128598a34af2c" => %{
+            "4275726e61626c65546f6b656e" => 145,
+            "4275726e61626c65546f6b656e32" => 417,
+            "accbfb633f637e3bb1abee40c9539d1effd742cd2716b3b1db9de3aaf3f37794" => 1
+          },
+          "f654f6a31f6c4cc2c39a169f2c022404aa9f19d43137b0448b219a3e" => %{"54657374" => 102}
+        }
+      },
+      current_treasury_value: nil,
+      fee: %{"lovelace" => 230_512},
+      inputs: [
+        %Sutra.Cardano.Transaction.OutputReference{
+          output_index: 0,
+          transaction_id: "4ededd73b30fc7c7140bb79ecc072ce800617356809850968e4e5eb2699a465e"
+        }
+      ],
+      mint: nil,
+      network_id: nil,
+      outputs: [
+        %Sutra.Cardano.Transaction.Output{
+          address: %Sutra.Cardano.Address{
+            address_type: :shelley,
+            network: :testnet,
+            payment_credential: %Sutra.Cardano.Address.Credential{
+              credential_type: :vkey,
+              hash: "9fc430ea1f3adc20eebb813b2649e85c934ea5bc13d7b7fbe2b24e50"
+            },
+            stake_credential: %Sutra.Cardano.Address.Credential{
+              credential_type: :vkey,
+              hash: "5064b671634d14cb8d543e71dd8eb437a47efb47b0b22882866c420d"
+            }
+          },
+          datum: %Sutra.Cardano.Transaction.Datum{kind: :no_datum, value: nil},
+          datum_raw: nil,
+          reference_script: nil,
+          value: %{
+            "lovelace" => 7_168_836_326,
+            "0d26f1decee50c24498585cb9cba2b6aa629c83023b327bb10fb67b9" => %{
+              "4d696e745769746864726177" => 43
+            },
+            "1c05caed08ddd5c9f233f4cb497eeb6e5f685e8e7b842b08897d1dfe" => %{
+              "4d794d696e746564546f6b656e" => 1
+            },
+            "22691d3d969ecf5802226290c2fb98e2bc08522d5b726c1f5f400105" => %{"54657374" => 21},
+            "4613dac79011ebfa5d5837e32b8a8db70b57cbd7ffd89ba108af81ab" => %{
+              "4346544f4b454e" => 276
+            },
+            "501b8b9dce8d7c1247a14bb69d416c621267daa72ebd6c8194293192" => %{
+              "4d794d696e746564546f6b656e" => 1
+            },
+            "61d96f9000bf5d325da17258ee0693e19d441cecee64825289ee6b7d" => %{
+              "4d696e745769746864726177" => 33
+            },
+            "665d4dbea856001b880d5749e94384cc486d8c4ee99540d2f65d1570" => %{
+              "4d794d696e746564546f6b656e" => 1
+            },
+            "cac67dd80f706e084b2aac605288b2ff793475ea43b2313e1ed384ab" => %{
+              "4275726e61626c65546f6b656e506c75747573" => 1,
+              "54657374" => 42,
+              "accbfb633f637e3bb1abee40c9539d1effd742cd2716b3b1db9de3aaf3f37794" => 1
+            },
+            "eb8b660cf939281c277264389c4086e7c79baf78e08d0c48668420ab" => %{
+              "4d794d696e746564546f6b656e" => 1
+            },
+            "ef6ed47a6917a3cbbeb46561e8853da969343794d66128598a34af2c" => %{
+              "4275726e61626c65546f6b656e" => 145,
+              "4275726e61626c65546f6b656e32" => 417,
+              "accbfb633f637e3bb1abee40c9539d1effd742cd2716b3b1db9de3aaf3f37794" => 1
+            },
+            "f654f6a31f6c4cc2c39a169f2c022404aa9f19d43137b0448b219a3e" => %{"54657374" => 102}
+          }
+        }
+      ],
+      proposal_procedures: nil,
+      reference_inputs: nil,
+      required_signers: nil,
+      script_data_hash: "25757b59c698464baccf51976cdc4bcc3e53116cef264082ec8df08e3ed1994a",
+      total_collateral: %{"lovelace" => 5_000_000},
+      treasury_donation: nil,
+      ttl: nil,
+      update: nil,
+      validaty_interval_start: nil,
+      voting_procedures: nil,
+      withdrawals: nil
     }
   end
 
   def witness_4ab1f4ed do
-    %Witness{
-      vkey_witness: [
-        %Witness.VkeyWitness{
-          signature:
-            Base.decode16!(
-              "61C43126C495E653CF6CCF69EBD24487E4DDC092F7E75AD0DD187671512B0B6B632C531F83679D8EE0D5613D8305ED2FB7843A4E2BD2DC8BE0AD5745ABB6C300"
-            ),
-          vkey: Base.decode16!("0ABB7B89E091DCD3201AEA501854A4CB05290862D88B6EB30AFA6DFD23F54467")
-        }
-      ],
-      script_witness: [
-        %Script{
-          data: [
-            "584F010100323232323225333002323232323253330073370E900418041BAA0011324A2601460126EA80045289804980500118040009804001180300098021BAA00114984D9595CD2AB9D5573CAE855D11"
-          ],
-          script_type: :plutus_v3
-        }
-      ],
+    %Sutra.Cardano.Transaction.Witness{
+      plutus_data: [],
       redeemer: [
-        %Witness.Redeemer{
-          exunits: {8291, 2_214_370},
+        %Sutra.Cardano.Transaction.Witness.Redeemer{
           data: %Sutra.Data.Plutus.Constr{fields: [], index: 0},
+          exunits: {8291, 2_214_370},
           index: 0,
           tag: :cert
         }
       ],
-      plutus_data: []
+      script_witness: [
+        %Sutra.Cardano.Script{
+          data: [
+            "584f010100323232323225333002323232323253330073370e900418041baa0011324a2601460126ea80045289804980500118040009804001180300098021baa00114984d9595cd2ab9d5573cae855d11"
+          ],
+          script_type: :plutus_v3
+        }
+      ],
+      vkey_witness: [
+        %Sutra.Cardano.Transaction.Witness.VkeyWitness{
+          signature:
+            "a\xC41&ĕ\xE6S\xCFl\xCFi\xEB\xD2D\x87\xE4\xDD\xC0\x92\xF7\xE7Z\xD0\xDD\x18vqQ+\vkc,S\x1F\x83g\x9D\x8E\xE0\xD5a=\x83\x05\xED/\xB7\x84:N+\xD2܋\xE0\xADWE\xAB\xB6\xC3\0",
+          vkey:
+            "\n\xBB{\x89\xE0\x91\xDC\xD3 \x1A\xEAP\x18T\xA4\xCB\x05)\bb؋n\xB3\n\xFAm\xFD#\xF5Dg"
+        }
+      ]
     }
   end
 
   # For TxId: d77f6b57c2fc7b39771ad322808bf5a697ef9edac11d09062e439c6a296e127d (Preprod)
 
   def body_d77f127d do
-    %TxBody{
+    %Sutra.Cardano.Transaction.TxBody{
+      auxiliary_data_hash: nil,
       certificates: [
-        %Certificate.UpdateDrepCert{
+        %Sutra.Cardano.Transaction.Certificate.UpdateDrepCert{
           anchor: nil,
           drep_credential: %Sutra.Cardano.Address.Credential{
-            hash: "5064B671634D14CB8D543E71DD8EB437A47EFB47B0B22882866C420D",
-            credential_type: :vkey
+            credential_type: :vkey,
+            hash: "5064b671634d14cb8d543e71dd8eb437a47efb47b0b22882866c420d"
           }
         }
       ],
+      collateral: nil,
+      collateral_return: nil,
+      current_treasury_value: nil,
       fee: %{"lovelace" => 197_181},
+      inputs: [
+        %Sutra.Cardano.Transaction.OutputReference{
+          output_index: 0,
+          transaction_id: "8267a54d323ed85e5271546aa85e888ae4d120d24b49a1a5dec70f3536acfee7"
+        }
+      ],
+      mint: nil,
+      network_id: nil,
       outputs: [
-        %Transaction.Output{
-          reference_script: nil,
-          datum: %Transaction.Datum{kind: :no_datum, value: nil},
-          value: %{
-            "0D26F1DECEE50C24498585CB9CBA2B6AA629C83023B327BB10FB67B9" => %{
-              "4D696E745769746864726177" => 43
-            },
-            "1C05CAED08DDD5C9F233F4CB497EEB6E5F685E8E7B842B08897D1DFE" => %{
-              "4D794D696E746564546F6B656E" => 1
-            },
-            "22691D3D969ECF5802226290C2FB98E2BC08522D5B726C1F5F400105" => %{"54657374" => 21},
-            "4613DAC79011EBFA5D5837E32B8A8DB70B57CBD7FFD89BA108AF81AB" => %{
-              "4346544F4B454E" => 276
-            },
-            "501B8B9DCE8D7C1247A14BB69D416C621267DAA72EBD6C8194293192" => %{
-              "4D794D696E746564546F6B656E" => 1
-            },
-            "61D96F9000BF5D325DA17258EE0693E19D441CECEE64825289EE6B7D" => %{
-              "4D696E745769746864726177" => 33
-            },
-            "665D4DBEA856001B880D5749E94384CC486D8C4EE99540D2F65D1570" => %{
-              "4D794D696E746564546F6B656E" => 1
-            },
-            "CAC67DD80F706E084B2AAC605288B2FF793475EA43B2313E1ED384AB" => %{
-              "4275726E61626C65546F6B656E506C75747573" => 1,
-              "54657374" => 42,
-              "ACCBFB633F637E3BB1ABEE40C9539D1EFFD742CD2716B3B1DB9DE3AAF3F37794" => 1
-            },
-            "EB8B660CF939281C277264389C4086E7C79BAF78E08D0C48668420AB" => %{
-              "4D794D696E746564546F6B656E" => 1
-            },
-            "EF6ED47A6917A3CBBEB46561E8853DA969343794D66128598A34AF2C" => %{
-              "4275726E61626C65546F6B656E" => 145,
-              "4275726E61626C65546F6B656E32" => 417,
-              "ACCBFB633F637E3BB1ABEE40C9539D1EFFD742CD2716B3B1DB9DE3AAF3F37794" => 1
-            },
-            "F654F6A31F6C4CC2C39A169F2C022404AA9F19D43137B0448B219A3E" => %{"54657374" => 102},
-            "lovelace" => 6_669_494_751
-          },
+        %Sutra.Cardano.Transaction.Output{
           address: %Sutra.Cardano.Address{
-            stake_credential: %Sutra.Cardano.Address.Credential{
-              hash: "5064b671634d14cb8d543e71dd8eb437a47efb47b0b22882866c420d",
-              credential_type: :vkey
-            },
-            payment_credential: %Sutra.Cardano.Address.Credential{
-              hash: "9fc430ea1f3adc20eebb813b2649e85c934ea5bc13d7b7fbe2b24e50",
-              credential_type: :vkey
-            },
             address_type: :shelley,
-            network: :testnet
+            network: :testnet,
+            payment_credential: %Sutra.Cardano.Address.Credential{
+              credential_type: :vkey,
+              hash: "9fc430ea1f3adc20eebb813b2649e85c934ea5bc13d7b7fbe2b24e50"
+            },
+            stake_credential: %Sutra.Cardano.Address.Credential{
+              credential_type: :vkey,
+              hash: "5064b671634d14cb8d543e71dd8eb437a47efb47b0b22882866c420d"
+            }
+          },
+          datum: %Sutra.Cardano.Transaction.Datum{kind: :no_datum, value: nil},
+          datum_raw: nil,
+          reference_script: nil,
+          value: %{
+            "lovelace" => 6_669_494_751,
+            "0d26f1decee50c24498585cb9cba2b6aa629c83023b327bb10fb67b9" => %{
+              "4d696e745769746864726177" => 43
+            },
+            "1c05caed08ddd5c9f233f4cb497eeb6e5f685e8e7b842b08897d1dfe" => %{
+              "4d794d696e746564546f6b656e" => 1
+            },
+            "22691d3d969ecf5802226290c2fb98e2bc08522d5b726c1f5f400105" => %{"54657374" => 21},
+            "4613dac79011ebfa5d5837e32b8a8db70b57cbd7ffd89ba108af81ab" => %{
+              "4346544f4b454e" => 276
+            },
+            "501b8b9dce8d7c1247a14bb69d416c621267daa72ebd6c8194293192" => %{
+              "4d794d696e746564546f6b656e" => 1
+            },
+            "61d96f9000bf5d325da17258ee0693e19d441cecee64825289ee6b7d" => %{
+              "4d696e745769746864726177" => 33
+            },
+            "665d4dbea856001b880d5749e94384cc486d8c4ee99540d2f65d1570" => %{
+              "4d794d696e746564546f6b656e" => 1
+            },
+            "cac67dd80f706e084b2aac605288b2ff793475ea43b2313e1ed384ab" => %{
+              "4275726e61626c65546f6b656e506c75747573" => 1,
+              "54657374" => 42,
+              "accbfb633f637e3bb1abee40c9539d1effd742cd2716b3b1db9de3aaf3f37794" => 1
+            },
+            "eb8b660cf939281c277264389c4086e7c79baf78e08d0c48668420ab" => %{
+              "4d794d696e746564546f6b656e" => 1
+            },
+            "ef6ed47a6917a3cbbeb46561e8853da969343794d66128598a34af2c" => %{
+              "4275726e61626c65546f6b656e" => 145,
+              "4275726e61626c65546f6b656e32" => 417,
+              "accbfb633f637e3bb1abee40c9539d1effd742cd2716b3b1db9de3aaf3f37794" => 1
+            },
+            "f654f6a31f6c4cc2c39a169f2c022404aa9f19d43137b0448b219a3e" => %{"54657374" => 102}
           }
         }
       ],
-      inputs: [
-        %Transaction.OutputReference{
-          output_index: 0,
-          transaction_id: "8267A54D323ED85E5271546AA85E888AE4D120D24B49A1A5DEC70F3536ACFEE7"
-        }
-      ]
+      proposal_procedures: nil,
+      reference_inputs: nil,
+      required_signers: nil,
+      script_data_hash: nil,
+      total_collateral: nil,
+      treasury_donation: nil,
+      ttl: nil,
+      update: nil,
+      validaty_interval_start: nil,
+      voting_procedures: nil,
+      withdrawals: nil
     }
   end
 

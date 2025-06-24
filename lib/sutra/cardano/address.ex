@@ -5,13 +5,13 @@ defmodule Sutra.Cardano.Address do
 
   use TypedStruct
 
-  alias Sutra.Data.Cbor
   alias Sutra.Cardano.Script
   alias __MODULE__, as: Address
   alias Sutra.Cardano.Address.Credential
   alias Sutra.Cardano.Address.Parser
   alias Sutra.Cardano.Address.Pointer
   alias Sutra.Data
+  alias Sutra.Data.Cbor
   alias Sutra.Data.Plutus.Constr
 
   import Sutra.Utils, only: [maybe: 3]

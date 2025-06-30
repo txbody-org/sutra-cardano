@@ -31,7 +31,7 @@ defmodule Sutra.CoinSelection.LargestFirst do
     {used_inputs, change, remaining_to_fill} =
       Enum.reduce_while(sorted_inputs, initial_state, &do_calc_change_asset/2)
 
-    change_with_leftover = Map.merge(change, left_over)
+    change_with_leftover = Asset.merge(change, left_over)
 
     cond do
       remaining_to_fill == %{} ->

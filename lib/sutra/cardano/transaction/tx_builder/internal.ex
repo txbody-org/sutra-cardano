@@ -350,11 +350,6 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
       (tx_body.inputs ++ selected_coin.selected_inputs)
       |> Enum.sort_by(&extract_ref(&1.output_reference))
 
-    # IO.inspect(tx_body.outputs, label: "Curr Output")
-    # IO.inspect(selected_coin.change, label: "ALL CHANGE")
-
-    # IO.inspect(Asset.only_positive(selected_coin.change), label: "positive change")
-
     change_output =
       Output.new(cfg.change_address, Asset.only_positive(selected_coin.change), cfg.change_datum)
       |> calculate_min_ada_for_output(cfg.protocol_params)
@@ -503,21 +498,41 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
       Enum.reduce(outputs, fee, fn o, acc -> Asset.merge(o.value, acc) end)
 
     to_fill_asset = Asset.diff(total_with_mint, total_output_assets) |> Asset.only_positive()
-
     leftover_asset = Asset.diff(total_output_assets, total_with_mint) |> Asset.only_positive()
 
-    if Asset.zero?(to_fill_asset) do
-      # current inputs is enough to cover output
-      {:ok,
-       %CoinSelection{
-         selected_inputs: [],
-         change: leftover_asset
-       }}
-    else
-      # Fetch Utxos for remaining Asset to cover
-      diff_inputs = wallet_utxos -- inputs
-      LargestFirst.select_utxos(diff_inputs, to_fill_asset, leftover_asset)
+    cond do
+      Asset.zero() != to_fill_asset ->
+        # Fetch Utxos for remaining Asset to cover
+        diff_inputs = wallet_utxos -- inputs
+        selection = LargestFirst.select_utxos(diff_inputs, to_fill_asset, leftover_asset)
+        selection
+
+      Asset.lovelace_of(leftover_asset) > 1_000_000 ->
+        # current inputs is enough to cover output with Change
+        {:ok,
+         %CoinSelection{
+           selected_inputs: [],
+           change: leftover_asset
+         }}
+
+      # current inputs cannot cover enough minAda for change output
+      true ->
+        (wallet_utxos -- inputs)
+        |> CoinSelection.select_utxos_for_lovelace(1_500_000, leftover_asset)
+        |> Utils.when_ok(fn c ->
+          {:ok,
+           %CoinSelection{
+             c
+             | change: calc_total_input_assets(c.selected_inputs, leftover_asset)
+           }}
+        end)
     end
+  end
+
+  defp calc_total_input_assets(inputs, initial_asset) do
+    Enum.reduce(inputs, initial_asset, fn %Input{output: o}, acc ->
+      Asset.merge(o.value, acc)
+    end)
   end
 
   defp alter_outputs_with_min_ada(

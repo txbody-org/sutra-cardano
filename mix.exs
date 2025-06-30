@@ -37,13 +37,11 @@ defmodule Sutra.MixProject do
       {:cbor, "~> 1.0.1"},
       {:blake2_elixir, "~> 0.8.1"},
       {:typed_struct, "~> 0.3.0"},
-      {:rustler, "~> 0.35.0"},
+      {:rustler, "~> 0.36.2"},
       {:bech32, "~> 1.0"},
       {:req, "~> 0.5.7"},
       {:mnemonic, git: "https://github.com/piyushthapa/mnemonic"},
-
-      # Using custom fixed version until strnLen issue is fixed upstream
-      {:libsodium, git: "https://github.com/piyushthapa/erlang-libsodium"},
+      {:ex_sodium, git: "https://github.com/txbody-org/ex_sodium"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.21", only: :dev, runtime: false}
     ]

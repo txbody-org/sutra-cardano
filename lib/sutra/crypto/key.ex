@@ -157,7 +157,7 @@ defmodule Sutra.Crypto.Key do
     Map.get(key, key_type)
     |> Utils.maybe(nil, fn v ->
       :binary.part(v, 0, 32)
-      |> :libsodium_crypto_scalarmult_ed25519.base_noclamp()
+      |> ExSodium.Ed25519.scalarmult_base_no_clamp()
     end)
   end
 
@@ -176,21 +176,21 @@ defmodule Sutra.Crypto.Key do
       when is_binary(payload) do
     <<scalar::binary-size(32), iv::binary-size(32), _chain_code::binary>> = payment_key
 
-    pub_key = :libsodium_crypto_scalarmult_ed25519.base_noclamp(scalar)
+    pub_key = ExSodium.Ed25519.scalarmult_base_no_clamp(scalar)
 
     nonce =
       (iv <> payload)
-      |> :libsodium_crypto_hash_sha512.crypto_hash_sha512()
-      |> :libsodium_crypto_core_ed25519.scalar_reduce()
+      |> ExSodium.Ed25519.hash_sha512()
+      |> ExSodium.Ed25519.scalar_reduce()
 
-    r = :libsodium_crypto_scalarmult_ed25519.base_noclamp(nonce)
+    r = ExSodium.Ed25519.scalarmult_base_no_clamp(nonce)
 
     s =
       (r <> pub_key <> payload)
-      |> :libsodium_crypto_hash_sha512.crypto_hash_sha512()
-      |> :libsodium_crypto_core_ed25519.scalar_reduce()
-      |> :libsodium_crypto_core_ed25519.scalar_mul(scalar)
-      |> :libsodium_crypto_core_ed25519.scalar_add(nonce)
+      |> ExSodium.Ed25519.hash_sha512()
+      |> ExSodium.Ed25519.scalar_reduce()
+      |> ExSodium.Ed25519.scalar_mul(scalar)
+      |> ExSodium.Ed25519.scalar_add(nonce)
 
     r <> s
   end
@@ -219,7 +219,7 @@ defmodule Sutra.Crypto.Key do
         # Z := HMAC_512 (0x02|| AP ||i)
         # CHAIN_CODE := (0x03|| AP ||i)
 
-        ap = :libsodium_crypto_scalarmult_ed25519.base_noclamp(parent_key_left)
+        ap = ExSodium.Ed25519.scalarmult_base_no_clamp(parent_key_left)
 
         {
           <<0x02, ap::binary, index::little-32>>,
@@ -228,13 +228,13 @@ defmodule Sutra.Crypto.Key do
       end
 
     <<z_left::binary-size(32), z_right::binary-size(32)>> =
-      :libsodium_crypto_auth_hmacsha512.crypto_auth_hmacsha512(z_data, key.chain_code)
+      :crypto.mac(:hmac, :sha512, key.chain_code, z_data)
 
     child_left = scalar_mul_8(z_left, parent_key_left)
     child_right = handle_mod_256(z_right, paren_key_right)
 
     <<_::binary-size(32), child_chain_code::binary-size(32)>> =
-      :libsodium_crypto_auth_hmacsha512.crypto_auth_hmacsha512(chain_code_data, key.chain_code)
+      :crypto.mac(:hmac, :sha512, key.chain_code, chain_code_data)
 
     %__MODULE__.RootKey{
       xprv: <<child_left::binary, child_right::binary>>,

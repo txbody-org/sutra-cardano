@@ -413,7 +413,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
         |> create_tx(
           builder,
           wallet_utxos,
-          tx.witnesses
+          witness_set
         )
       end
     end

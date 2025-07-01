@@ -56,8 +56,10 @@ defmodule Sutra.UtilsTest do
   describe "flip/3" do
     test "applies function with flipped arguments" do
       subtract = fn x, y -> x - y end
-      assert Utils.flip(1, 2, subtract) == 1  # 2 - 1
-      assert Utils.flip(5, 3, subtract) == -2  # 3 - 5
+      # 2 - 1
+      assert Utils.flip(1, 2, subtract) == 1
+      # 3 - 5
+      assert Utils.flip(5, 3, subtract) == -2
     end
 
     test "works with list creation function" do
@@ -100,13 +102,15 @@ defmodule Sutra.UtilsTest do
 
     test "handles large lists efficiently" do
       large_nested = for i <- 1..1000, do: [i, i + 1000]
-      
+
       {time_microseconds, result} = :timer.tc(fn -> Utils.merge_list(large_nested) end)
-      
+
       assert length(result) == 2000
       assert hd(result) == 1
       assert List.last(result) == 2000
-      assert time_microseconds < 100_000, "merge_list took #{time_microseconds}μs, expected < 100ms"
+
+      assert time_microseconds < 100_000,
+             "merge_list took #{time_microseconds}μs, expected < 100ms"
     end
   end
 
@@ -242,7 +246,7 @@ defmodule Sutra.UtilsTest do
     test "filters nil values and adds indexes" do
       input = %{a: "value1", b: nil, c: "value2"}
       result = Utils.with_sorted_indexed_map(input)
-      
+
       # Should filter out nil values and add indexes
       assert map_size(result) == 2
       assert result[:a][:index] in [0, 1]
@@ -254,7 +258,7 @@ defmodule Sutra.UtilsTest do
     test "handles map values by adding index directly" do
       input = %{a: %{data: "test"}, b: "simple"}
       result = Utils.with_sorted_indexed_map(input)
-      
+
       # Map values get index added directly
       assert is_map(result[:a]) and result[:a][:index] != nil
       # Non-map values get wrapped
@@ -267,9 +271,9 @@ defmodule Sutra.UtilsTest do
     test "converts list to indexed map using key function" do
       list = ["apple", "banana", "cherry"]
       key_func = fn str -> String.first(str) end
-      
+
       result = Utils.to_sorted_indexed_map(list, key_func)
-      
+
       assert result["a"] == %{index: 0, value: "apple"}
       assert result["b"] == %{index: 1, value: "banana"}
       assert result["c"] == %{index: 2, value: "cherry"}
@@ -278,9 +282,9 @@ defmodule Sutra.UtilsTest do
     test "handles duplicate keys by overwriting" do
       list = ["apple", "avocado"]
       key_func = fn str -> String.first(str) end
-      
+
       result = Utils.to_sorted_indexed_map(list, key_func)
-      
+
       # Last item should win
       assert result["a"] == %{index: 1, value: "avocado"}
     end

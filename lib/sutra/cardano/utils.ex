@@ -1,7 +1,7 @@
 defmodule Sutra.Utils do
   @moduledoc """
   General utility functions for common operations.
-  
+
   This module provides helper functions for safe operations on lists, maps, tuples,
   and result handling. All functions are designed to be safe and handle edge cases gracefully.
   """
@@ -56,6 +56,7 @@ defmodule Sutra.Utils do
     |> Base.decode16(case: :mixed)
     |> ok_or(val)
   end
+
   def safe_base16_decode(val), do: to_string(val)
 
   @doc """
@@ -184,7 +185,7 @@ defmodule Sutra.Utils do
 
   @spec fst({any(), any()}) :: any()
   def fst({a, _}), do: a
-  
+
   @spec snd({any(), any()}) :: any()
   def snd({_, b}), do: b
 

@@ -199,7 +199,7 @@ defmodule Sutra.Cardano.Transaction.Witness do
 
     Map.get(acc, 0)
     |> extract_value!()
-    |> Utils.maybe([val], &[&1 | [val]])
+    |> Utils.maybe([val], &[val | &1])
     |> Cbor.as_nonempty_set()
     |> Cbor.as_indexed_map(0, acc)
   end

@@ -129,12 +129,42 @@ defmodule Sutra.Utils do
   def maybe(data, _, f2) when is_function(f2, 1), do: f2.(data)
   def maybe(data, _, nil), do: data
 
+  @doc """
+    Returns value from {:ok, value} tuple, otherwise returns default.
+    
+    ## Examples
+    
+        iex> ok_or({:ok, "success"}, "default")
+        "success"
+        
+        iex> ok_or({:error, "failed"}, "default")
+        "default"
+        
+        iex> ok_or(nil, "default")
+        "default"
+    
+  """
   @spec ok_or({:ok, any()} | any(), any()) :: any()
   def ok_or({:ok, result}, _), do: result
   def ok_or(_, default) when is_function(default, 0), do: default.()
   def ok_or(result, default) when is_function(default, 1), do: default.(result)
   def ok_or(_, default), do: default
 
+  @doc """
+    Safely appends value to list. Creates new list if first argument is not a list.
+    
+    ## Examples
+    
+        iex> safe_append([1, 2], 3)
+        [1, 2, 3]
+        
+        iex> safe_append([1, 2], [3, 4])
+        [1, 2, 3, 4]
+        
+        iex> safe_append(nil, 3)
+        [3]
+    
+  """
   @spec safe_append(any(), any()) :: list()
   def safe_append(list, val) when is_list(list) do
     new_val = if is_list(val), do: val, else: [val]
@@ -143,6 +173,18 @@ defmodule Sutra.Utils do
 
   def safe_append(_, val), do: if(is_list(val), do: val, else: [val])
 
+  @doc """
+    Merges value to map key, appending to existing list values.
+    
+    ## Examples
+    
+        iex> merge_value_to_map(%{}, :key, "value")
+        %{key: ["value"]}
+        
+        iex> merge_value_to_map(%{key: ["old"]}, :key, "new")
+        %{key: ["new", "old"]}
+    
+  """
   @spec merge_value_to_map(map(), any(), any()) :: map()
   def merge_value_to_map(map, key, value) do
     prev_val = Map.get(map, key, [])
@@ -168,6 +210,18 @@ defmodule Sutra.Utils do
     end
   end
 
+  @doc """
+    Removes first matching element from list and returns {remaining_list, removed_element}.
+    
+    ## Examples
+    
+        iex> without_elem([1, 2, 3, 2], fn x -> x == 2 end)
+        {[1, 3, 2], 2}
+        
+        iex> without_elem([1, 2, 3], fn x -> x == 5 end)
+        {[1, 2, 3], nil}
+    
+  """
   @spec without_elem(list(), (any() -> boolean())) :: {list(), any() | nil}
   def without_elem([], _), do: {[], nil}
 
@@ -180,15 +234,63 @@ defmodule Sutra.Utils do
     end
   end
 
+  @doc """
+    Flattens nested lists into a single list.
+    
+    ## Examples
+    
+        iex> merge_list([[1, 2], [3, 4]])
+        [1, 2, 3, 4]
+        
+        iex> merge_list([])
+        []
+    
+  """
   @spec merge_list([list()]) :: list()
   def merge_list(list), do: List.flatten(list)
 
+  @doc """
+    Returns first element of a tuple.
+    
+    ## Examples
+    
+        iex> fst({1, 2})
+        1
+        
+        iex> fst({"a", "b"})
+        "a"
+    
+  """
   @spec fst({any(), any()}) :: any()
   def fst({a, _}), do: a
 
+  @doc """
+    Returns second element of a tuple.
+    
+    ## Examples
+    
+        iex> snd({1, 2})
+        2
+        
+        iex> snd({"a", "b"})
+        "b"
+    
+  """
   @spec snd({any(), any()}) :: any()
   def snd({_, b}), do: b
 
+  @doc """
+    Checks if value is an instance of given struct module.
+    
+    ## Examples
+    
+        iex> instance_of?(%URI{}, URI)
+        true
+        
+        iex> instance_of?("string", URI)
+        false
+    
+  """
   @spec instance_of?(any(), module()) :: boolean()
   def instance_of?(v, l) when is_struct(v), do: v.__struct__ == l
 
@@ -197,6 +299,18 @@ defmodule Sutra.Utils do
 
   def instance_of?(_, _), do: false
 
+  @doc """
+    Applies function to value if it's an {:ok, value} tuple, otherwise returns original value.
+    
+    ## Examples
+    
+        iex> when_ok({:ok, 5}, fn x -> x * 2 end)
+        10
+        
+        iex> when_ok({:error, "failed"}, fn x -> x * 2 end)
+        {:error, "failed"}
+    
+  """
   @spec when_ok({:ok, any()} | any(), (any() -> any())) :: any()
   def when_ok({:ok, result}, apply) when is_function(apply, 1) do
     apply.(result)
@@ -204,6 +318,19 @@ defmodule Sutra.Utils do
 
   def when_ok(result, _), do: result
 
+  @doc """
+    Wraps non-error values in {:ok, value} tuple. Passes through error tuples unchanged.
+    
+    ## Examples
+    
+        iex> ok_or_error("success")
+        {:ok, "success"}
+        
+        iex> ok_or_error({:error, "failed"})
+        {:error, "failed"}
+    
+  """
+  @spec ok_or_error({:error, any()} | any()) :: {:ok, any()} | {:error, any()}
   def ok_or_error({:error, err}), do: {:error, err}
   def ok_or_error(result), do: {:ok, result}
 

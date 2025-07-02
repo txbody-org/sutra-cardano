@@ -29,7 +29,10 @@ defmodule Sutra.TxExamples.Simple.SimpleSpendTest do
             datum: {:inline, Data.encode(100)}
           )
           |> build_tx!(wallet_address: addr)
-          |> sign_tx([signing_key])
+          |> sign_tx([
+            signing_key,
+            "ed25519_sk1tmxtkw3ek64zyg9gtn3qkk355hfs9jnfjy33zwp87s8qkdmznd0qvukr43"
+          ])
           |> submit_tx()
 
         await_tx(place_tx_id)

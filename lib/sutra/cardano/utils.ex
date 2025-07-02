@@ -192,6 +192,30 @@ defmodule Sutra.Utils do
     Map.put(map, key, new_val ++ prev_val)
   end
 
+  @doc """
+    Filters nil values from map and adds indexes. For map values, adds index directly; for other values, wraps in indexed structure.
+    
+    ## Examples
+    
+        iex> result = with_sorted_indexed_map(%{a: "value1", b: nil, c: "value2"})
+        iex> map_size(result)
+        2
+        iex> result[:a][:value]
+        "value1"
+        iex> result[:c][:value]
+        "value2"
+        iex> is_integer(result[:a][:index])
+        true
+
+        iex> result = with_sorted_indexed_map(%{a: %{data: "test"}, b: "simple"})
+        iex> result[:a][:data]
+        "test"
+        iex> result[:b][:value]
+        "simple"
+        iex> is_integer(result[:a][:index]) and is_integer(result[:b][:index])
+        true
+    
+  """
   @spec with_sorted_indexed_map(map()) :: map()
   def with_sorted_indexed_map(map) when is_map(map) do
     map = Map.filter(map, fn {_k, v} -> not is_nil(v) end)
@@ -203,6 +227,18 @@ defmodule Sutra.Utils do
     end
   end
 
+  @doc """
+    Converts list to indexed map using key function. Each element gets wrapped with its index and value.
+    
+    ## Examples
+    
+        iex> to_sorted_indexed_map(["apple", "banana", "cherry"], fn str -> String.first(str) end)
+        %{"a" => %{index: 0, value: "apple"}, "b" => %{index: 1, value: "banana"}, "c" => %{index: 2, value: "cherry"}}
+        
+        iex> to_sorted_indexed_map([1, 2, 3], fn x -> x * 10 end)
+        %{10 => %{index: 0, value: 1}, 20 => %{index: 1, value: 2}, 30 => %{index: 2, value: 3}}
+    
+  """
   @spec to_sorted_indexed_map(list(), (any() -> any())) :: map()
   def to_sorted_indexed_map(list, key_func) when is_list(list) and is_function(key_func, 1) do
     for {v, i} <- Enum.with_index(list), into: %{} do

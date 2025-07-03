@@ -62,7 +62,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
     # Maybe we don't need to do this here?
     builder = %TxBuilder{
       alter_outputs_with_min_ada(builder)
-      | inputs: Enum.sort_by(builder.inputs, &extract_ref/1),
+      | inputs: Input.sort_inputs(builder.inputs),
         collateral_input: collateral_input
     }
 
@@ -348,7 +348,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
        ) do
     new_inputs =
       (tx_body.inputs ++ selected_coin.selected_inputs)
-      |> Enum.sort_by(&extract_ref(&1.output_reference))
+      |> Input.sort_inputs()
 
     change_output =
       Output.new(cfg.change_address, Asset.only_positive(selected_coin.change), cfg.change_datum)

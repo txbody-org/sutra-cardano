@@ -112,7 +112,7 @@ defmodule Sutra.Data.Plutus do
     do: tag
 
   defp decode_cbor_tag(tags) when is_list(tags),
-    do: %PList{value: Enum.map(tags, &decode_cbor_tag/1)}
+    do: Enum.map(tags, &decode_cbor_tag/1)
 
   defp decode_cbor_tag(%CBOR.Tag{tag: tag}), do: raise("Not Implemented: tag: #{tag}")
   defp decode_cbor_tag(tag), do: tag

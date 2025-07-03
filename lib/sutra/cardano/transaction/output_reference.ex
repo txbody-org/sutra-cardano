@@ -27,4 +27,14 @@ defmodule Sutra.Cardano.Transaction.OutputReference do
       output_index: output_index
     }
   end
+
+  def compare(%__MODULE__{} = ref1, %__MODULE__{} = ref2)
+      when is_binary(ref1.transaction_id) and ref1.transaction_id == ref2.transaction_id do
+    if ref1.output_index > ref2.output_index, do: :gt, else: :lt
+  end
+
+  def compare(%__MODULE__{} = ref1, %__MODULE__{} = ref2)
+      when is_binary(ref1.transaction_id) and is_binary(ref2.transaction_id) do
+    if ref1.transaction_id > ref2.transaction_id, do: :gt, else: :lt
+  end
 end

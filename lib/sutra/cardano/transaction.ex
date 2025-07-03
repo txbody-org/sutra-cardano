@@ -22,16 +22,25 @@ defmodule Sutra.Cardano.Transaction do
           output: Output.t()
         }
 
+  defmodule Input do
+    @moduledoc """
+      Transaction Input
+    """
+    defdata do
+      data(:output_reference, OutputReference)
+      data(:output, Output)
+    end
+
+    def sort_inputs(inputs) when is_list(inputs) do
+      Enum.sort_by(inputs, & &1.output_reference, {:asc, OutputReference})
+    end
+  end
+
   typedstruct do
     field(:tx_body, TxBody.t())
     field(:witnesses, Witness.t())
     field(:is_valid, boolean())
     field(:metadata, any())
-  end
-
-  defdata(name: Input) do
-    data(:output_reference, OutputReference)
-    data(:output, Output)
   end
 
   @doc """

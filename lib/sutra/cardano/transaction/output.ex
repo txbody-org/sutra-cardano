@@ -40,6 +40,10 @@ defmodule Sutra.Cardano.Transaction.Output do
   """
   def from_cbor([%CBOR.Tag{value: raw_addr} | [assets | dtm_hash]])
       when is_binary(raw_addr) do
+    from_cbor([raw_addr | [assets | dtm_hash]])
+  end
+
+  def from_cbor([raw_addr | [assets | dtm_hash]]) when is_binary(raw_addr) do
     %__MODULE__{
       address: Address.Parser.decode(raw_addr),
       value: Asset.from_cbor(assets),

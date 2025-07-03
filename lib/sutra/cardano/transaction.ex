@@ -31,6 +31,25 @@ defmodule Sutra.Cardano.Transaction do
       data(:output, Output)
     end
 
+    @doc """
+      converts cbor encoded hex to Input
+    """
+    def from_hex(raw_hex) when is_binary(raw_hex) do
+      case Data.decode(raw_hex) do
+        {:ok, [ref, output]} ->
+          from_cbor([ref, output])
+
+        _ ->
+          {:error, :INVALID_INPUT_CBOR}
+      end
+    end
+
+    def from_cbor([out_ref, output]),
+      do: %__MODULE__{
+        output_reference: OutputReference.from_cbor(out_ref),
+        output: Output.from_cbor(output)
+      }
+
     def sort_inputs(inputs) when is_list(inputs) do
       Enum.sort_by(inputs, & &1.output_reference, {:asc, OutputReference})
     end

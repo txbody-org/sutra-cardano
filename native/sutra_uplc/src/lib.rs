@@ -23,6 +23,7 @@ fn eval_phase_two<'a>(
     // Convert Binary to Vec<u8> to extend lifetime
     let tx_vec = tx_bytes.as_slice().to_vec();
     
+
     // Convert Vec<(Binary, Binary)> to Vec<(Vec<u8>, Vec<u8>)>
     let utxos_converted: Vec<(Vec<u8>, Vec<u8>)> = utxos
         .into_iter()
@@ -42,7 +43,6 @@ fn eval_phase_two<'a>(
         .as_ref()
         .map(|v| v.as_slice());
 
-
     // Call the evaluation function
     match eval_phase_two_raw(
         &tx_vec,
@@ -50,7 +50,7 @@ fn eval_phase_two<'a>(
         cost_models_slice,
         initial_budget,
         slot_config,
-        true, // run_phase_one
+        false, // run_phase_one
         |_| ()
     ) {
         Ok(results) => {

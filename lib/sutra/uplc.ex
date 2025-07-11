@@ -13,7 +13,8 @@ defmodule Sutra.Uplc do
   def evaluate_raw(tx_cbor, inputs, %CostModels{} = cost_models, slot_config)
       when is_binary(tx_cbor) do
     utxos =
-      Enum.map(inputs, fn input = %Input{} ->
+      Input.sort_inputs(inputs)
+      |> Enum.map(fn input = %Input{} ->
         {OutputReference.to_cbor(input.output_reference) |> CBOR.encode(),
          Output.to_cbor(input.output) |> CBOR.encode()}
       end)

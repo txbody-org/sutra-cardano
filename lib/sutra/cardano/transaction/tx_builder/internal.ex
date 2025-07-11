@@ -264,9 +264,12 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
       [v1, v2, v3]
       |> Enum.map(&Utils.with_sorted_indexed_map/1)
 
+    indexed_mint = Sutra.Utils.with_sorted_indexed_map(builder.mints)
+
     mint_redeemers =
-      Enum.reduce_while(builder.mints, [], fn {k, _}, acc ->
+      Enum.reduce_while(indexed_mint, [], fn {k, mint_info}, acc ->
         key = {:mint, k}
+        indx = mint_info[:index]
         redeemer_data = Map.get(builder.redeemer_lookup, key)
 
         cond do
@@ -274,19 +277,19 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
             {:cont, acc}
 
           Map.get(ref_script_lookup, k) ->
-            {:cont, [Witness.init_redeemer(ref_script_lookup[k], redeemer_data) | acc]}
+            {:cont, [Witness.init_redeemer(indx, redeemer_data) | acc]}
 
           is_nil(redeemer_data) ->
             {:halt, {:error, "Redeemer Missing for Mint, PolicyId: #{k}"}}
 
           Map.get(indexed_v1, k) ->
-            {:cont, [Witness.init_redeemer(indexed_v1[k].index, redeemer_data) | acc]}
+            {:cont, [Witness.init_redeemer(indx, redeemer_data) | acc]}
 
           Map.get(indexed_v2, k) ->
-            {:cont, [Witness.init_redeemer(indexed_v2[k].index, redeemer_data) | acc]}
+            {:cont, [Witness.init_redeemer(indx, redeemer_data) | acc]}
 
           Map.get(indexed_v3, k) ->
-            {:cont, [Witness.init_redeemer(indexed_v3[k].index, redeemer_data) | acc]}
+            {:cont, [Witness.init_redeemer(indx, redeemer_data) | acc]}
 
           true ->
             {:halt, {:error, NoScriptWitness.new(k)}}

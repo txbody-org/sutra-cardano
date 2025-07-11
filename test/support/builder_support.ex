@@ -62,4 +62,6 @@ defmodule Sutra.Test.Support.BuilderSupport do
   def sample_plutus_script do
     Script.new("4e4d01000033222220051200120011", :plutus_v1)
   end
+
+  def sample_address, do: @sample_addr
 end

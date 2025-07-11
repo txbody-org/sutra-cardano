@@ -401,7 +401,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
     if Asset.only_positive(left_over_mint) == %{},
       do: :ok,
       else:
-        {:error, "No Output Found with Minting Policies: #{Enum.join(Map.keys(left_over_mint))}"}
+        {:error,
+         "No Output Found with Minting Policies: #{Enum.join(Map.keys(left_over_mint), ", ")}"}
   end
 
   defp load_wallet_utxos(%TxConfig{} = cfg) do

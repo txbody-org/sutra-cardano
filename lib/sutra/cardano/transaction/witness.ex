@@ -112,7 +112,11 @@ defmodule Sutra.Cardano.Transaction.Witness do
     [
       %Script{
         script_type: Script.decode_script_type!(script_type),
-        data: extract_value!(script_value) |> Enum.map(&extract_value!/1)
+        data:
+          script_value
+          |> extract_value!()
+          |> Utils.safe_head()
+          |> extract_value!()
       }
     ]
   end

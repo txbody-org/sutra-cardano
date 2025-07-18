@@ -44,6 +44,10 @@ defmodule Sutra.Cardano.Transaction do
       end
     end
 
+    def to_hex(%Input{output_reference: output_reference, output: output}) do
+      Cbor.encode_hex([OutputReference.to_cbor(output_reference), Output.to_cbor(output)])
+    end
+
     def from_cbor([out_ref, output]),
       do: %__MODULE__{
         output_reference: OutputReference.from_cbor(out_ref),

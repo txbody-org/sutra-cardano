@@ -135,5 +135,13 @@ defmodule Sutra.Cardano.Transaction.InputTest do
                }
              } == Input.from_hex(@sample_input_cbor)
     end
+
+    test "to_hex/1 returns hex encoded cbor if its valid" do
+      assert @sample_input_cbor ==
+               @sample_input_cbor
+               |> Input.from_hex()
+               |> Input.to_hex()
+               |> String.downcase()
+    end
   end
 end

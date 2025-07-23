@@ -72,6 +72,11 @@ defmodule Sutra.Provider.Kupogmios do
     |> Utils.merge_list()
   end
 
+  @impl true
+  def tx_cbor(_) do
+    raise "tx_cbor callback not implemented in Sutra.Provider.Kupogmios"
+  end
+
   defp do_fetch_tx_ref(tx_id, indices) do
     pattern = "*@#{tx_id}?unspent&resolve_hashes"
 

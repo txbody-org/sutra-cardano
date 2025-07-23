@@ -45,6 +45,11 @@ defmodule Sutra.Provider.YaciProvider do
     end
   end
 
+  @impl true
+  def tx_cbor(_) do
+    raise "tx_cbor callback not implemented in Sutra.Provider.YaciProvider"
+  end
+
   def fetch_protocol_params(retry \\ 0) do
     url = "#{fetch_endpoint(:admin)}/epochs/parameters"
 

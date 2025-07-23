@@ -54,6 +54,16 @@ defmodule Sutra.Provider.KoiosProvider do
     |> attach_datum_raw_to_utxos()
   end
 
+  @impl true
+  def tx_cbor(tx_hash) when is_list(tx_hash) do
+    resp =
+      Req.post!(base_url() <> "tx_cbor",
+        json: %{"_tx_hashes" => tx_hash}
+      ).body
+
+    Enum.into(resp, %{}, &{&1["tx_hash"], &1["cbor"]})
+  end
+
   defp attach_datum_raw_to_utxos(utxos) when is_list(utxos) do
     get_datum_hash = fn %Output{datum: %Datum{} = datum} ->
       if datum.kind == :datum_hash, do: datum.value, else: nil

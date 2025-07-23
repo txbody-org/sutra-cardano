@@ -46,6 +46,12 @@ defmodule Sutra.Provider do
   """
   @callback submit_tx(tx :: Transaction.t() | binary()) :: binary()
 
+  @doc """
+    Fetch Tx cbor by tx hash
+  """
+
+  @callback tx_cbor([txhash :: binary()]) :: %{(tx_hash :: binary()) => cbor :: binary()}
+
   def utxos_at(addresses) do
     get_provider!().utxos_at(addresses)
   end
@@ -68,6 +74,10 @@ defmodule Sutra.Provider do
 
   def datum_of(datum_hashes) do
     get_provider!().datum_of(datum_hashes)
+  end
+
+  def tx_cbor(tx_hash) do
+    get_provider!().tx_cbor(tx_hash)
   end
 
   def provider?(mod) do

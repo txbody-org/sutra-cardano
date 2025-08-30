@@ -26,6 +26,10 @@ defmodule Sutra.Provider.KoiosProvider do
   @impl true
   def network, do: fetch_env(:network)
 
+  def api_key do
+    fetch_env(:api_key)
+  end
+
   @impl true
   def utxos_at(addrs) when is_list(addrs) do
     normalized_addrs =
@@ -34,9 +38,11 @@ defmodule Sutra.Provider.KoiosProvider do
       end)
 
     resp =
-      Req.post!(base_url() <> "address_utxos",
-        json: %{"_addresses" => normalized_addrs, "_extended" => true}
-      ).body
+      build_request(:post, "address_utxos", %{
+        "_addresses" => normalized_addrs,
+        "_extended" => true
+      })
+      |> Map.get(:body)
 
     Enum.map(resp, &parse_utxo/1)
     |> attach_datum_raw_to_utxos()
@@ -45,9 +51,8 @@ defmodule Sutra.Provider.KoiosProvider do
   @impl true
   def utxos_at_refs(refs) do
     resp =
-      Req.post!(base_url() <> "utxo_info",
-        json: %{"_utxo_refs" => refs, "_extended" => true}
-      ).body
+      build_request(:post, "utxo_info", %{"_utxo_refs" => refs, "_extended" => true})
+      |> Map.get(:body)
 
     resp
     |> Enum.map(&parse_utxo/1)
@@ -57,9 +62,8 @@ defmodule Sutra.Provider.KoiosProvider do
   @impl true
   def tx_cbor(tx_hash) when is_list(tx_hash) do
     resp =
-      Req.post!(base_url() <> "tx_cbor",
-        json: %{"_tx_hashes" => tx_hash}
-      ).body
+      build_request(:post, "tx_cbor", %{"_tx_hashes" => tx_hash})
+      |> Map.get(:body)
 
     Enum.into(resp, %{}, &{&1["tx_hash"], &1["cbor"]})
   end
@@ -97,7 +101,9 @@ defmodule Sutra.Provider.KoiosProvider do
   def datum_of([]), do: %{}
 
   def datum_of(datum_hashes) when is_list(datum_hashes) do
-    resp = Req.post!(base_url() <> "datum_info", json: %{"_datum_hashes" => datum_hashes}).body
+    resp =
+      build_request(:post, "datum_info", %{"_datum_hashes" => datum_hashes})
+      |> Map.get(:body)
 
     for %{"datum_hash" => hash, "bytes" => raw_datum} <- resp, into: %{} do
       {hash, raw_datum}
@@ -112,7 +118,8 @@ defmodule Sutra.Provider.KoiosProvider do
   def protocol_params do
     curr_epoch_no = chain_tip() |> hd() |> Map.get("epoch_no")
 
-    Req.get!(base_url() <> "epoch_params?_epoch_no=#{curr_epoch_no}").body
+    build_request(:get, "epoch_params", %{"_epoch_no" => curr_epoch_no})
+    |> Map.get(:body)
     |> hd()
     |> parse_protocol_params()
   end
@@ -208,15 +215,48 @@ defmodule Sutra.Provider.KoiosProvider do
 
   @impl true
   def submit_tx(cbor) when is_binary(cbor) do
-    Req.post!(base_url() <> "submittx",
-      body: cbor,
-      headers: %{"Content-Type" => "application/cbor"}
-    ).body
+    build_request(:post, "submittx", cbor, headers: %{"Content-Type" => "application/cbor"})
+    |> Map.get(:body)
   end
 
   def submit_tx(%Transaction{} = tx) do
     Transaction.to_cbor(tx)
     |> CBOR.encode()
     |> submit_tx()
+  end
+
+  defp build_request(method, path, body, opts \\ []) do
+    url = base_url() <> path
+    headers = build_headers(opts)
+
+    base_req =
+      Req.new(
+        method: method,
+        url: url,
+        headers: headers
+      )
+      |> apply_body(body)
+
+    Req.request!(base_req)
+  end
+
+  defp build_headers(opts) do
+    header_opts = Keyword.get(opts, :headers, %{})
+
+    base_header = %{
+      accept: "application/json",
+      content_type: "application/json"
+    }
+
+    header = Map.merge(base_header, header_opts)
+
+    case api_key() do
+      nil -> header
+      key -> Map.put(header, :authorization, "Bearer " <> key)
+    end
+  end
+
+  defp apply_body(req, body) do
+    if body, do: Req.merge(req, json: body), else: req
   end
 end

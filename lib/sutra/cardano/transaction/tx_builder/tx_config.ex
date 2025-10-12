@@ -23,15 +23,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxConfig do
 
   def __override_cfg(%__MODULE__{} = cfg, _, nil), do: cfg
 
-  def __override_cfg(%__MODULE__{} = cfg, key, value) do
-    case Map.get(cfg, key) do
-      nil ->
-        Map.put(cfg, key, value)
-
-      _ ->
-        cfg
-    end
-  end
+  def __override_cfg(%__MODULE__{} = cfg, key, value), do: Map.put_new(cfg, key, value)
 
   def __set_cfg(%__MODULE__{} = cfg, key, value), do: Map.put(cfg, key, value)
 

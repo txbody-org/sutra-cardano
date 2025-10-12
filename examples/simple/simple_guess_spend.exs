@@ -1,6 +1,5 @@
 alias Sutra.Cardano.Address
 alias Sutra.Cardano.Script
-alias Sutra.Data
 alias Sutra.Provider
 
 import Sutra.Cardano.Transaction.TxBuilder
@@ -28,9 +27,7 @@ place = fn ->
   IO.puts("Placing Utxo to Script with Guess: 42")
 
   new_tx()
-  |> pay_to_address(script_address, %{"lovelace" => 2_000_000},
-    datum: {:as_hash, Data.encode(42)}
-  )
+  |> add_output(script_address, %{"lovelace" => 2_000_000}, {:datum_hash, 42})
   |> build_tx!(wallet_address: wallet_address)
   |> sign_tx([sig])
 end
@@ -39,6 +36,7 @@ place_tx = place.()
 place_tx_id = submit_tx(place_tx)
 
 IO.puts("Place Tx Submited with Txid: #{place_tx_id}")
+
 IO.puts("Confirming Tx ....")
 
 Process.sleep(2_000)
@@ -49,8 +47,7 @@ input_utxos = provider.utxos_at_refs(["#{place_tx_id}#0"])
 
 spend_tx =
   new_tx()
-  |> spend(input_utxos, 42)
-  |> attach_script(script)
+  |> add_input(input_utxos, witness: script, redeemer: 42, datum: 42)
   |> build_tx!(
     wallet_utxos: new_wallet_utxos,
     wallet_address: wallet_address

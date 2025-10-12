@@ -2,6 +2,7 @@ defmodule Sutra.Provider.YaciProvider do
   @moduledoc """
     Yaci Devkit Provider
   """
+  alias Sutra.Data
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Asset
   alias Sutra.Cardano.Gov.CostModels
@@ -141,10 +142,14 @@ defmodule Sutra.Provider.YaciProvider do
     {datum, raw} =
       case resp do
         %{"inline_datum" => inline_datum} when is_binary(inline_datum) ->
-          {Datum.inline(inline_datum), inline_datum}
+          {Datum.inline(inline_datum), Data.decode!(inline_datum)}
 
         %{"data_hash" => datum_hash} when is_binary(datum_hash) ->
-          {Datum.datum_hash(datum_hash), Map.get(datum_of(datum_hash), datum_hash)}
+          raw_datum =
+            Map.get(datum_of(datum_hash), datum_hash)
+            |> Utils.maybe(nil, &Data.decode!/1)
+
+          {Datum.datum_hash(datum_hash), raw_datum}
 
         _ ->
           {Datum.no_datum(), nil}

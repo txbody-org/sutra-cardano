@@ -57,6 +57,9 @@ defmodule Sutra.Cardano.Transaction do
     def sort_inputs(inputs) when is_list(inputs) do
       Enum.sort_by(inputs, & &1.output_reference, {:asc, OutputReference})
     end
+
+    def extract_ref(%__MODULE__{output_reference: %OutputReference{} = out_ref}),
+      do: "#{out_ref.transaction_id}##{out_ref.output_index}"
   end
 
   typedstruct do

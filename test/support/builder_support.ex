@@ -36,7 +36,7 @@ defmodule Sutra.Test.Support.BuilderSupport do
         transaction_id: Blake2b.blake2b_256("#{:rand.uniform(10000)}"),
         output_index: :rand.uniform(50)
       },
-      output: Output.new(Address.from_bech32(@sample_addr), asset, ref_script)
+      output: Output.new(Address.from_bech32(@sample_addr), asset, reference_script: ref_script)
     }
   end
 

@@ -40,10 +40,9 @@ defmodule Sutra.Examples.Advance.AlwaysSucceed do
     tx_id =
       new_tx()
       |> attach_metadata(123, "Test Sutra TX")
-      |> mint_asset(policy_id, %{out_token_name => 100}, Data.void())
-      |> attach_script(simple_mint_script)
-      |> pay_to_address(mint_script_address, out_value, datum: {:inline, Data.encode(58)})
-      |> pay_to_address(user_address, %{"lovelace" => 10_000}, datum: {:as_hash, Data.encode(4)})
+      |> mint_asset(policy_id, %{out_token_name => 100}, simple_mint_script, Data.void())
+      |> add_output(mint_script_address, out_value, {:inline_datum, 58})
+      |> add_output(Address.from_bech32(user_address), %{"lovelace" => 10_000}, {:datum_hash, 4})
       |> valid_from(current_posix_time)
       |> valid_to(current_posix_time + 20 * 60 * 1000)
       |> build_tx!(wallet_address: user_address)

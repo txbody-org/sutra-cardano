@@ -7,14 +7,12 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxBuilderTest do
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Asset
   alias Sutra.Cardano.Script
-  alias Sutra.Cardano.Script.NativeScript
   alias Sutra.Cardano.Transaction
   alias Sutra.Cardano.Transaction.Datum
   alias Sutra.Cardano.Transaction.Input
   alias Sutra.Cardano.Transaction.Output
   alias Sutra.Cardano.Transaction.OutputReference
   alias Sutra.Cardano.Transaction.TxBuilder
-  alias Sutra.Cardano.Transaction.TxBuilder.Error.NoScriptWitness
   alias Sutra.Data
   alias Sutra.Provider.KoiosProvider
   alias Sutra.Provider.Kupogmios
@@ -34,7 +32,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxBuilderTest do
                inputs: [],
                outputs: [],
                metadata: nil,
-               collateral_input: nil,
+               collateral_inputs: [],
                redeemer_lookup: %{},
                valid_from: nil,
                valid_to: nil
@@ -62,13 +60,20 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxBuilderTest do
       assert cfg.wallet_address == [Address.from_bech32(@addr1), Address.from_bech32(@addr2)]
     end
 
-    test "spend/3 sets inputs and redeemer_lookup" do
+    test "add_input/2 sets inputs and redeemer_lookup" do
       input = %Input{
         output_reference: %OutputReference{transaction_id: "tx-id-1", output_index: 0},
-        output: Output.new(Address.from_bech32(@addr1), Asset.from_lovelace(100))
+        output:
+          Output.new(
+            Address.from_script(sample_plutus_script(), :preprod),
+            Asset.from_lovelace(100)
+          )
       }
 
-      assert %TxBuilder{inputs: inputs} = builder = new_tx() |> spend([input], Data.void())
+      assert %TxBuilder{inputs: inputs} =
+               builder =
+               new_tx()
+               |> add_input([input], witness: sample_plutus_script(), redeemer: Data.void())
 
       assert inputs == [input]
 
@@ -77,142 +82,109 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxBuilderTest do
              }
     end
 
-    test "spend/2 sets inputs without redeemer_lookup" do
+    test "add_input/2 sets inputs without redeemer_lookup" do
       input = %Input{
         output_reference: %OutputReference{transaction_id: "tx-id-1", output_index: 0},
         output: Output.new(Address.from_bech32(@addr1), Asset.from_lovelace(100))
       }
 
-      assert %TxBuilder{inputs: inputs} = builder = new_tx() |> spend([input])
+      assert %TxBuilder{inputs: inputs} = builder = new_tx() |> add_input([input])
 
       assert inputs == [input]
 
       assert builder.redeemer_lookup == %{}
     end
 
-    test "put_output/2 adds output to tx Builder" do
+    test "add_output/2 adds output to tx Builder" do
       output = Output.new(Address.from_bech32(@addr1), Asset.from_lovelace(200))
 
       assert %TxBuilder{} =
                builder =
                new_tx()
-               |> put_output(output)
+               |> add_output(output)
 
       assert builder.outputs == [output]
-      assert builder.plutus_data == []
+      assert builder.plutus_data == %{}
     end
 
-    test "put_output/3 adds output with datum to tx Builder" do
-      output = Output.new(Address.from_bech32(@addr1), Asset.from_lovelace(200))
+    test "add_output/3 adds output with datum to tx Builder" do
+      output =
+        Output.new(
+          Address.from_bech32(@addr1),
+          Asset.from_lovelace(200),
+          datum: Datum.inline(Data.encode(24))
+        )
 
       assert %TxBuilder{} =
                builder =
                new_tx()
-               |> put_output(output, {:inline, Data.encode(24)})
+               |> add_output(output)
 
       assert builder.outputs == [
                %Output{
                  output
-                 | datum: %Datum{kind: :inline_datum, value: Data.encode(24)},
-                   datum_raw: 24
+                 | datum: %Datum{kind: :inline_datum, value: Data.encode(24)}
                }
              ]
 
-      assert builder.plutus_data == []
+      assert builder.plutus_data == %{}
     end
 
-    test "put_output/3 adds output with as_hash datum to tx Builder & setup plutus data lookup" do
-      output = Output.new(Address.from_bech32(@addr1), Asset.from_lovelace(200))
+    test "add_output/3 adds output with as_hash datum to tx Builder & setup plutus data lookup" do
+      output =
+        Output.new(
+          Address.from_bech32(@addr1),
+          Asset.from_lovelace(200),
+          datum: Datum.datum_hash(Data.encode(24) |> Blake2b.blake2b_256()),
+          datum_raw: 24
+        )
 
       assert %TxBuilder{} =
                builder =
                new_tx()
-               |> put_output(output, {:as_hash, Data.encode(24)})
+               |> add_output(output)
 
       assert builder.outputs == [
                %Output{
                  output
-                 | datum: %Datum{kind: :datum_hash, value: Blake2b.blake2b_256(Data.encode(24))},
-                   datum_raw: 24
+                 | datum: %Datum{kind: :datum_hash, value: Blake2b.blake2b_256(Data.encode(24))}
                }
              ]
 
-      assert builder.plutus_data == [24]
+      assert builder.plutus_data == %{output.datum.value => 24}
     end
 
-    test "pay_to_address/3 creates output with asset and provided address" do
-      assert %TxBuilder{} = builder = new_tx() |> pay_to_address(@addr1, Asset.from_lovelace(150))
+    test "add_output/2 creates output with asset and provided address" do
+      assert %TxBuilder{} =
+               builder =
+               new_tx() |> add_output(Address.from_bech32(@addr1), Asset.from_lovelace(150))
 
       assert builder.outputs == [
                Output.new(Address.from_bech32(@addr1), Asset.from_lovelace(150))
              ]
     end
 
-    test "datum can also be passed as option to pay_to_address/3" do
-      assert %TxBuilder{} =
+    test "datum can also be passed as option to add_output/3" do
+      assert %TxBuilder{outputs: [output]} =
                builder =
                new_tx()
-               |> pay_to_address(@addr1, Asset.from_lovelace(150),
-                 datum: {:as_hash, Data.encode("some-datum")}
+               |> add_output(
+                 Address.from_bech32(@addr1),
+                 Asset.from_lovelace(150),
+                 {:datum_hash, "some-datum"}
                )
 
-      assert builder.outputs == [
-               %Output{
-                 Output.new(Address.from_bech32(@addr1), Asset.from_lovelace(150), %Datum{
+      assert output ==
+               Output.new(Address.from_bech32(@addr1), Asset.from_lovelace(150),
+                 datum: %Datum{
                    kind: :datum_hash,
                    value: Blake2b.blake2b_256(Data.encode("some-datum"))
-                 })
-                 | datum_raw: %CBOR.Tag{tag: :bytes, value: "some-datum"}
-               }
-             ]
+                 },
+                 datum_raw: %CBOR.Tag{tag: :bytes, value: "some-datum"}
+               )
 
-      assert builder.plutus_data == [%CBOR.Tag{tag: :bytes, value: "some-datum"}]
-    end
-
-    test "attach_script/2 attach plutus and native script to script lookup" do
-      plutus_script = Script.new(Base.encode16("plutus-script"), :plutus_v3)
-
-      native_script =
-        NativeScript.from_json(%{
-          "type" => "all",
-          "scripts" => [
-            %{"type" => "sig", "keyHash" => "key1"}
-          ]
-        })
-
-      assert %TxBuilder{scripts_lookup: scripts_lookup} =
-               new_tx() |> attach_script(plutus_script) |> attach_script(native_script)
-
-      assert scripts_lookup.native == %{
-               "5118f9e77a0fa0f527b102276e829c9e651a9689cf466ad00bec5e06" =>
-                 %NativeScript.ScriptAll{
-                   scripts: [
-                     %NativeScript.ScriptPubkey{pubkey_hash: "key1"}
-                   ]
-                 }
-             }
-
-      assert scripts_lookup.plutus_v3 == %{
-               "90b3c94c07c46471c0a2ac773fd9331caaabdb84a004b5715291d6f9" => %Script{
-                 script_type: :plutus_v3,
-                 data: "706C757475732D736372697074"
-               }
-             }
-    end
-
-    test "mint_asset/3 allows minting assets" do
-      assert %TxBuilder{mints: mints, redeemer_lookup: redeemer} =
-               new_tx()
-               |> mint_asset("policy-1", %{"token-1" => 1})
-               |> mint_asset("policy-2", %{"token-2" => 1}, Data.void())
-
-      assert mints == %{
-               "policy-1" => %{"token-1" => 1},
-               "policy-2" => %{"token-2" => 1}
-             }
-
-      assert redeemer == %{
-               {:mint, "policy-2"} => Data.void()
+      assert builder.plutus_data == %{
+               output.datum.value => %CBOR.Tag{tag: :bytes, value: "some-datum"}
              }
     end
 
@@ -224,37 +196,43 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxBuilderTest do
       assert %TxBuilder{valid_to: 150} = new_tx() |> valid_to(150)
     end
 
-    test "reference_inputs/2 allows input Utxos to put as reference inputs" do
+    test "add_reference_inputs/2 allows input Utxos to put as reference inputs" do
       input = %Input{
         output_reference: %OutputReference{transaction_id: "tx-id-1", output_index: 0},
         output: Output.new(Address.from_bech32(@addr1), Asset.from_lovelace(100))
       }
 
-      assert %TxBuilder{ref_inputs: inputs} = new_tx() |> reference_inputs([input])
+      assert %TxBuilder{ref_inputs: inputs} = new_tx() |> add_reference_inputs([input])
 
       assert inputs == [input]
     end
 
-    test "reference_inputs/2 with ref script puts script in script_lookup" do
+    test "add_reference_inputs/2 with used ref script puts script in used_script" do
       input = %Input{
         output_reference: %OutputReference{transaction_id: "tx-id-1", output_index: 0},
         output:
           Output.new(
             Address.from_bech32(@addr1),
             Asset.from_lovelace(100),
-            nil,
-            Script.new("sample-script", :plutus_v3)
+            reference_script: sample_plutus_script()
           )
       }
 
-      assert %TxBuilder{ref_inputs: inputs, scripts_lookup: %{plutus_v3: v3_script}} =
-               new_tx() |> reference_inputs([input])
+      policy_id = Script.hash_script(sample_plutus_script())
+
+      assert %TxBuilder{ref_inputs: inputs, used_scripts: used_scripts} =
+               new_tx()
+               |> add_reference_inputs([input])
+               |> mint_asset(
+                 policy_id,
+                 %{"" => 1},
+                 :ref_inputs,
+                 Data.void()
+               )
+               |> add_output(Address.from_bech32(@addr1), %{policy_id => %{"" => 1}})
 
       assert inputs == [input]
-
-      assert v3_script == %{
-               Script.hash_script(input.output.reference_script) => true
-             }
+      assert MapSet.to_list(used_scripts) == [:plutus_v1]
     end
   end
 
@@ -273,17 +251,20 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxBuilderTest do
       native_script = sample_native_script()
       policy_id = Script.hash_script(native_script)
 
-      assert {:error, %NoScriptWitness{} = error} =
+      assert {:error, [%{key: :missing_minting_policy, value: error_val}]} =
                new_tx()
                |> mint_asset(
                  policy_id,
                  %{
                    Base.encode16("sample-script") => 1
                  },
+                 :ref_inputs,
                  Data.void()
                )
                |> set_protocol_params(sample_protocol_params())
-               |> pay_to_address(@addr2, %{policy_id => %{Base.encode16("sample-script") => 1}})
+               |> add_output(Address.from_bech32(@addr2), %{
+                 policy_id => %{Base.encode16("sample-script") => 1}
+               })
                |> set_wallet_address([Address.from_bech32(@addr1)])
                |> use_provider(Kupogmios)
                |> build_tx(
@@ -291,31 +272,35 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxBuilderTest do
                  slot_config: SlotConfig.fetch_slot_config(:preprod)
                )
 
-      assert error.reason =~
-               "No Script witness found for Script #{policy_id}"
+      assert error_val == policy_id
     end
 
     test "build_tx/3 fails if redeemer is not available for plutus minting policy" do
       script = sample_plutus_script()
       policy_id = Script.hash_script(script)
 
-      assert {:error, "Redeemer Missing for Mint, PolicyId: #{policy_id}"} ==
+      assert {:error, [%{value: error_value, key: :invalid_redeemer_for_policy}]} =
                new_tx()
                |> mint_asset(
                  policy_id,
                  %{
                    Base.encode16("sample-script") => 1
-                 }
+                 },
+                 script,
+                 nil
                )
-               |> pay_to_address(@addr2, %{policy_id => %{Base.encode16("sample-script") => 1}})
+               |> add_output(Address.from_bech32(@addr2), %{
+                 policy_id => %{Base.encode16("sample-script") => 1}
+               })
                |> set_protocol_params(sample_protocol_params())
                |> set_wallet_address([Address.from_bech32(@addr1)])
                |> use_provider(Kupogmios)
-               |> attach_script(script)
                |> build_tx(
                  wallet_utxos: wallet_utxos(),
                  slot_config: SlotConfig.fetch_slot_config(:preprod)
                )
+
+      assert error_value == policy_id
     end
 
     test "build_tx/3 fails when inputs cannot cover outputs" do
@@ -328,14 +313,19 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxBuilderTest do
                  policy_id,
                  %{
                    Base.encode16("sample-script") => 1
-                 }
+                 },
+                 script,
+                 nil
                )
-               |> pay_to_address(@addr2, %{policy_id => %{Base.encode16("sample-script") => 1}})
-               |> pay_to_address(@addr2, %{policy_id => %{Base.encode16("another-token") => 1}})
+               |> add_output(Address.from_bech32(@addr2), %{
+                 policy_id => %{Base.encode16("sample-script") => 1}
+               })
+               |> add_output(Address.from_bech32(@addr2), %{
+                 policy_id => %{Base.encode16("another-token") => 1}
+               })
                |> set_protocol_params(sample_protocol_params())
                |> set_wallet_address([Address.from_bech32(@addr1)])
                |> use_provider(Kupogmios)
-               |> attach_script(script)
                |> build_tx(
                  wallet_utxos: wallet_utxos(),
                  slot_config: SlotConfig.fetch_slot_config(:preprod)
@@ -355,13 +345,16 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxBuilderTest do
                  policy_id,
                  %{
                    Base.encode16("sample-script") => 1
-                 }
+                 },
+                 script,
+                 nil
                )
-               |> pay_to_address(@addr2, %{policy_id => %{Base.encode16("another-token") => 1}})
+               |> add_output(Address.from_bech32(@addr2), %{
+                 policy_id => %{Base.encode16("another-token") => 1}
+               })
                |> set_protocol_params(sample_protocol_params())
                |> set_wallet_address([Address.from_bech32(@addr1)])
                |> use_provider(Kupogmios)
-               |> attach_script(script)
                |> build_tx(
                  wallet_utxos: wallet_utxos(),
                  slot_config: SlotConfig.fetch_slot_config(:preprod)
@@ -378,13 +371,16 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxBuilderTest do
                  policy_id,
                  %{
                    Base.encode16("sample-script") => 1
-                 }
+                 },
+                 script,
+                 nil
                )
-               |> pay_to_address(@addr2, %{policy_id => %{Base.encode16("sample-script") => 1}})
+               |> add_output(Address.from_bech32(@addr2), %{
+                 policy_id => %{Base.encode16("sample-script") => 1}
+               })
                |> set_protocol_params(sample_protocol_params())
                |> set_wallet_address([Address.from_bech32(@addr1)])
                |> use_provider(Kupogmios)
-               |> attach_script(script)
                |> build_tx(
                  wallet_utxos: wallet_utxos(),
                  slot_config: SlotConfig.fetch_slot_config(:preprod)

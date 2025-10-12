@@ -16,7 +16,7 @@
         elixir = pkgs.beam.packages.erlang_27.elixir.override {
           version = "1.18";
           rev = "v1.18-latest";
-          sha256 = "sha256-SZaDCkdYTTLU1pqAZhbfQ2qwj9MgIcCJ1hTA0LsJA3A=";
+          sha256 = "sha256-N+6hpeo5M4L/mLRVXSP2P0w0fkx6iy0HAmEEGYYI7jY=";
         };
 
       in with pkgs; {
@@ -25,6 +25,10 @@
 
           { programs.nix-ld.dev.enable = true; }
         ];
+
+        shellHook = ''
+          export SHELL=/usr/bin/bash
+        '';
 
         devShell = pkgs.mkShell {
           buildInputs = [
@@ -37,7 +41,6 @@
             autoconf
             automake
             libsodium
-
           ] ++ optional stdenv.isLinux inotify-tools
             ++ optional stdenv.isDarwin terminal-notifier
             ++ optionals stdenv.isDarwin

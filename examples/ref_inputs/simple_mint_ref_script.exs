@@ -1,8 +1,8 @@
 # Use Provider
 Code.eval_file("examples/setup_yaci_provider.exs")
 
+alias Sutra.Provider
 alias Sutra.Cardano.Script.NativeScript
-alias Sutra.Provider.Kupogmios
 alias Sutra.Cardano.Asset
 alias Sutra.Data
 alias Sutra.Cardano.Script
@@ -54,8 +54,8 @@ IO.puts("Deploying Script ....")
 
 script_tx =
   new_tx()
-  |> deploy_script(user_address, simple_mint_script)
-  |> deploy_script(user_address, native_script)
+  |> deploy_script(Address.from_bech32(user_address), simple_mint_script)
+  |> deploy_script(Address.from_bech32(user_address), native_script)
   |> build_tx!(wallet_address: user_address)
 
 script_tx_id =
@@ -65,17 +65,19 @@ script_tx_id =
 
 IO.puts("Fetching Ref script")
 Process.sleep(2_000)
-script_utxo = Kupogmios.utxos_at_refs(["#{script_tx_id}#0", "#{script_tx_id}#1"])
+script_utxo = Provider.utxos_at_refs(["#{script_tx_id}#0", "#{script_tx_id}#1"])
 
 tx =
   new_tx()
   |> attach_metadata(123, "Test Sutra TX")
-  |> mint_asset(policy_id, %{out_token_name => 100}, Data.void())
-  |> mint_asset(native_policy_id, native_asset)
-  |> reference_inputs(script_utxo)
-  |> pay_to_address(mint_script_address, out_value, datum: {:inline, Data.encode(58)})
-  |> pay_to_address(user_address, %{native_policy_id => native_asset},
-    datum: {:as_hash, Data.encode(4)}
+  |> add_reference_inputs(script_utxo)
+  |> mint_asset(policy_id, %{out_token_name => 100}, :ref_inputs, Data.void())
+  |> mint_asset(native_policy_id, native_asset, :ref_inputs)
+  |> add_output(mint_script_address, out_value, datum: {:inline_datum, 58})
+  |> add_output(
+    Address.from_bech32(user_address),
+    %{native_policy_id => native_asset},
+    {:datum_hash, 4}
   )
   |> valid_from(current_posix_time)
   |> valid_to(current_posix_time + 20 * 60 * 1000)

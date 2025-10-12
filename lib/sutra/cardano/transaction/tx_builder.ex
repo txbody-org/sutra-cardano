@@ -6,23 +6,23 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   require Sutra.Data.Plutus
 
   alias Sutra.Blake2b
-  alias Sutra.Data
-  alias Sutra.Cardano.Asset
-  alias Sutra.Provider
-  alias Sutra.Crypto.Key
-  alias Sutra.Cardano.Transaction.Witness.VkeyWitness
-  alias Sutra.Cardano.Transaction.Witness
-  alias Sutra.Cardano.Transaction
-  alias Sutra.ProtocolParams
-  alias Sutra.Cardano.Transaction.TxBuilder.Internal
-  alias Sutra.Cardano.Transaction.TxBuilder.TxConfig
-  alias Sutra.Cardano.Transaction.Datum
-  alias Sutra.Data.Plutus
-  alias Sutra.Cardano.Script
+  alias Sutra.Cardano.Address
   alias Sutra.Cardano.Address.Credential
+  alias Sutra.Cardano.Asset
+  alias Sutra.Cardano.Script
+  alias Sutra.Cardano.Transaction
+  alias Sutra.Cardano.Transaction.Datum
   alias Sutra.Cardano.Transaction.Input
   alias Sutra.Cardano.Transaction.Output
-  alias Sutra.Cardano.Address
+  alias Sutra.Cardano.Transaction.TxBuilder.Internal
+  alias Sutra.Cardano.Transaction.TxBuilder.TxConfig
+  alias Sutra.Cardano.Transaction.Witness
+  alias Sutra.Cardano.Transaction.Witness.VkeyWitness
+  alias Sutra.Crypto.Key
+  alias Sutra.Data
+  alias Sutra.Data.Plutus
+  alias Sutra.ProtocolParams
+  alias Sutra.Provider
 
   import Sutra.Utils, only: [maybe: 2]
 

@@ -4,31 +4,32 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
   """
 
   require Sutra.Cardano.Script
-  alias Sutra.Cardano.Transaction.Witness.PlutusData
-  alias Sutra.Cardano.Script
-  alias Sutra.Cardano.Transaction.TxBuilder.Error.ScriptEvaluationFailed
-  alias Sutra.Cardano.Transaction.TxBuilder.Collateral
+
+  alias Sutra.Blake2b
   alias Sutra.Cardano.Address
-  alias Sutra.Uplc
-  alias Sutra.Cardano.Transaction.Witness.Redeemer
-  alias Sutra.Common.ExecutionUnitPrice
-  alias Sutra.ProtocolParams
-  alias Sutra.Cardano.Transaction.Witness.VkeyWitness
-  alias Sutra.Data.Plutus.PList
-  alias Sutra.Cardano.Gov.CostModels
-  alias Sutra.Utils
-  alias Sutra.CoinSelection
-  alias Sutra.CoinSelection.LargestFirst
-  alias Sutra.Cardano.Transaction.Output
-  alias Sutra.SlotConfig
   alias Sutra.Cardano.Asset
+  alias Sutra.Cardano.Gov.CostModels
+  alias Sutra.Cardano.Script
   alias Sutra.Cardano.Transaction
   alias Sutra.Cardano.Transaction.Input
-  alias Sutra.Cardano.Transaction.TxBuilder.TxConfig
-  alias Sutra.Blake2b
+  alias Sutra.Cardano.Transaction.Output
   alias Sutra.Cardano.Transaction.TxBody
-  alias Sutra.Cardano.Transaction.Witness
   alias Sutra.Cardano.Transaction.TxBuilder
+  alias Sutra.Cardano.Transaction.TxBuilder.Collateral
+  alias Sutra.Cardano.Transaction.TxBuilder.Error.ScriptEvaluationFailed
+  alias Sutra.Cardano.Transaction.TxBuilder.TxConfig
+  alias Sutra.Cardano.Transaction.Witness
+  alias Sutra.Cardano.Transaction.Witness.PlutusData
+  alias Sutra.Cardano.Transaction.Witness.Redeemer
+  alias Sutra.Cardano.Transaction.Witness.VkeyWitness
+  alias Sutra.CoinSelection
+  alias Sutra.CoinSelection.LargestFirst
+  alias Sutra.Common.ExecutionUnitPrice
+  alias Sutra.Data.Plutus.PList
+  alias Sutra.ProtocolParams
+  alias Sutra.SlotConfig
+  alias Sutra.Uplc
+  alias Sutra.Utils
 
   import Sutra.Utils, only: [maybe: 3]
 
@@ -376,6 +377,19 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
     to_fill_asset = Asset.diff(total_with_mint, total_output_assets) |> Asset.only_positive()
     leftover_asset = Asset.diff(total_output_assets, total_with_mint) |> Asset.only_positive()
 
+    update_change = fn c ->
+      change =
+        Enum.reduce(c.selected_inputs, leftover_asset, fn i, acc ->
+          Asset.merge(i.output.value, acc)
+        end)
+
+      {:ok,
+       %CoinSelection{
+         c
+         | change: change
+       }}
+    end
+
     cond do
       # Fetch Utxos for remaining Asset to cover
       Asset.zero() != to_fill_asset ->
@@ -395,18 +409,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
       true ->
         (wallet_inputs -- tx_body.inputs)
         |> CoinSelection.select_utxos_for_lovelace(1_500_000, leftover_asset)
-        |> Utils.when_ok(fn c ->
-          change =
-            Enum.reduce(c.selected_inputs, leftover_asset, fn i, acc ->
-              Asset.merge(i.output.value, acc)
-            end)
-
-          {:ok,
-           %CoinSelection{
-             c
-             | change: change
-           }}
-        end)
+        |> Utils.when_ok(&update_change.(&1))
     end
   end
 

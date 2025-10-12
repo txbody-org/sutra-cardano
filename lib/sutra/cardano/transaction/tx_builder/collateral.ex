@@ -1,14 +1,14 @@
 defmodule Sutra.Cardano.Transaction.TxBuilder.Collateral do
   @moduledoc false
 
-  alias Sutra.Cardano.Transaction.TxBuilder.Error.NoSuitableCollateralUTXO
-  alias Sutra.CoinSelection
   alias Sutra.Cardano.Asset
-  alias Sutra.Cardano.Transaction.TxBuilder.TxConfig
-  alias Sutra.Cardano.Transaction.TxBuilder
-  alias Sutra.Cardano.Transaction.TxBody
-  alias Sutra.Cardano.Transaction.Witness
   alias Sutra.Cardano.Transaction
+  alias Sutra.Cardano.Transaction.TxBody
+  alias Sutra.Cardano.Transaction.TxBuilder
+  alias Sutra.Cardano.Transaction.TxBuilder.Error.NoSuitableCollateralUTXO
+  alias Sutra.Cardano.Transaction.TxBuilder.TxConfig
+  alias Sutra.Cardano.Transaction.Witness
+  alias Sutra.CoinSelection
 
   # Calculates required collateral amount
   defp calc_total_collateral_fee(_cfg, _tx) do

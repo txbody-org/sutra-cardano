@@ -29,8 +29,16 @@ defmodule Sutra.Cardano.Transaction.Output do
     data(:datum_raw, :string, virtual: true)
   end
 
-  def new(%Address{} = addr, %{} = value, datum \\ nil, reference_script \\ nil) do
-    %__MODULE__{address: addr, value: value, datum: datum, reference_script: reference_script}
+  def new(%Address{} = addr, %{} = value, opts \\ []) when is_list(opts) do
+    datum = opts[:datum] || Datum.no_datum()
+
+    %__MODULE__{
+      address: addr,
+      value: value,
+      datum: datum,
+      reference_script: opts[:reference_script],
+      datum_raw: opts[:datum_raw]
+    }
   end
 
   @doc """

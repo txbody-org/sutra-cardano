@@ -7,7 +7,6 @@ defmodule Sutra.TxExamples.Simple.SimpleSpendTest do
   alias Sutra.Cardano.Asset
   alias Sutra.Cardano.Script
   alias Sutra.Cardano.Transaction.Input
-  alias Sutra.Data
   alias Sutra.Provider.YaciProvider
 
   import Sutra.Test.Support.BlueprintSupport
@@ -25,8 +24,10 @@ defmodule Sutra.TxExamples.Simple.SimpleSpendTest do
 
         place_tx_id =
           new_tx()
-          |> pay_to_address(script_addr, Asset.from_lovelace(2_000_000),
-            datum: {:inline, Data.encode(100)}
+          |> add_output(
+            script_addr,
+            Asset.from_lovelace(2_000_000),
+            {:inline_datum, 100}
           )
           |> build_tx!(wallet_address: addr)
           |> sign_tx([
@@ -42,8 +43,7 @@ defmodule Sutra.TxExamples.Simple.SimpleSpendTest do
         spend_tx_id =
           new_tx()
           # spending with redeemer 100 which matches with datum set in place Tx
-          |> spend(script_guess_utxo, 100)
-          |> attach_script(script)
+          |> add_input(script_guess_utxo, witness: script, redeemer: 100)
           |> build_tx!(wallet_address: addr)
           |> sign_tx([signing_key])
           |> submit_tx()

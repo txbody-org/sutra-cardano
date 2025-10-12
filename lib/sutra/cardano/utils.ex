@@ -124,7 +124,9 @@ defmodule Sutra.Utils do
     if is_function(arg, 0), do: arg.(), else: arg
   end
 
-  def maybe(data, _, f2) when is_function(f2, 1), do: f2.(data)
+  def maybe(data, _, f2) when not is_nil(data) and data !== [] and is_function(f2, 1),
+    do: f2.(data)
+
   def maybe(data, _, nil), do: data
 
   @doc """

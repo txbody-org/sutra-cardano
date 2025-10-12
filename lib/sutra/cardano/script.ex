@@ -31,11 +31,16 @@ defmodule Sutra.Cardano.Script do
                   is_struct(a, ScriptPubkey) or is_struct(a, ScriptInvalidBefore) or
                   is_struct(a, ScriptInvalidHereafter)
 
+  defguard is_plutus_script(s) when is_struct(s, __MODULE__)
+
   defguard is_script(s)
-           when is_native_script(s) or is_struct(s, __MODULE__)
+           when is_native_script(s) or is_plutus_script(s)
 
   def script?(s) when is_script(s), do: true
   def script?(_), do: false
+
+  def plutus_script?(s) when is_plutus_script(s), do: true
+  def plutus_script?(_), do: false
 
   def decode_script_type!(1), do: :native
   def decode_script_type!(3), do: :plutus_v1

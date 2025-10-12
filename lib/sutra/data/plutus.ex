@@ -13,7 +13,7 @@ defmodule Sutra.Data.Plutus do
   @type pInt() :: pos_integer()
   @type pMap() :: [{__MODULE__.t(), __MODULE__.t()}]
 
-  @type t() :: __MODULE__.Constr.t() | pMap() | __MODULE__.PList.t() | pInt() | pbytes()
+  @type t() :: %__MODULE__.Constr{} | pMap() | __MODULE__.PList.t() | pInt() | pbytes()
 
   defmodule PList do
     @moduledoc """
@@ -72,6 +72,10 @@ defmodule Sutra.Data.Plutus do
       end
     end
   end
+
+  defguard is_plutus_data(data)
+           when is_struct(data, __MODULE__.Constr) or is_struct(data, __MODULE__.PList) or
+                  is_binary(data) or is_integer(data)
 
   @spec decode(binary() | Cbor.t() | integer()) :: {:ok, __MODULE__.t()} | {:error, any()}
   def decode(raw) when is_binary(raw) do

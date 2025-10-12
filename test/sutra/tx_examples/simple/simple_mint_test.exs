@@ -33,11 +33,8 @@ defmodule Sutra.TxExamples.Simple.SimpleMintTest do
         tx =
           new_tx()
           |> attach_metadata(123, "Test Sutra TX")
-          |> mint_asset(policy_id, @mint_asset, Data.void())
-          |> attach_script(script)
-          |> pay_to_address(to_address, %{policy_id => @mint_asset},
-            datum: {:inline, Data.encode(58)}
-          )
+          |> mint_asset(policy_id, @mint_asset, script, Data.void())
+          |> add_output(to_address, %{policy_id => @mint_asset}, {:inline_datum, Data.encode(58)})
           |> build_tx!(wallet_address: addr)
 
         submit_tx_id =
@@ -70,11 +67,9 @@ defmodule Sutra.TxExamples.Simple.SimpleMintTest do
 
         mint_tx_id =
           new_tx()
-          |> reference_inputs(ref_utxos)
-          |> mint_asset(policy_id, @mint_asset, Data.void())
-          |> pay_to_address(to_address, %{policy_id => @mint_asset},
-            datum: {:as_hash, Data.encode(58)}
-          )
+          |> add_reference_inputs(ref_utxos)
+          |> mint_asset(policy_id, @mint_asset, :ref_inputs, Data.void())
+          |> add_output(to_address, %{policy_id => @mint_asset}, {:inline_datum, Data.encode(58)})
           |> build_tx!(wallet_address: addr)
           |> sign_tx([signing_key])
           |> submit_tx()

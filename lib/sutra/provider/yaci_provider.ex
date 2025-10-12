@@ -2,7 +2,6 @@ defmodule Sutra.Provider.YaciProvider do
   @moduledoc """
     Yaci Devkit Provider
   """
-  alias Sutra.Data
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Asset
   alias Sutra.Cardano.Gov.CostModels
@@ -14,6 +13,7 @@ defmodule Sutra.Provider.YaciProvider do
   alias Sutra.Cardano.Transaction.OutputReference
   alias Sutra.Common.ExecutionUnitPrice
   alias Sutra.Common.ExecutionUnits
+  alias Sutra.Data
   alias Sutra.ProtocolParams
   alias Sutra.SlotConfig
   alias Sutra.Utils

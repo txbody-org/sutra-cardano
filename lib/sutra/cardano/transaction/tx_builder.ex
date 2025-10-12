@@ -1,72 +1,49 @@
 defmodule Sutra.Cardano.Transaction.TxBuilder do
   @moduledoc """
-    building blocks to build Transaction in Cardano
+  building blocks to build Transaction in Cardano
   """
+  require Sutra.Cardano.Script
+  require Sutra.Data.Plutus
 
-  alias __MODULE__.Internal
-  alias __MODULE__.TxConfig
   alias Sutra.Blake2b
-  alias Sutra.Cardano.Address
-  alias Sutra.Cardano.Address.Credential
+  alias Sutra.Data
   alias Sutra.Cardano.Asset
-  alias Sutra.Cardano.Script
-  alias Sutra.Cardano.Script.NativeScript
+  alias Sutra.Provider
+  alias Sutra.Crypto.Key
+  alias Sutra.Cardano.Transaction.Witness.VkeyWitness
+  alias Sutra.Cardano.Transaction.Witness
   alias Sutra.Cardano.Transaction
+  alias Sutra.ProtocolParams
+  alias Sutra.Cardano.Transaction.TxBuilder.Internal
+  alias Sutra.Cardano.Transaction.TxBuilder.TxConfig
   alias Sutra.Cardano.Transaction.Datum
+  alias Sutra.Data.Plutus
+  alias Sutra.Cardano.Script
+  alias Sutra.Cardano.Address.Credential
   alias Sutra.Cardano.Transaction.Input
   alias Sutra.Cardano.Transaction.Output
-  alias Sutra.Cardano.Transaction.OutputReference
-  alias Sutra.Cardano.Transaction.Witness
-  alias Sutra.Cardano.Transaction.Witness.PlutusData
-  alias Sutra.Cardano.Transaction.Witness.Redeemer
-  alias Sutra.Cardano.Transaction.Witness.VkeyWitness
-  alias Sutra.Crypto.Key
-  alias Sutra.Data
-  alias Sutra.ProtocolParams
-  alias Sutra.Provider
+  alias Sutra.Cardano.Address
 
-  use TypedStruct
-
-  import Sutra.Cardano.Script, only: [is_native_script: 1]
   import Sutra.Utils, only: [maybe: 2]
 
-  @def_script_lookup %{
-    native: %{},
-    plutus_v1: %{},
-    plutus_v2: %{},
-    plutus_v3: %{}
-  }
-
-  @type t() :: %__MODULE__{
-          mints: %{Asset.policy_id() => %{Asset.asset_name() => integer()}},
-          metadata: any(),
-          ref_inputs: [%Input{}],
-          inputs: [%Input{}],
-          outputs: [Output.t()],
-          required_signers: MapSet.t(),
-          scripts_lookup: %{Script.script_type() => Script.script_data()},
-          plutus_data: [PlutusData.t()],
-          collateral_input: OutputReference.t(),
-          redeemer_lookup: %{{Redeemer.redeemer_tag(), binary()} => PlutusData.t()},
-          config: %TxConfig{}
-        }
-
-  defstruct mints: %{},
-            metadata: nil,
-            ref_inputs: [],
+  defstruct config: %TxConfig{},
             inputs: [],
             outputs: [],
+            ref_inputs: [],
+            errors: [],
+            mints: %{},
+            script_lookup: %{},
             required_signers: MapSet.new(),
-            scripts_lookup: @def_script_lookup,
-            plutus_data: [],
-            config: %TxConfig{},
-            collateral_input: nil,
-            redeemer_lookup: %{},
+            plutus_data: %{},
+            valid_to: nil,
             valid_from: nil,
-            valid_to: nil
+            redeemer_lookup: %{},
+            metadata: nil,
+            used_scripts: MapSet.new(),
+            collateral_inputs: []
 
   @doc """
-    Initialize TxBuilder with default values
+  Initialize TxBuilder with default values
 
     ## Examples
 
@@ -80,7 +57,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   end
 
   @doc """
-    overrides provider
+  overrides provider
 
     ## Examples
 
@@ -93,7 +70,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   end
 
   @doc """
-    use custom protocol params
+  use custom protocol params
 
     ## Examples
 
@@ -105,8 +82,15 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   end
 
   @doc """
-    Set Wallet address
+  Set Wallet address
+    
+    ## Examples
+      
+      iex> new_tx() |> set_wallet_address(%Address{})
+      %TxBuilder{}
 
+      iex> new_tx() |> set_wallet_address([%Address{}, %Address{}])
+      %TxBuilder{}
   """
   def set_wallet_address(%__MODULE__{config: cfg} = builder, %Address{} = address) do
     %__MODULE__{builder | config: TxConfig.__set_cfg(cfg, :wallet_address, [address])}
@@ -116,275 +100,455 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
     %__MODULE__{builder | config: TxConfig.__set_cfg(cfg, :wallet_address, addresses)}
   end
 
+  @doc """
+  Set Custom change address
+
+    ## Examples
+    
+        iex> new_tx() |> set_change_address(%Address{})
+        %TxBuilder{}
+
+        # Change Address with datum 
+        iex> new_tx() |> set_change_address(%Address{}, {:inline_datum, some_plutus_data})
+        %TxBuilder{}
+  """
   def set_change_address(
         %__MODULE__{config: cfg, plutus_data: prev_plutus_data} = builder,
         %Address{} = address,
-        opts \\ []
+        datum \\ nil
       ) do
-    {new_plutus_data, change_datum, _current_data} = set_datum(prev_plutus_data, opts[:datum])
+    {new_plutus_data, datum_info} = extract_datum(datum)
+
+    new_plutus_data =
+      if datum_info.kind == :datum_hash,
+        do: [new_plutus_data | prev_plutus_data],
+        else: prev_plutus_data
+
+    change_datum_info = if datum_info.kind == :no_datum, do: cfg.change_datum, else: datum_info
 
     %__MODULE__{
       builder
       | plutus_data: new_plutus_data,
-        config: %TxConfig{cfg | change_address: address, change_datum: change_datum}
+        config: %TxConfig{cfg | change_address: address, change_datum: change_datum_info}
     }
   end
 
   @doc """
-    proper docs Needed:
+  Adds Inputs To Transaction
+
+  ## Parameters
+    
+      - `%TxBuilder{}` - The TxBuilder instance containing the transaction details.
+      - `inputs`    - The list of `%Input{}` trying to spend
+
+  ## Options 
+      - `witness`   - The witness for input. Can be `%Script{}`, `%NativeScript{}`, `:vkey_witness`, `%Input{}`, `:ref_scripts` based on input. (defaults to `:vkey_witness`)
+      - `redeemer`  - Redeemer for spending inputs if needed. 
+                      Required only for inputs trying to consume from script address
+
+      - `datum`     - The datum info needed to spend utxos from script. Useful only for utxos with datum type `datum_hash`. 
+                      Note: If Datum is already available from provider for input, datum will be overriden by datum fetched from provider
+
+  ## Examples
+    
+      iex> new_tx() |> add_input(inputs_from_user_wallet)
+      %TxBuilder{}
+
+      iex> new_tx() |> add_input(native_script_inputs, witness: %NativeScript{})
+      %TxBuilder{}
+
+      iex> new_tx() |> add_input(script_inputs, witness: %Script{}, redeemer: redeemer_info)
+      %TxBuilder{}
+      
+      # Pass Input as reference_script
+      iex> new_tx() |> add_input(script_inputs, witness: %Input{}, redeemer: redeemer_info)
+      %TxBuilder{}
+      
+      # If script is already added as reference_script in pipeline we can 
+      # simply pass :ref_inputs
+      iex> new_tx() |> add_input(script_inputs, witness: :ref_inputs, redeemer: redeemer_info)
+      %TxBuilder{}
+   
+    
   """
-  def spend(%__MODULE__{} = builder, inputs, redeemer_data \\ nil) do
-    new_redeemer =
-      if redeemer_data == nil,
-        do: builder.redeemer_lookup,
-        else:
-          Enum.reduce(inputs, builder.redeemer_lookup, fn i, acc ->
-            Map.put(acc, {:spend, Internal.extract_ref(i)}, redeemer_data)
-          end)
+  def add_input(%__MODULE__{} = cfg, [%Input{} | _] = inputs, opts \\ []) do
+    witness = opts[:witness] || :vkey_witness
+    redeemer = opts[:redeemer]
+    passed_datum = opts[:datum]
 
-    new_plutus_data =
-      Enum.reduce(inputs, builder.plutus_data, fn %Input{} = input, acc ->
-        case input.output do
-          %Output{datum: %Datum{kind: :datum_hash}, datum_raw: raw_data}
-          when not is_nil(raw_data) ->
-            [raw_data | acc]
+    Enum.reduce(inputs, cfg, fn %Input{output: output} = input, acc_cfg ->
+      exact_datum = output.datum_raw || passed_datum
+      # Add datum in witness if input has datum with DatumHash kind
+      new_plutus_data =
+        if Datum.datum_kind(output.datum) == :datum_hash and not is_nil(exact_datum),
+          do: Map.put_new(cfg.plutus_data, output.datum.value, exact_datum),
+          else: cfg.plutus_data
 
-          _ ->
-            acc
-        end
+      case validate_script_witness(cfg.script_lookup, input, redeemer, witness) do
+        # Spending for Varification Key as payment Credential
+        {:ok, :vkey_witness, _} ->
+          %__MODULE__{
+            acc_cfg
+            | inputs: [input | acc_cfg.inputs],
+              plutus_data: new_plutus_data
+          }
+
+        # Spending from Script Address
+        {:ok, used_script_type, witness_key} ->
+          %__MODULE__{
+            acc_cfg
+            | inputs: [input | acc_cfg.inputs],
+              script_lookup: Map.put_new(acc_cfg.script_lookup, witness_key, witness),
+              used_scripts: MapSet.put(cfg.used_scripts, used_script_type),
+              plutus_data: new_plutus_data,
+              redeemer_lookup:
+                Map.put_new(cfg.redeemer_lookup, {:spend, Input.extract_ref(input)}, redeemer)
+          }
+
+        {:error, err_key} ->
+          %__MODULE__{
+            acc_cfg
+            | errors: [%{key: err_key, value: input} | acc_cfg.errors]
+          }
+      end
+    end)
+  end
+
+  def add_reference_inputs(%__MODULE__{} = builder, [%Input{} | _] = inputs) do
+    new_script_lookup =
+      Enum.reduce(inputs, builder.script_lookup, fn %Input{} = input, acc ->
+        if Script.script?(input.output.reference_script),
+          do: Map.put(acc, Script.hash_script(input.output.reference_script), input),
+          else: acc
       end)
 
     %__MODULE__{
-      builder
-      | inputs: builder.inputs ++ inputs,
-        plutus_data: new_plutus_data,
-        redeemer_lookup: new_redeemer
+      ref_inputs: builder.ref_inputs ++ inputs,
+      script_lookup: new_script_lookup
     }
   end
+
+  # Checks if inputs is valid with correct redeemer and witness
+  defp validate_script_witness(
+         _script_lookup,
+         %Input{
+           output: %Output{
+             address: %Address{
+               payment_credential: %Credential{credential_type: :vkey, hash: vkey_hash}
+             }
+           }
+         },
+         _redeemer,
+         _witness
+       ),
+       do: {:ok, :vkey_witness, vkey_hash}
+
+  defp validate_script_witness(
+         script_lookup,
+         %Input{
+           output: %Output{
+             address: %Address{payment_credential: %Credential{hash: script_hash}}
+           }
+         },
+         redeemer,
+         witness
+       ),
+       do: validate_script_witness(script_lookup, script_hash, redeemer, witness)
+
+  defp validate_script_witness(script_lookup, script_hash, redeemer, witness) do
+    exact_witness =
+      if witness == :ref_inputs,
+        do: extract_from_script_lookup(script_lookup[script_hash]),
+        else: witness
+
+    used_script_type =
+      if Script.is_plutus_script(exact_witness), do: exact_witness.script_type, else: :native
+
+    cond do
+      not Script.script?(exact_witness) ->
+        {:error, :missing_script_witness}
+
+      Script.hash_script(exact_witness) != script_hash ->
+        {:error, :invalid_script_witness}
+
+      Script.is_plutus_script(exact_witness) and not Plutus.is_plutus_data(redeemer) ->
+        {:error, :invalid_redeemer}
+
+      true ->
+        {:ok, used_script_type, script_hash}
+    end
+  end
+
+  defp extract_from_script_lookup(%Input{output: %Output{reference_script: script}}), do: script
+  defp extract_from_script_lookup(_), do: nil
 
   @doc """
-  appends output
+
+  Creates Output in transaction.
+
+    ## Examples
+      
+      iex> add_output(%TxBuilder{}, %Output{})
+      %TxBuilder{}
+      
+      # Creates output without Datum
+      iex> add_output(%TxBuilder{}, %Address{} = address, asset)
+      %TxBuilder{}
+      
+      # Creates output with inline datum
+      iex> add_output(%TxBuilder{}, %Address{} = address, asset, {:inline_datum, plutus_data})
+      %TxBuilder{}
+
+      # Creates output with datum hash
+      iex> add_output(%TxBuilder{}, %Address{} = address, asset, {:datum_hash, plutus_data})
+      %TxBuilder{}
+      
   """
-  def put_output(%__MODULE__{} = builder, %Output{} = output, datum \\ nil) do
-    {new_plutus_data, datum, new_data} = set_datum(builder.plutus_data, datum)
+  def add_output(%__MODULE__{} = cfg, %Output{} = output) do
+    plutus_data =
+      if Datum.datum_kind(output.datum) == :datum_hash and not is_nil(output.datum_raw),
+        do: Map.put_new(cfg.plutus_data, output.datum.value, output.datum_raw),
+        else: cfg.plutus_data
 
-    %__MODULE__{
-      builder
-      | outputs: [%Output{output | datum: datum, datum_raw: new_data} | builder.outputs],
-        plutus_data: new_plutus_data
-    }
+    %__MODULE__{cfg | outputs: [output | cfg.outputs], plutus_data: plutus_data}
   end
 
-  def pay_to_address(builder, address, assets, opts \\ [])
-
-  def pay_to_address(builder, address, assets, opts) when is_binary(address) do
-    builder
-    |> pay_to_address(Address.from_bech32(address), assets, opts)
+  def add_output(%__MODULE__{} = cfg, %Address{} = out_addr, assets, datum \\ nil) do
+    {plutus_data, datum_info} = extract_datum(datum)
+    output = %Output{address: out_addr, value: assets, datum: datum_info, datum_raw: plutus_data}
+    add_output(cfg, output)
   end
 
-  def pay_to_address(builder, %Address{} = address, assets, opts) when is_map(assets) do
-    output = %Output{
-      address: address,
-      value: assets
-    }
+  defp extract_datum({:inline_datum, val}) when Plutus.is_plutus_data(val) do
+    raw_data = Data.encode(val)
 
-    put_output(builder, output, opts[:datum])
+    {Data.decode!(raw_data), Datum.inline(raw_data)}
   end
 
-  def deploy_script(builder, address, script) when Script.is_script(script) do
-    address = if is_binary(address), do: Address.from_bech32(address), else: address
-
-    output = %Output{
-      address: address,
-      value: Asset.from_lovelace(0),
-      reference_script: script
-    }
-
-    put_output(builder, output)
+  defp extract_datum({:datum_hash, val}) when Plutus.is_plutus_data(val) do
+    raw_data = Data.encode(val)
+    {Data.decode!(raw_data), Datum.datum_hash(Blake2b.blake2b_256(raw_data))}
   end
 
-  defp set_datum(prev_plutus_data, nil), do: {prev_plutus_data, nil, nil}
+  defp extract_datum(_), do: {nil, Datum.no_datum()}
 
-  defp set_datum(prev_plutus_data, {:inline, data}) when is_binary(data),
-    do: {prev_plutus_data, %Datum{kind: :inline_datum, value: data}, Data.decode!(data)}
+  @doc """
+  Mint Assets 
 
-  defp set_datum(prev_plutus_data, {:as_hash, data}) when is_binary(data) do
-    decoded_data = Data.decode!(data)
-    plutus_data = [decoded_data | prev_plutus_data]
-    {plutus_data, %Datum{kind: :datum_hash, value: Blake2b.blake2b_256(data)}, decoded_data}
-  end
+    ## Parameters
+    
+      - `%TxBuilder{}` - The TxBuilder instance containing the transaction details.
+      - `policy_id` - policy_id of token being minted
+      - `assets`  - Assets being minted under some policy
+      - `minting_policy` - The Minting Policy can be Either `%Script{}`, %NativeScript{}, :ref_inputs
+      - `redeemer` - Redeemer for minting policy. Needed for Plutus script Minting policy
 
-  defp set_datum(prev_plutus_data, {:hash, hashed_data}) when is_binary(hashed_data) do
-    {prev_plutus_data, %Datum{kind: :datum_hash, value: hashed_data}, nil}
-  end
+    ## Examples
+      
+      iex> mint_asset(%TxBuilder{}, %{"asset1.." => 1}, %NativeScript{})
+      %TxBuilder{}
 
-  def attach_metadata(%__MODULE__{} = builder, label, metadata)
-      when not is_nil(metadata) and is_integer(label),
-      do: %__MODULE__{builder | metadata: Map.put(%{}, label, metadata)}
+      iex> mint_asset(%TxBuilder{}, %{"asset.." => -1}, %Script{}, some_redeemer)
+      %TxBuilder{}
+  """
+  def mint_asset(builder, policy_id, assets, policy, redeemer \\ nil)
 
-  def add_signer(
-        %__MODULE__{} = builder,
-        %Address{
-          payment_credential: %Credential{credential_type: :vkey, hash: v_key_hash}
-        }
-      ),
+  # Already minted same token
+  def mint_asset(%__MODULE__{mints: mints} = cfg, policy_id, _, _, _)
+      when is_map_key(mints, policy_id),
       do: %__MODULE__{
-        builder
-        | required_signers: MapSet.put(builder.required_signers, v_key_hash)
+        cfg
+        | errors: [%{key: :multiple_mints, value: policy_id} | cfg.errors]
       }
 
-  def attach_datum(builder = %__MODULE__{}, datum) when not is_nil(datum) do
-    %__MODULE__{builder | plutus_data: [datum | builder.plutus_data]}
-  end
+  def mint_asset(%__MODULE__{} = cfg, policy_id, assets, minting_policy, redeemer)
+      when Script.is_script(minting_policy) or minting_policy == :ref_inputs do
+    case validate_script_witness(cfg.script_lookup, policy_id, redeemer, minting_policy) do
+      {:ok, used_script_type, _} ->
+        new_redeemer_lookup =
+          if is_nil(redeemer),
+            do: cfg.redeemer_lookup,
+            else: Map.put_new(cfg.redeemer_lookup, {:mint, policy_id}, redeemer)
 
-  def attach_script(
-        %__MODULE__{scripts_lookup: script_lookup} = builder,
-        %Script{} = script
-      ) do
-    updated_script_lookup =
-      Map.put_new(script_lookup[script.script_type] || %{}, Script.hash_script(script), script)
+        %__MODULE__{
+          cfg
+          | mints: Map.put_new(cfg.mints, policy_id, assets),
+            script_lookup: Map.put_new(cfg.script_lookup, policy_id, minting_policy),
+            used_scripts: MapSet.put(cfg.used_scripts, used_script_type),
+            redeemer_lookup: new_redeemer_lookup
+        }
 
-    %__MODULE__{
-      builder
-      | scripts_lookup: Map.put(script_lookup, script.script_type, updated_script_lookup)
-    }
-  end
+      {:error, :invalid_script_witness} ->
+        %__MODULE__{
+          cfg
+          | errors: [%{key: :invalid_minting_policy, value: policy_id} | cfg.errors]
+        }
 
-  def attach_script(
-        %__MODULE__{scripts_lookup: script_lookup} = builder,
-        native_script
-      )
-      when is_native_script(native_script) do
-    script = NativeScript.to_script(native_script)
+      {:error, :missing_script_witness} ->
+        %__MODULE__{
+          cfg
+          | errors: [%{key: :missing_minting_policy, value: policy_id} | cfg.errors]
+        }
 
-    updated_script_lookup =
-      Map.put_new(
-        script_lookup[script.script_type] || %{},
-        Script.hash_script(script),
-        native_script
-      )
-
-    %__MODULE__{
-      builder
-      | scripts_lookup: Map.put(script_lookup, script.script_type, updated_script_lookup)
-    }
-  end
-
-  def mint_asset(
-        %__MODULE__{mints: prev_mints, redeemer_lookup: prev_redeemer} =
-          builder,
-        policy_id,
-        asset,
-        redeemer_data \\ nil
-      )
-      when is_binary(policy_id) and is_map(asset) do
-    redeemer_lookup =
-      if redeemer_data,
-        do: Map.put(prev_redeemer, {:mint, policy_id}, redeemer_data),
-        else: prev_redeemer
-
-    %__MODULE__{
-      builder
-      | mints: Map.put(prev_mints, policy_id, asset),
-        redeemer_lookup: redeemer_lookup
-    }
-  end
-
-  def valid_from(%__MODULE__{} = builder, time) when is_integer(time) do
-    %__MODULE__{
-      builder
-      | valid_from: time
-    }
-  end
-
-  def valid_to(%__MODULE__{} = builder, time) when is_integer(time) do
-    %__MODULE__{
-      builder
-      | valid_to: time
-    }
+      {:error, :invalid_redeemer} ->
+        %__MODULE__{
+          cfg
+          | errors: [%{key: :invalid_redeemer_for_policy, value: policy_id} | cfg.errors]
+        }
+    end
   end
 
   @doc """
-  Builds the transaction based on the current state of the TxBuilder.
+  Creates output with reference script
 
   ## Parameters
 
     - `%TxBuilder{}` - The TxBuilder instance containing the transaction details.
-    - `opts` - Optional parameters to customize the transaction building process.
+    - `%Address{}` - The Address where UtXo with reference script will be sent.
+    - `Script`  - The script to attach as reference script. Can be either `Plutus Script` or `NativeScript`
 
-  ## Options
+  ##  Examples
+    
+      iex> deploy_script(%TxBuilder{}, %Address{}, %Script{})
+      %TxBuilder{}
 
-    - `:collateral_utxo` - Reference to the collateral utxos, if any.
-    - `:wallet_utxos` - Reference to the wallet utxos, if any.
-    - `:provider` - Provider to use for submitting the transaction. If not provided, the default provider from TxConfig will be used.
-    - `:wallet_address` - If provided, it will query the wallet address for UTXOs.
-    - `:change_address` - If provided, it will be used as the change address for the transaction.
+      iex> deploy_script(%TxBuilder{}, %Address{}, %NativeScript{})
+      %TxBuilder{}
 
-  ## Returns
-
-    - `{:ok, %Transaction{}}` on success.
-    - `{:error, any()}` on failure.
-
-  ## Examples
-
-      iex> tx_builder = new_tx() |> pay_to_address("addr1...", %{lovelace: 1000000})
-      iex> {:ok, %Transaction{}} = build_tx(tx_builder)
   """
-  @type out_ref_binary() :: String.t()
-  @type build_tx_options :: [
-          collateral_utxo: [OutputReference.t() | out_ref_binary()],
-          wallet_utxos: [OutputReference.t() | out_ref_binary()],
-          wallet_address: [Address.t()] | Address.t() | String.t() | [String.t()],
-          change_address: Address.t() | String.t()
-        ]
-
-  @spec build_tx(__MODULE__.t(), build_tx_options()) :: {:ok, Transaction.t()} | {:error, any()}
-  def build_tx(%__MODULE__{} = builder, opts) do
-    final_cfg = TxConfig.__setup(builder.config, opts) |> TxConfig.__init()
-
-    inputs = Enum.uniq_by(builder.inputs, fn i -> i.output_reference end)
-
-    ref_inputs =
-      builder.ref_inputs
-      |> Enum.uniq_by(& &1.output_reference)
-      |> Enum.sort_by(&Internal.extract_ref/1)
-
-    final_builder = %__MODULE__{
-      builder
-      | config: final_cfg,
-        ref_inputs: ref_inputs,
-        inputs: inputs,
-        plutus_data: Enum.uniq(builder.plutus_data)
+  def deploy_script(%__MODULE__{} = cfg, %Address{} = out_addr, script)
+      when Script.is_script(script) do
+    output = %Output{
+      address: out_addr,
+      reference_script: script,
+      datum: Datum.no_datum(),
+      value: Asset.zero()
     }
 
-    collateral_utxos = opts[:collateral_utxos]
-
-    with :ok <- check_mint_balanced(final_builder),
-         {:ok, %TxConfig{}} <- TxConfig.validate(final_cfg),
-         do:
-           Keyword.get(opts, :wallet_utxos)
-           |> maybe(fn -> load_wallet_utxos(final_cfg) end)
-           |> Internal.finalize_tx(final_builder, collateral_utxos)
+    add_output(cfg, output)
   end
 
   @doc """
-    Builds the transaction based on the current state of the TxBuilder.
+  Appends Signer as Required Signers in TxBody
 
-    See `build_tx/2` for more details.
+  ## Examples
+
+      iex> add_signer(%TxBuilder{}, %Address{})
+      %TxBuilder{}
+
+      iex> add_signer(%TxBuilder{}, payment_key_hash)
+      %TxBuilder{}
+
   """
-  @spec build_tx(__MODULE__.t()) :: {:ok, Transaction.t()} | {:error, any()}
-  def build_tx(%__MODULE__{} = builder), do: build_tx(builder, [])
+  def add_signer(
+        %__MODULE__{} = cfg,
+        %Address{payment_credential: %Credential{} = payment_credential} = addr
+      ) do
+    if Address.vkey_address?(addr),
+      do: %__MODULE__{
+        cfg
+        | required_signers: MapSet.put(cfg.required_signers, payment_credential.hash)
+      },
+      else: %__MODULE__{cfg | errors: [%{key: :invalid_payment_signer, value: addr}]}
+  end
 
-  def build_tx!(%__MODULE__{} = builder, opts \\ []) do
-    case build_tx(builder, opts) do
+  def add_signer(
+        %__MODULE__{} = cfg,
+        pubkey_hash
+      )
+      when is_binary(pubkey_hash) do
+    %__MODULE__{
+      cfg
+      | required_signers: MapSet.put(cfg.required_signers, pubkey_hash)
+    }
+  end
+
+  @doc """
+  Attach plutus data in witness
+
+  ## Examples
+    
+    iex> attach_datum(%TxBuilder{}, %Constr{})
+    %TxBuilder{}
+
+  """
+  def attach_datum(%__MODULE__{} = cfg, datum) do
+    encoded_datum = Data.encode(datum)
+
+    %__MODULE__{
+      cfg
+      | plutus_data:
+          Map.put_new(
+            cfg.plutus_data,
+            Blake2b.blake2b_256(encoded_datum),
+            Data.decode!(encoded_datum)
+          )
+    }
+  end
+
+  @doc """
+  Attach Metadata to Transaction
+
+  ## Examples
+
+    iex> attach_metadata(%TxBuilder{}, 721, metadata_info)
+    %TxBuilder{}  
+    
+  """
+  def attach_metadata(%__MODULE__{} = builder, label, metadata)
+      when not is_nil(metadata) and is_integer(label) do
+    %__MODULE__{builder | metadata: Map.put(%{}, label, metadata)}
+  end
+
+  def valid_from(%__MODULE__{} = cfg, %DateTime{} = dt) do
+    %__MODULE__{cfg | valid_from: DateTime.to_unix(dt, :millisecond)}
+  end
+
+  def valid_from(%__MODULE__{} = cfg, timestamp) when is_integer(timestamp),
+    do: %__MODULE__{cfg | valid_from: timestamp}
+
+  def valid_to(%__MODULE__{} = cfg, %DateTime{} = dt) do
+    %__MODULE__{cfg | valid_from: DateTime.to_unix(dt, :millisecond)}
+  end
+
+  def valid_to(%__MODULE__{} = cfg, timestamp) when is_integer(timestamp),
+    do: %__MODULE__{cfg | valid_to: timestamp}
+
+  def set_change_datum(%__MODULE__{} = cfg, datum) when Plutus.is_plutus_data(datum) do
+    %__MODULE__{cfg | config: TxConfig.__set_cfg(cfg.config, :change_datum, datum)}
+  end
+
+  def build_tx(cfg, opts \\ [])
+  def build_tx(%__MODULE__{errors: [_ | _]} = cfg, _opts), do: {:error, cfg.errors}
+
+  def build_tx(%__MODULE__{} = cfg, opts) do
+    final_cfg = TxConfig.__setup(cfg.config, opts) |> TxConfig.__init()
+
+    collateral_inputs = opts[:collateral_inputs] || []
+    wallet_inputs = maybe(opts[:wallet_utxos], fn -> load_wallet_utxos(final_cfg) end)
+
+    ref_inputs = Enum.uniq_by(cfg.ref_inputs, & &1.output_reference)
+    inputs = Enum.uniq_by(cfg.inputs, & &1.output_reference)
+
+    with :ok <- check_mint_balanced(cfg) do
+      %__MODULE__{
+        cfg
+        | config: final_cfg,
+          inputs: inputs,
+          ref_inputs: ref_inputs,
+          used_scripts: MapSet.to_list(cfg.used_scripts)
+      }
+      |> Internal.process_build_tx(wallet_inputs, collateral_inputs)
+    end
+  end
+
+  def build_tx!(%__MODULE__{} = cfg, opts \\ []) do
+    case build_tx(cfg, opts) do
       {:ok, tx} ->
         tx
 
-      {:error, mod} when is_struct(mod) ->
-        raise(mod.reason)
-
-      {:error, err} ->
-        raise inspect(err)
+      {:error, errors} ->
+        raise inspect(errors)
     end
   end
 
@@ -414,53 +578,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
     cfg.provider.utxos_at(addresses)
   end
 
-  @doc """
-    Adds Reference inputs
-
-    ## examples
-
-      iex> reference_inputs(%TxBuilder{}, [%Input{}, %Input{}])
-      %TxBuilder{}
-
-  """
-
-  @spec reference_inputs(__MODULE__.t(), [Transaction.input()]) :: __MODULE__.t()
-  def reference_inputs(%__MODULE__{} = builder, inputs) when is_list(inputs) do
-    #
-    # Add Script to Script Lookup if referenced inputs has Script
-    new_script_lookup =
-      Enum.reduce(inputs, builder.scripts_lookup, fn %Input{output: %Output{} = o},
-                                                     script_lookup ->
-        case o.reference_script do
-          %Script{} = s ->
-            script_lookup
-            |> Map.put(
-              s.script_type,
-              # Since we don't need to create script witness for reference script
-              # We just initialize with `true`
-              Map.put(script_lookup[s.script_type] || %{}, Script.hash_script(s), true)
-            )
-
-          script when Script.is_native_script(script) ->
-            script_lookup
-            |> Map.put(
-              :native,
-              Map.put(script_lookup[:native] || %{}, Script.hash_script(script), true)
-            )
-
-          _ ->
-            script_lookup
-        end
-      end)
-
-    %__MODULE__{
-      builder
-      | ref_inputs: builder.ref_inputs ++ inputs,
-        scripts_lookup: new_script_lookup
-    }
-  end
-
-  def sign_tx(%Transaction{witnesses: %Witness{} = witness} = tx, signers) do
+  def sign_tx(%Transaction{witnesses: %Witness{} = witness} = tx, signers)
+      when is_list(signers) do
     tx_hash = Transaction.tx_id(tx) |> Base.decode16!(case: :mixed)
 
     new_vkey_witness =
@@ -485,6 +604,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
     }
   end
 
+  def sign_tx(%Transaction{} = tx, signer), do: sign_tx(tx, [signer])
+
   def submit_tx(%Transaction{} = signed_tx) do
     with {:ok, provider} <- Provider.get_submitter() do
       submit_tx(signed_tx, provider)
@@ -494,7 +615,4 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   def submit_tx(%Transaction{} = signed_tx, provider) do
     provider.submit_tx(signed_tx)
   end
-
-  def get_change_address([%Address{} = addr | _], nil), do: addr
-  def get_change_address(_, %Address{} = addr), do: addr
 end

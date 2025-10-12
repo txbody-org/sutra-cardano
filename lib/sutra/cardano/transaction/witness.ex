@@ -153,7 +153,7 @@ defmodule Sutra.Cardano.Transaction.Witness do
   end
 
   def decode({4, plutus_data}) do
-    [%PlutusData{value: extract_value!(plutus_data) |> Plutus.decode!()}]
+    [%PlutusData{value: extract_value!(plutus_data)}]
   end
 
   def decode({red_type, redeemer_info}) do

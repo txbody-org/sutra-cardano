@@ -13,12 +13,6 @@
         inherit (pkgs.lib) optional optionals;
         pkgs = import nixpkgs { inherit system; };
 
-        elixir = pkgs.beam.packages.erlang_27.elixir.override {
-          version = "1.18";
-          rev = "v1.18-latest";
-          sha256 = "sha256-N+6hpeo5M4L/mLRVXSP2P0w0fkx6iy0HAmEEGYYI7jY=";
-        };
-
       in with pkgs; {
         modules = [
           nix-ld.nixosModules.nix-ld
@@ -26,14 +20,11 @@
           { programs.nix-ld.dev.enable = true; }
         ];
 
-        shellHook = ''
-          export SHELL=/usr/bin/bash
-        '';
 
         devShell = pkgs.mkShell {
           buildInputs = [
-            elixir
-            elixir_ls
+            beamMinimal28Packages.elixir_1_19
+            beamMinimal28Packages.elixir-ls
             glibcLocales
             cargo
             rustc
@@ -46,6 +37,11 @@
             ++ optionals stdenv.isDarwin
             (with darwin.apple_sdk.frameworks; [ CoreFoundation CoreServices ]);
         };
+
+        shellHook = ''
+            echo "Elixir version:"
+            elixir --version
+        '';
       });
 }
 

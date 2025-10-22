@@ -113,7 +113,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
         %TxBuilder{}
   """
   def set_change_address(
-        %__MODULE__{config: cfg, plutus_data: prev_plutus_data} = builder,
+        %__MODULE__{config: %TxConfig{} = cfg, plutus_data: prev_plutus_data} = builder,
         %Address{} = address,
         datum \\ nil
       ) do
@@ -176,7 +176,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
     redeemer = opts[:redeemer]
     passed_datum = opts[:datum]
 
-    Enum.reduce(inputs, cfg, fn %Input{output: output} = input, acc_cfg ->
+    Enum.reduce(inputs, cfg, fn %Input{output: output} = input, %__MODULE__{} = acc_cfg ->
       exact_datum = output.datum_raw || passed_datum
       # Add datum in witness if input has datum with DatumHash kind
       new_plutus_data =

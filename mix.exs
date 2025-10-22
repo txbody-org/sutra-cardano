@@ -5,7 +5,7 @@ defmodule Sutra.MixProject do
     [
       app: :sutra,
       version: "0.2.1-alpha",
-      elixir: "~> 1.18.1",
+      elixir: "~> 1.19.0",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps(),

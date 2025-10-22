@@ -88,7 +88,7 @@ defmodule Sutra.Provider.KoiosProvider do
     if datum_hashes == %{},
       do: utxos,
       else:
-        Enum.map(utxos, fn input ->
+        Enum.map(utxos, fn %Input{output: %Output{}} = input ->
           %Input{input | output: put_raw_datum.(input.output)}
         end)
   end

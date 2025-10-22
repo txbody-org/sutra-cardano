@@ -29,7 +29,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxConfig do
 
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   def __setup(%__MODULE__{} = cfg, opts \\ []) do
-    Enum.reduce(opts, cfg, fn curr_opt, acc ->
+    Enum.reduce(opts, cfg, fn curr_opt, %__MODULE__{} = acc ->
       case curr_opt do
         {_, nil} ->
           acc

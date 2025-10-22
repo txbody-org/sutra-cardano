@@ -180,7 +180,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
        ) do
     with {:ok, %CoinSelection{selected_inputs: selected_inputs} = c_selection} <-
            balance_tx(tx_body, wallet_inputs),
-         {:ok, %Transaction{} = tx} <- derive_tx(tx_body, c_selection, builder, witnesses),
+         {:ok, %Transaction{tx_body: %TxBody{}, witnesses: %Witness{}} = tx} <-
+           derive_tx(tx_body, c_selection, builder, witnesses),
          {:ok, {collateral_refs, collateral_return, collateral_used}} <-
            Collateral.set_collateral(tx, wallet_inputs -- selected_inputs, builder) do
       collateral_retun_output =
@@ -377,7 +378,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
     to_fill_asset = Asset.diff(total_with_mint, total_output_assets) |> Asset.only_positive()
     leftover_asset = Asset.diff(total_output_assets, total_with_mint) |> Asset.only_positive()
 
-    update_change = fn c ->
+    update_change = fn %CoinSelection{} = c ->
       change =
         Enum.reduce(c.selected_inputs, leftover_asset, fn i, acc ->
           Asset.merge(i.output.value, acc)

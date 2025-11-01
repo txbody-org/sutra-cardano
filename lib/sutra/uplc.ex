@@ -30,8 +30,9 @@ defmodule Sutra.Uplc do
            slot_config
          ) do
       {true, result} ->
+        # TODO: print logs
         redeemers =
-          Enum.map(result, fn r ->
+          Enum.map(result, fn %{redeemer_info: r, logs: _logs} ->
             {:ok, decoded, _} = :erlang.list_to_binary(r) |> CBOR.decode()
             Witness.decode({5, decoded})
           end)

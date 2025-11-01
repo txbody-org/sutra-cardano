@@ -11,6 +11,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   alias Sutra.Cardano.Asset
   alias Sutra.Cardano.Script
   alias Sutra.Cardano.Transaction
+  alias Sutra.Cardano.Transaction.Certificate.RegisterCert
   alias Sutra.Cardano.Transaction.Datum
   alias Sutra.Cardano.Transaction.Input
   alias Sutra.Cardano.Transaction.Output
@@ -26,6 +27,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
 
   import Sutra.Utils, only: [maybe: 2]
 
+  @min_ada_for_stake_reg 2_000_000
+
   defstruct config: %TxConfig{},
             inputs: [],
             outputs: [],
@@ -40,7 +43,9 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
             redeemer_lookup: %{},
             metadata: nil,
             used_scripts: MapSet.new(),
-            collateral_inputs: []
+            collateral_inputs: [],
+            certificates: [],
+            total_deposit: Asset.zero()
 
   @doc """
   Initialize TxBuilder with default values
@@ -518,6 +523,60 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
     %__MODULE__{cfg | config: TxConfig.__set_cfg(cfg.config, :change_datum, datum)}
   end
 
+  def register_stake_credential(%__MODULE__{certificates: certs} = cfg, %Address{
+        stake_credential: %Credential{credential_type: :vkey, hash: stake_key_hash} = stake_cred
+      }) do
+    %__MODULE__{
+      cfg
+      | certificates: [prepare_reg_cert(stake_cred) | certs],
+        required_signers: MapSet.put(cfg.required_signers, stake_key_hash),
+        total_deposit: Asset.add(cfg.total_deposit, "lovelace", @min_ada_for_stake_reg)
+    }
+  end
+
+  def register_stake_credential(%__MODULE__{certificates: certs} = cfg, native_script)
+      when Script.is_native_script(native_script) do
+    script_credential = %Credential{
+      credential_type: :script,
+      hash: Script.hash_script(native_script)
+    }
+
+    %__MODULE__{
+      cfg
+      | certificates: [prepare_reg_cert(script_credential) | certs],
+        total_deposit: Asset.add(cfg.total_deposit, "lovelace", @min_ada_for_stake_reg),
+        script_lookup: Map.put_new(cfg.script_lookup, script_credential.hash, native_script),
+        used_scripts: MapSet.put(cfg.used_scripts, :native)
+    }
+  end
+
+  def register_stake_credential(
+        %__MODULE__{certificates: certs} = cfg,
+        %Script{} = plutus_script,
+        redeemer
+      )
+      when Script.is_plutus_script(plutus_script) and Plutus.is_plutus_data(redeemer) do
+    script_credential = %Credential{
+      credential_type: :script,
+      hash: Script.hash_script(plutus_script)
+    }
+
+    %__MODULE__{
+      cfg
+      | certificates: [prepare_reg_cert(script_credential, redeemer) | certs],
+        total_deposit: Asset.add(cfg.total_deposit, "lovelace", @min_ada_for_stake_reg),
+        script_lookup: Map.put_new(cfg.script_lookup, script_credential.hash, plutus_script),
+        used_scripts: MapSet.put(cfg.used_scripts, plutus_script.script_type)
+    }
+  end
+
+  defp prepare_reg_cert(%Credential{} = credential, redeemer \\ nil) do
+    {%RegisterCert{
+       stake_credential: credential,
+       coin: Asset.from_lovelace(@min_ada_for_stake_reg)
+     }, redeemer}
+  end
+
   def build_tx(cfg, opts \\ [])
   def build_tx(%__MODULE__{errors: [_ | _]} = cfg, _opts), do: {:error, cfg.errors}
 
@@ -536,7 +595,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
         | config: final_cfg,
           inputs: inputs,
           ref_inputs: ref_inputs,
-          used_scripts: MapSet.to_list(cfg.used_scripts)
+          used_scripts: MapSet.to_list(cfg.used_scripts),
+          certificates: Enum.reverse(cfg.certificates)
       }
       |> Internal.process_build_tx(wallet_inputs, collateral_inputs)
     end
@@ -605,6 +665,26 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   end
 
   def sign_tx(%Transaction{} = tx, signer), do: sign_tx(tx, [signer])
+
+  def sign_tx_with_raw_extended_key(
+        %Transaction{witnesses: %Witness{vkey_witness: vkey_witness} = witness} = tx,
+        raw_extended_key
+      )
+      when is_binary(raw_extended_key) do
+    tx_hash = Transaction.tx_id(tx) |> Base.decode16!(case: :mixed)
+
+    new_vkey_witness =
+      MapSet.new(vkey_witness)
+      |> MapSet.put(%VkeyWitness{
+        vkey: Key.public_key(raw_extended_key),
+        signature: Key.sign(raw_extended_key, tx_hash)
+      })
+
+    %Transaction{
+      tx
+      | witnesses: %Witness{witness | vkey_witness: MapSet.to_list(new_vkey_witness)}
+    }
+  end
 
   def submit_tx(%Transaction{} = signed_tx) do
     with {:ok, provider} <- Provider.get_submitter() do

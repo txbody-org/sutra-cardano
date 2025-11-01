@@ -26,3 +26,4 @@ sutra_offchain-*.tar
 /tmp/
 
 .elixir_ls
+target

@@ -166,15 +166,31 @@ defmodule Sutra.Crypto.Key do
     |> Utils.fst()
   end
 
-  def pubkey_hash(%__MODULE__.ExtendedKey{} = key) do
-    public_key(key) |> Blake2b.blake2b_224()
+  def public_key(raw_extended_key, _) when is_binary(raw_extended_key) do
+    raw_extended_key
+    |> :binary.part(0, 32)
+    |> ExSodium.Ed25519.scalarmult_base_no_clamp()
   end
 
-  def pubkey_hash(%__MODULE__.Ed25519key{} = key), do: public_key(key) |> Blake2b.blake2b_224()
+  def pubkey_hash(key, opts \\ [])
+
+  def pubkey_hash(%__MODULE__.ExtendedKey{} = key, opts) do
+    key_type = opts[:key_type] || :payment_key
+    public_key(key, key_type) |> Blake2b.blake2b_224()
+  end
+
+  def pubkey_hash(raw_extended_key, _) when is_binary(raw_extended_key) do
+    public_key(raw_extended_key) |> Blake2b.blake2b_224()
+  end
+
+  def pubkey_hash(%__MODULE__.Ed25519key{} = key, _opts),
+    do: public_key(key) |> Blake2b.blake2b_224()
 
   def sign(%__MODULE__.ExtendedKey{payment_key: payment_key}, payload)
-      when is_binary(payload) do
-    <<scalar::binary-size(32), iv::binary-size(32), _chain_code::binary>> = payment_key
+      when is_binary(payload), do: sign(payment_key, payload)
+
+  def sign(raw_extended_key, payload) when is_binary(raw_extended_key) and is_binary(payload) do
+    <<scalar::binary-size(32), iv::binary-size(32), _chain_code::binary>> = raw_extended_key
 
     pub_key = ExSodium.Ed25519.scalarmult_base_no_clamp(scalar)
 

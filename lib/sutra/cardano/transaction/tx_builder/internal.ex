@@ -60,7 +60,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
 
   defp init_witness(%TxBuilder{} = builder) do
     %Witness{
-      redeemer: with_mint_redeemers(builder),
+      redeemer: with_mint_redeemers(builder) ++ with_cert_redeemers(builder),
       script_witness: Map.values(builder.script_lookup) |> Enum.filter(&Script.is_script/1),
       plutus_data: Enum.map(builder.plutus_data, fn {_, v} -> %PlutusData{value: v} end),
       vkey_witness: []
@@ -84,6 +84,12 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
         redeemer_data ->
           [Witness.init_redeemer(indexed_mint_info[:index], redeemer_data) | acc]
       end
+    end)
+  end
+
+  defp with_cert_redeemers(%TxBuilder{certificates: certs}) do
+    Enum.reduce(Enum.with_index(certs), [], fn {{_cert, redeemer}, indx}, acc ->
+      if is_nil(redeemer), do: acc, else: [Witness.init_redeemer(indx, redeemer, :cert) | acc]
     end)
   end
 
@@ -165,10 +171,10 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
       collateral: maybe(collateral_inputs, nil, fn i -> [i.output_reference] end),
       total_collateral: maybe(collateral_inputs, nil, fn i -> i.output.value end),
       required_signers: MapSet.to_list(builder.required_signers),
-      # TODO: use proper Auxiliary Data format
       auxiliary_data_hash:
         maybe(builder.metadata, nil, &(CBOR.encode(&1) |> Blake2b.blake2b_256())),
-      script_data_hash: Blake2b.blake2b_256("")
+      script_data_hash: Blake2b.blake2b_256(""),
+      certificates: Enum.map(builder.certificates, &Utils.fst/1)
     }
   end
 
@@ -178,8 +184,10 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
          wallet_inputs,
          %Witness{} = witnesses
        ) do
+    initial_required_asset = Asset.merge(builder.total_deposit, tx_body.fee)
+
     with {:ok, %CoinSelection{selected_inputs: selected_inputs} = c_selection} <-
-           balance_tx(tx_body, wallet_inputs),
+           balance_tx(initial_required_asset, tx_body, wallet_inputs),
          {:ok, %Transaction{tx_body: %TxBody{}, witnesses: %Witness{}} = tx} <-
            derive_tx(tx_body, c_selection, builder, witnesses),
          {:ok, {collateral_refs, collateral_return, collateral_used}} <-
@@ -366,14 +374,16 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
     end)
   end
 
-  defp balance_tx(%TxBody{} = tx_body, [%Input{} | _] = wallet_inputs) do
+  defp balance_tx(initial_asset_to_cover, %TxBody{} = tx_body, [%Input{} | _] = wallet_inputs) do
     total_with_mint =
       Enum.reduce(tx_body.inputs, tx_body.mint, fn i, acc ->
         Asset.merge(i.output.value, acc)
       end)
 
     total_output_assets =
-      Enum.reduce(tx_body.outputs, tx_body.fee, fn o, acc -> Asset.merge(o.value, acc) end)
+      Enum.reduce(tx_body.outputs, initial_asset_to_cover, fn o, acc ->
+        Asset.merge(o.value, acc)
+      end)
 
     to_fill_asset = Asset.diff(total_with_mint, total_output_assets) |> Asset.only_positive()
     leftover_asset = Asset.diff(total_output_assets, total_with_mint) |> Asset.only_positive()

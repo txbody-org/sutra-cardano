@@ -27,7 +27,7 @@ defmodule Sutra.Cardano.Transaction.TxBody do
     # --- (4) Certificates
     field(:certificates, [])
     # --- (5) Withdrawals
-    field(:withdrawals, [])
+    field(:withdrawals, %{})
     # --- (6) Update
     field(:update, nil)
     # --- (7) Auxiliary Data Hash
@@ -173,7 +173,9 @@ defmodule Sutra.Cardano.Transaction.TxBody do
 
   defp do_map_to_cbor({:withdrawals, withdrawals}, acc) do
     withdrawal_cbor =
-      for {k, v} <- withdrawals, into: %{}, do: {Cbor.as_byte(k), Asset.to_cbor(v)}
+      for {k, v} <- withdrawals,
+          into: %{},
+          do: {Cbor.as_byte(k), Asset.to_cbor(v)}
 
     Cbor.as_indexed_map(withdrawal_cbor, 5, acc)
   end

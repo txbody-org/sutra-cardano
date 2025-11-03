@@ -14,6 +14,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   alias Sutra.Cardano.Transaction.Datum
   alias Sutra.Cardano.Transaction.Input
   alias Sutra.Cardano.Transaction.Output
+  alias Sutra.Cardano.Transaction.TxBuilder.CertificateHelper
   alias Sutra.Cardano.Transaction.TxBuilder.Internal
   alias Sutra.Cardano.Transaction.TxBuilder.TxConfig
   alias Sutra.Cardano.Transaction.Witness
@@ -23,7 +24,6 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   alias Sutra.Data.Plutus
   alias Sutra.ProtocolParams
   alias Sutra.Provider
-  alias __MODULE__.CertificateHelper
 
   import Sutra.Utils, only: [maybe: 2]
 

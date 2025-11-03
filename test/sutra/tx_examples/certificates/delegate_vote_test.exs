@@ -1,7 +1,8 @@
 defmodule Sutra.TxExamples.Certificates.DelegateVoteTest do
   @moduledoc false
-  alias Sutra.Cardano.Transaction
+
   alias Sutra.Cardano.Common.Drep
+  alias Sutra.Cardano.Transaction
   alias Sutra.Data
 
   use Sutra.PrivnetTest

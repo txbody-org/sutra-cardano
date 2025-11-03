@@ -1,7 +1,8 @@
 defmodule Sutra.TxExamples.Certificates.RegisterStakeCertTest do
   @moduledoc false
-  alias Sutra.Data
+
   alias Sutra.Cardano.Transaction
+  alias Sutra.Data
 
   use Sutra.PrivnetTest
 

@@ -5,9 +5,9 @@ defmodule Sutra.Cardano.Transaction.Certificate do
 
   use TypedStruct
 
-  alias Sutra.Cardano.Common.Drep
   alias Sutra.Cardano.Address.Credential
   alias Sutra.Cardano.Asset
+  alias Sutra.Cardano.Common.Drep
   alias Sutra.Cardano.Common.PoolRelay
   alias Sutra.Cardano.Transaction.Certificate.PoolRegistration
   alias Sutra.Cardano.Transaction.Certificate.PoolRetirement

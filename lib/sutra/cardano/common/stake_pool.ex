@@ -1,4 +1,6 @@
 defmodule Sutra.Cardano.Common.StakePool do
+  @moduledoc false
+
   alias Sutra.Utils
 
   @doc """

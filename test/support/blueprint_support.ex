@@ -1,9 +1,10 @@
 defmodule Sutra.Test.Support.BlueprintSupport do
   @moduledoc false
-  alias Sutra.Cardano.Script.NativeScript
-  alias Sutra.Cardano.Address.Credential
+
   alias Sutra.Cardano.Address
+  alias Sutra.Cardano.Address.Credential
   alias Sutra.Cardano.Script
+  alias Sutra.Cardano.Script.NativeScript
 
   @simple_blueprint_url "./blueprint.json"
 

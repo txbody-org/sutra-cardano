@@ -2,17 +2,18 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.CertificateHelper do
   @moduledoc false
 
   require Sutra.Cardano.Script
-  alias Sutra.Utils
-  alias Sutra.Cardano.Common.StakePool
-  alias Sutra.Cardano.Transaction.Certificate.StakeVoteRegDelegCert
-  alias Sutra.Cardano.Transaction.Certificate.VoteDelegCert
-  alias Sutra.Cardano.Common.Drep
-  alias Sutra.Cardano.Asset
-  alias Sutra.Cardano.Transaction.Certificate.RegisterCert
-  alias Sutra.Cardano.Script
+
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Address.Credential
+  alias Sutra.Cardano.Asset
+  alias Sutra.Cardano.Common.Drep
+  alias Sutra.Cardano.Common.StakePool
+  alias Sutra.Cardano.Script
+  alias Sutra.Cardano.Transaction.Certificate.RegisterCert
+  alias Sutra.Cardano.Transaction.Certificate.StakeVoteRegDelegCert
+  alias Sutra.Cardano.Transaction.Certificate.VoteDelegCert
   alias Sutra.Cardano.Transaction.TxBuilder
+  alias Sutra.Utils
 
   @min_ada_for_stake_reg 2_000_000
 

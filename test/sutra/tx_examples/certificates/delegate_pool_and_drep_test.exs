@@ -1,10 +1,10 @@
 defmodule Sutra.TxExamples.Certificates.DelegatePoolAndDrepTest do
   @moduledoc false
 
+  alias Sutra.Cardano.Common.Drep
+  alias Sutra.Cardano.Transaction
   alias Sutra.Data
   alias Sutra.Test.Support.BlueprintSupport
-  alias Sutra.Cardano.Transaction
-  alias Sutra.Cardano.Common.Drep
 
   use Sutra.PrivnetTest
 

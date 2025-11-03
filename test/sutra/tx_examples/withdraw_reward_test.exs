@@ -1,8 +1,9 @@
 defmodule Sutra.TxExamples.WithdrawRewardTest do
   @moduledoc false
-  alias Sutra.Data
-  alias Sutra.Cardano.Transaction
+
   alias Sutra.Cardano.Common.Drep
+  alias Sutra.Cardano.Transaction
+  alias Sutra.Data
 
   use Sutra.PrivnetTest
 

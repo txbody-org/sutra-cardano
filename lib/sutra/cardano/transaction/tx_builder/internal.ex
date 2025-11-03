@@ -60,22 +60,27 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
 
   defp init_witness(%TxBuilder{} = builder) do
     %Witness{
-      redeemer: with_mint_redeemers(builder) ++ with_cert_redeemers(builder),
+      redeemer:
+        with_mint_redeemers([], builder)
+        |> with_cert_redeemers(builder)
+        |> with_reward_redeemers(builder),
       script_witness: Map.values(builder.script_lookup) |> Enum.filter(&Script.is_script/1),
       plutus_data: Enum.map(builder.plutus_data, fn {_, v} -> %PlutusData{value: v} end),
       vkey_witness: []
     }
   end
 
-  defp with_mint_redeemers(%TxBuilder{} = tx_builder) when map_size(tx_builder.mints) == 0, do: []
+  defp with_mint_redeemers(initial_witness, %TxBuilder{} = tx_builder)
+       when map_size(tx_builder.mints) == 0,
+       do: initial_witness
 
-  defp with_mint_redeemers(%TxBuilder{
+  defp with_mint_redeemers(initial_witness, %TxBuilder{
          mints: mint_info,
          redeemer_lookup: redeemer_lookup
        }) do
     sorted_mints = Sutra.Utils.with_sorted_indexed_map(mint_info)
 
-    Enum.reduce(sorted_mints, [], fn {k, indexed_mint_info}, acc ->
+    Enum.reduce(sorted_mints, initial_witness, fn {k, indexed_mint_info}, acc ->
       case Map.get(redeemer_lookup, {:mint, k}) do
         # Witness is from NativeScript Redeemer is not needed
         nil ->
@@ -87,11 +92,31 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
     end)
   end
 
-  defp with_cert_redeemers(%TxBuilder{certificates: certs}) do
-    Enum.reduce(Enum.with_index(certs), [], fn {{_cert, redeemer}, indx}, acc ->
+  defp with_cert_redeemers(initial_witness, %TxBuilder{certificates: certs}) do
+    Enum.reduce(Enum.with_index(certs), initial_witness, fn {{_cert, redeemer}, indx}, acc ->
       if is_nil(redeemer), do: acc, else: [Witness.init_redeemer(indx, redeemer, :cert) | acc]
     end)
   end
+
+  defp with_reward_redeemers(initial_witness, %TxBuilder{
+         withdrawals: withdrawals,
+         redeemer_lookup: redeemer_lookup
+       })
+       when map_size(redeemer_lookup) > 0 and map_size(withdrawals) > 0 do
+    sorted_withdrawls = Sutra.Utils.with_sorted_indexed_map(withdrawals)
+
+    Enum.reduce(sorted_withdrawls, initial_witness, fn {k, indexed_info}, acc ->
+      case Map.get(redeemer_lookup, {:reward, k}) do
+        nil ->
+          acc
+
+        redeemer_data ->
+          [Witness.init_redeemer(indexed_info[:index], redeemer_data, :reward) | acc]
+      end
+    end)
+  end
+
+  defp with_reward_redeemers(initial_witness, _), do: initial_witness
 
   defp with_spend_redeemers(%TxBuilder{} = builder, inputs) do
     Enum.reduce(Enum.with_index(inputs), [], fn {%Input{} = input, indx}, acc ->
@@ -174,8 +199,22 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
       auxiliary_data_hash:
         maybe(builder.metadata, nil, &(CBOR.encode(&1) |> Blake2b.blake2b_256())),
       script_data_hash: Blake2b.blake2b_256(""),
-      certificates: Enum.map(builder.certificates, &Utils.fst/1)
+      certificates: Enum.map(builder.certificates, &Utils.fst/1),
+      withdrawals: prepare_withdrawals(builder)
     }
+  end
+
+  defp prepare_withdrawals(%TxBuilder{
+         config: %TxConfig{change_address: %Address{} = change_address},
+         withdrawals: withdrawals,
+         script_lookup: script_lookup
+       }) do
+    network_tag = if change_address.network == :mainnet, do: "1", else: "0"
+
+    Enum.reduce(withdrawals, %{}, fn {k, v}, acc ->
+      prefix = if Map.has_key?(script_lookup, k), do: "F", else: "E"
+      Map.put(acc, prefix <> network_tag <> k, v)
+    end)
   end
 
   defp create_tx(

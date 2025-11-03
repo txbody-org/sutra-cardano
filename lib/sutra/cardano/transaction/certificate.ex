@@ -3,11 +3,12 @@ defmodule Sutra.Cardano.Transaction.Certificate do
     Cardano Transaction Certificate
   """
 
-  alias Sutra.Cardano.Address
+  use TypedStruct
+
+  alias Sutra.Cardano.Common.Drep
   alias Sutra.Cardano.Address.Credential
   alias Sutra.Cardano.Asset
   alias Sutra.Cardano.Common.PoolRelay
-  alias Sutra.Cardano.Transaction.Certificate.Drep
   alias Sutra.Cardano.Transaction.Certificate.PoolRegistration
   alias Sutra.Cardano.Transaction.Certificate.PoolRetirement
   alias Sutra.Cardano.Transaction.Certificate.StakeRegistration
@@ -15,13 +16,6 @@ defmodule Sutra.Cardano.Transaction.Certificate do
 
   import Sutra.Data.Cbor, only: [extract_value!: 1]
   import Sutra.Utils, only: [maybe: 3]
-
-  @type drep() :: %{
-          drep_type: Address.credential_type() | nil,
-          drep_value: String.t()
-        }
-
-  use TypedStruct
 
   ## (0, stake_credential) -- will be deprecated in future era
   typedstruct(module: StakeRegistration) do
@@ -137,11 +131,6 @@ defmodule Sutra.Cardano.Transaction.Certificate do
     field(:anchor, %{url: :string, hash: :string})
   end
 
-  typedstruct(module: Drep) do
-    field(:drep_type, Address.credential_type() | nil | pos_integer())
-    field(:drep_value, :string)
-  end
-
   @doc """
     decode CBOR data to Certificate
   """
@@ -212,7 +201,7 @@ defmodule Sutra.Cardano.Transaction.Certificate do
   def decode([9, stake_credential, drep]) do
     %VoteDelegCert{
       stake_credential: decode_credential(stake_credential),
-      drep: decode_drep(drep)
+      drep: Drep.from_cbor(drep)
     }
   end
 
@@ -220,7 +209,7 @@ defmodule Sutra.Cardano.Transaction.Certificate do
     %StakeVoteDelegCert{
       stake_credential: decode_credential(stake_cred),
       pool_keyhash: extract_value!(pool_key_hash),
-      drep: decode_drep(drep)
+      drep: Drep.from_cbor(drep)
     }
   end
 
@@ -236,7 +225,7 @@ defmodule Sutra.Cardano.Transaction.Certificate do
     %StakeVoteRegDelegCert{
       stake_credential: decode_credential(stake_cred),
       pool_keyhash: extract_value!(pool_key_hash),
-      drep: decode_drep(drep),
+      drep: Drep.from_cbor(drep),
       deposit: Asset.from_lovelace(coin)
     }
   end
@@ -251,7 +240,7 @@ defmodule Sutra.Cardano.Transaction.Certificate do
   def decode([12, stake_cred, drep, coin]) do
     %VoteRegDelegCert{
       stake_credential: decode_credential(stake_cred),
-      drep: decode_drep(drep),
+      drep: Drep.from_cbor(drep),
       deposit: Asset.from_lovelace(coin)
     }
   end
@@ -287,11 +276,6 @@ defmodule Sutra.Cardano.Transaction.Certificate do
     credential_type = if cred.credential_type == :vkey, do: 0, else: 1
     [credential_type, Cbor.as_byte(cred.hash)]
   end
-
-  def decode_drep([0, v]), do: %Drep{drep_type: :vkey, drep_value: extract_value!(v)}
-  def decode_drep([1, v]), do: %Drep{drep_type: :script, drep_value: extract_value!(v)}
-  def decode_drep([n | _]) when is_integer(n), do: %Drep{drep_type: n}
-  def decode_drep(_), do: nil
 
   @doc """
     encode Certificate to CBOR data
@@ -345,7 +329,7 @@ defmodule Sutra.Cardano.Transaction.Certificate do
   end
 
   def to_cbor(%VoteDelegCert{} = vote_deleg_cert) do
-    [9, encode_credential(vote_deleg_cert.stake_credential), encode_drep(vote_deleg_cert.drep)]
+    [9, encode_credential(vote_deleg_cert.stake_credential), Drep.to_cbor(vote_deleg_cert.drep)]
   end
 
   def to_cbor(%StakeVoteDelegCert{} = stake_vote_deleg_cert) do
@@ -353,7 +337,7 @@ defmodule Sutra.Cardano.Transaction.Certificate do
       10,
       encode_credential(stake_vote_deleg_cert.stake_credential),
       Cbor.as_byte(stake_vote_deleg_cert.pool_keyhash),
-      encode_drep(stake_vote_deleg_cert.drep)
+      Drep.to_cbor(stake_vote_deleg_cert.drep)
     ]
   end
 
@@ -371,7 +355,7 @@ defmodule Sutra.Cardano.Transaction.Certificate do
       13,
       encode_credential(stake_vote_reg_deleg_cert.stake_credential),
       Cbor.as_byte(stake_vote_reg_deleg_cert.pool_keyhash),
-      encode_drep(stake_vote_reg_deleg_cert.drep),
+      Drep.to_cbor(stake_vote_reg_deleg_cert.drep),
       Asset.to_cbor(stake_vote_reg_deleg_cert.deposit)
     ]
   end
@@ -388,7 +372,7 @@ defmodule Sutra.Cardano.Transaction.Certificate do
     [
       12,
       encode_credential(vote_reg_deleg_cert.stake_credential),
-      encode_drep(vote_reg_deleg_cert.drep),
+      Drep.to_cbor(vote_reg_deleg_cert.drep),
       Asset.to_cbor(vote_reg_deleg_cert.deposit)
     ]
   end
@@ -416,13 +400,5 @@ defmodule Sutra.Cardano.Transaction.Certificate do
       encode_credential(update_drep_cert.drep_credential),
       maybe(update_drep_cert.anchor, nil, fn %{url: u, hash: h} -> [u, Cbor.as_byte(h)] end)
     ]
-  end
-
-  defp encode_drep(%Drep{} = drep) do
-    case drep do
-      %Drep{drep_type: :vkey, drep_value: v} -> [0, Cbor.as_byte(v)]
-      %Drep{drep_type: :script, drep_value: v} -> [1, Cbor.as_byte(v)]
-      %Drep{drep_type: n} when is_integer(n) -> [n]
-    end
   end
 end

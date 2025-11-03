@@ -91,7 +91,7 @@ defmodule Sutra.PrivnetTest do
     :ok
   end
 
-  defp set_yaci_provider_env do
+  def set_yaci_provider_env do
     Application.put_env(:sutra, :provider, YaciProvider)
 
     Application.put_env(

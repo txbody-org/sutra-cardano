@@ -3,6 +3,7 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
     This modules procides helper function and setup transactions for testing
   """
 
+  alias Sutra.Cardano.Common.Drep
   alias Sutra.Cardano.Transaction
   alias Sutra.Cardano.Transaction.Certificate
   alias Sutra.Cardano.Transaction.TxBody
@@ -490,7 +491,7 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
       certificates: [
         %Sutra.Cardano.Transaction.Certificate.StakeVoteRegDelegCert{
           deposit: %{"lovelace" => 2_000_000},
-          drep: %Sutra.Cardano.Transaction.Certificate.Drep{drep_type: 2, drep_value: nil},
+          drep: %Drep{drep_type: :abstain, drep_value: nil},
           pool_keyhash: "9ed23a4a839826d08d7d10f277a91f0e2373ea90251fb33664d52c94",
           stake_credential: %Sutra.Cardano.Address.Credential{
             credential_type: :vkey,
@@ -608,7 +609,7 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
     %Transaction.TxBody{
       certificates: [
         %Certificate.StakeVoteDelegCert{
-          drep: %Certificate.Drep{drep_value: nil, drep_type: 2},
+          drep: %Drep{drep_value: nil, drep_type: :abstain},
           pool_keyhash: "9ed23a4a839826d08d7d10f277a91f0e2373ea90251fb33664d52c94",
           stake_credential: %Sutra.Cardano.Address.Credential{
             hash: "5064b671634d14cb8d543e71dd8eb437a47efb47b0b22882866c420d",
@@ -712,7 +713,7 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
       certificates: [
         %Sutra.Cardano.Transaction.Certificate.VoteRegDelegCert{
           deposit: %{"lovelace" => 2_000_000},
-          drep: %Sutra.Cardano.Transaction.Certificate.Drep{drep_type: 2, drep_value: nil},
+          drep: %Drep{drep_type: :abstain, drep_value: nil},
           stake_credential: %Sutra.Cardano.Address.Credential{
             credential_type: :vkey,
             hash: "5064b671634d14cb8d543e71dd8eb437a47efb47b0b22882866c420d"
@@ -831,7 +832,7 @@ defmodule Sutra.Test.Fixture.TransactionCertificateFixture do
       auxiliary_data_hash: nil,
       certificates: [
         %Sutra.Cardano.Transaction.Certificate.VoteDelegCert{
-          drep: %Sutra.Cardano.Transaction.Certificate.Drep{drep_type: 3, drep_value: nil},
+          drep: %Drep{drep_type: :no_confidence, drep_value: nil},
           stake_credential: %Sutra.Cardano.Address.Credential{
             credential_type: :vkey,
             hash: "1c66afb2b2fff29fe041f9a870ea617d926d1f6c558da5941819fbdd"

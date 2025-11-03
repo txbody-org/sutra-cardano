@@ -17,7 +17,8 @@ mnemonic =
 script =
   File.read!("always_true.plutus")
   |> String.trim()
-  |> Script.apply_params(Base.encode16(:rand.bytes(12)))
+  |> Base.decode16!(case: :mixed)
+  |> Script.new(:plutus_v3)
 
 script_json = %{
   "type" => "all",
@@ -31,9 +32,9 @@ script_json = %{
 
 tx_id =
   new_tx()
-  |> register_stake_credential(script, Data.void())
-  |> register_stake_credential(NativeScript.from_json(script_json))
-  |> register_stake_credential(wallet_address)
+  |> withdraw_stake(script, Data.void(), 0)
+  |> withdraw_stake(NativeScript.from_json(script_json), 0)
+  |> withdraw_stake(wallet_address, 0)
   |> build_tx!(wallet_address: [wallet_address])
   |> sign_tx([extended_key])
   |> sign_tx_with_raw_extended_key(extended_key.stake_key)

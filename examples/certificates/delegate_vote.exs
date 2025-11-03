@@ -1,3 +1,4 @@
+alias Sutra.Cardano.Common.Drep
 alias Sutra.Cardano.Script.NativeScript
 alias Sutra.Data
 alias Sutra.Cardano.Script
@@ -31,9 +32,9 @@ script_json = %{
 
 tx_id =
   new_tx()
-  |> register_stake_credential(script, Data.void())
-  |> register_stake_credential(NativeScript.from_json(script_json))
-  |> register_stake_credential(wallet_address)
+  |> delegate_vote(script, Drep.abstain(), Data.void())
+  |> delegate_vote(NativeScript.from_json(script_json), Drep.no_confidence())
+  |> delegate_vote(wallet_address, Drep.abstain())
   |> build_tx!(wallet_address: [wallet_address])
   |> sign_tx([extended_key])
   |> sign_tx_with_raw_extended_key(extended_key.stake_key)

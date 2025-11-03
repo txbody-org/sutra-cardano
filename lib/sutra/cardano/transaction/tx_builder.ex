@@ -11,7 +11,6 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   alias Sutra.Cardano.Asset
   alias Sutra.Cardano.Script
   alias Sutra.Cardano.Transaction
-  alias Sutra.Cardano.Transaction.Certificate.RegisterCert
   alias Sutra.Cardano.Transaction.Datum
   alias Sutra.Cardano.Transaction.Input
   alias Sutra.Cardano.Transaction.Output
@@ -24,10 +23,9 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   alias Sutra.Data.Plutus
   alias Sutra.ProtocolParams
   alias Sutra.Provider
+  alias __MODULE__.CertificateHelper
 
   import Sutra.Utils, only: [maybe: 2]
-
-  @min_ada_for_stake_reg 2_000_000
 
   defstruct config: %TxConfig{},
             inputs: [],
@@ -45,7 +43,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
             used_scripts: MapSet.new(),
             collateral_inputs: [],
             certificates: [],
-            total_deposit: Asset.zero()
+            total_deposit: Asset.zero(),
+            withdrawals: %{}
 
   @doc """
   Initialize TxBuilder with default values
@@ -523,59 +522,62 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
     %__MODULE__{cfg | config: TxConfig.__set_cfg(cfg.config, :change_datum, datum)}
   end
 
-  def register_stake_credential(%__MODULE__{certificates: certs} = cfg, %Address{
-        stake_credential: %Credential{credential_type: :vkey, hash: stake_key_hash} = stake_cred
-      }) do
+  def withdraw_stake(
+        %__MODULE__{} = cfg,
+        %Address{
+          stake_credential: %Credential{credential_type: :vkey, hash: stake_hash}
+        },
+        lovelace
+      )
+      when is_integer(lovelace) do
     %__MODULE__{
       cfg
-      | certificates: [prepare_reg_cert(stake_cred) | certs],
-        required_signers: MapSet.put(cfg.required_signers, stake_key_hash),
-        total_deposit: Asset.add(cfg.total_deposit, "lovelace", @min_ada_for_stake_reg)
+      | withdrawals: Map.put_new(cfg.withdrawals, stake_hash, Asset.from_lovelace(lovelace))
     }
   end
 
-  def register_stake_credential(%__MODULE__{certificates: certs} = cfg, native_script)
-      when Script.is_native_script(native_script) do
-    script_credential = %Credential{
-      credential_type: :script,
-      hash: Script.hash_script(native_script)
-    }
+  def withdraw_stake(%__MODULE__{} = cfg, native_script, lovelace)
+      when Script.is_native_script(native_script) and is_integer(lovelace) do
+    script_hash = Script.hash_script(native_script)
 
     %__MODULE__{
       cfg
-      | certificates: [prepare_reg_cert(script_credential) | certs],
-        total_deposit: Asset.add(cfg.total_deposit, "lovelace", @min_ada_for_stake_reg),
-        script_lookup: Map.put_new(cfg.script_lookup, script_credential.hash, native_script),
+      | withdrawals: Map.put_new(cfg.withdrawals, script_hash, Asset.from_lovelace(lovelace)),
+        script_lookup: Map.put_new(cfg.script_lookup, script_hash, native_script),
         used_scripts: MapSet.put(cfg.used_scripts, :native)
     }
   end
 
-  def register_stake_credential(
-        %__MODULE__{certificates: certs} = cfg,
-        %Script{} = plutus_script,
-        redeemer
-      )
-      when Script.is_plutus_script(plutus_script) and Plutus.is_plutus_data(redeemer) do
-    script_credential = %Credential{
-      credential_type: :script,
-      hash: Script.hash_script(plutus_script)
-    }
+  def withdraw_stake(%__MODULE__{} = cfg, plutus_script, redeemer, lovelace)
+      when Script.is_plutus_script(plutus_script) and is_integer(lovelace) and
+             Plutus.is_plutus_data(redeemer) do
+    script_hash = Script.hash_script(plutus_script)
 
     %__MODULE__{
       cfg
-      | certificates: [prepare_reg_cert(script_credential, redeemer) | certs],
-        total_deposit: Asset.add(cfg.total_deposit, "lovelace", @min_ada_for_stake_reg),
-        script_lookup: Map.put_new(cfg.script_lookup, script_credential.hash, plutus_script),
-        used_scripts: MapSet.put(cfg.used_scripts, plutus_script.script_type)
+      | withdrawals: Map.put_new(cfg.withdrawals, script_hash, Asset.from_lovelace(lovelace)),
+        script_lookup: Map.put_new(cfg.script_lookup, script_hash, plutus_script),
+        used_scripts: MapSet.put(cfg.used_scripts, plutus_script.script_type),
+        redeemer_lookup: Map.put_new(cfg.redeemer_lookup, {:reward, script_hash}, redeemer)
     }
   end
 
-  defp prepare_reg_cert(%Credential{} = credential, redeemer \\ nil) do
-    {%RegisterCert{
-       stake_credential: credential,
-       coin: Asset.from_lovelace(@min_ada_for_stake_reg)
-     }, redeemer}
-  end
+  @doc delegate_to: {CertificateHelper, :register_stake_credential, 3}
+  defdelegate register_stake_credential(builder, credential, redeemer \\ nil),
+    to: CertificateHelper
+
+  @doc delegate_to: {CertificateHelper, :delegate_vote, 3}
+  defdelegate delegate_vote(builder, credential, drep, redeemer \\ nil), to: CertificateHelper
+
+  @doc delegate_to: {CertificateHelper, :delegate_stake_and_vote, 5}
+  defdelegate delegate_stake_and_vote(
+                builder,
+                credential,
+                drep,
+                stake_pool_key_hash,
+                redeemer \\ nil
+              ),
+              to: CertificateHelper
 
   def build_tx(cfg, opts \\ [])
   def build_tx(%__MODULE__{errors: [_ | _]} = cfg, _opts), do: {:error, cfg.errors}

@@ -4,8 +4,4 @@ defmodule SutraTest do
   import Sutra.Utils
 
   doctest Sutra.Utils
-
-  test "greets the world" do
-    assert Sutra.hello() == :world
-  end
 end

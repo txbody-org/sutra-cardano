@@ -215,7 +215,7 @@ defmodule Sutra.Provider.KoiosProvider do
 
   @impl true
   def submit_tx(cbor) when is_binary(cbor) do
-    build_request(:post, "submittx", cbor, headers: %{"Content-Type" => "application/cbor"})
+    build_request(:post, "submittx", cbor, headers: %{content_type: "application/cbor"})
     |> Map.get(:body)
   end
 

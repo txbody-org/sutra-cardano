@@ -323,13 +323,13 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
     add_output(cfg, output)
   end
 
-  defp extract_datum({:inline_datum, val}) when Plutus.is_plutus_data(val) do
+  defp extract_datum({:inline_datum, val}) do
     raw_data = Data.encode(val)
 
     {Data.decode!(raw_data), Datum.inline(raw_data)}
   end
 
-  defp extract_datum({:datum_hash, val}) when Plutus.is_plutus_data(val) do
+  defp extract_datum({:datum_hash, val}) do
     raw_data = Data.encode(val)
     {Data.decode!(raw_data), Datum.datum_hash(Blake2b.blake2b_256(raw_data))}
   end

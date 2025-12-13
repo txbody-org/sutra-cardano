@@ -4,8 +4,8 @@ defmodule Sutra.MixProject do
   def project do
     [
       app: :sutra,
-      version: "0.2.1-alpha",
-      elixir: "~> 1.18",
+      version: "0.2.3",
+      elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps(),

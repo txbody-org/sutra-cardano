@@ -219,9 +219,29 @@ defmodule Sutra.CoinSelection.LargestFirstTest do
         transaction_id: tx_id,
         output_index: 0
       },
-      output: %Output{value: value}
+      output: %Output{
+        value: value,
+        address: dummy_address(),
+        datum: dummy_datum()
+      }
     }
   end
 
   defp make_input(lovelace, tx_id), do: Asset.from_lovelace(lovelace) |> make_input(tx_id)
+
+  defp dummy_address do
+    %Sutra.Cardano.Address{
+      address_type: :shelley,
+      network: :testnet,
+      payment_credential: %Sutra.Cardano.Address.Credential{
+        credential_type: :vkey,
+        hash: "0b8418cb378671165f749b4c0de768e703ff4834f216ccc1aa54c561"
+      },
+      stake_credential: nil
+    }
+  end
+
+  defp dummy_datum do
+    %Sutra.Cardano.Transaction.Datum{kind: :no_datum, value: nil}
+  end
 end

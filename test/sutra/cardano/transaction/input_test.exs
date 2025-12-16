@@ -4,7 +4,16 @@ defmodule Sutra.Cardano.Transaction.InputTest do
   use ExUnit.Case, async: true
 
   alias Sutra.Cardano.Transaction.Input
+  alias Sutra.Cardano.Transaction.Output
   alias Sutra.Cardano.Transaction.OutputReference
+
+  @dummy_output %Output{
+    address: nil,
+    value: nil,
+    datum: nil,
+    reference_script: nil,
+    datum_raw: nil
+  }
 
   describe "Sort Inputs" do
     test "inputs are sorted correctly for same Transaction Ids" do
@@ -13,7 +22,8 @@ defmodule Sutra.Cardano.Transaction.InputTest do
           output_reference: %OutputReference{
             transaction_id: "tx1",
             output_index: 11
-          }
+          },
+          output: @dummy_output
         }
 
       input2 =
@@ -21,7 +31,8 @@ defmodule Sutra.Cardano.Transaction.InputTest do
           output_reference: %OutputReference{
             transaction_id: "tx1",
             output_index: 8
-          }
+          },
+          output: @dummy_output
         }
 
       input3 =
@@ -29,7 +40,8 @@ defmodule Sutra.Cardano.Transaction.InputTest do
           output_reference: %OutputReference{
             transaction_id: "tx1",
             output_index: 21
-          }
+          },
+          output: @dummy_output
         }
 
       assert Input.sort_inputs([input1, input2, input3]) == [input2, input1, input3]
@@ -41,7 +53,8 @@ defmodule Sutra.Cardano.Transaction.InputTest do
           output_reference: %OutputReference{
             transaction_id: "btx1",
             output_index: 11
-          }
+          },
+          output: @dummy_output
         }
 
       input2 =
@@ -49,7 +62,8 @@ defmodule Sutra.Cardano.Transaction.InputTest do
           output_reference: %OutputReference{
             transaction_id: "atx1",
             output_index: 8
-          }
+          },
+          output: @dummy_output
         }
 
       input3 =
@@ -57,7 +71,8 @@ defmodule Sutra.Cardano.Transaction.InputTest do
           output_reference: %OutputReference{
             transaction_id: "ctx1",
             output_index: 21
-          }
+          },
+          output: @dummy_output
         }
 
       assert Input.sort_inputs([input1, input2, input3]) == [input2, input1, input3]
@@ -69,7 +84,8 @@ defmodule Sutra.Cardano.Transaction.InputTest do
           output_reference: %OutputReference{
             transaction_id: "btx1",
             output_index: 11
-          }
+          },
+          output: @dummy_output
         }
 
       input2 =
@@ -77,7 +93,8 @@ defmodule Sutra.Cardano.Transaction.InputTest do
           output_reference: %OutputReference{
             transaction_id: "atx1",
             output_index: 8
-          }
+          },
+          output: @dummy_output
         }
 
       input3 =
@@ -85,7 +102,8 @@ defmodule Sutra.Cardano.Transaction.InputTest do
           output_reference: %OutputReference{
             transaction_id: "atx1",
             output_index: 21
-          }
+          },
+          output: @dummy_output
         }
 
       input4 =
@@ -93,7 +111,8 @@ defmodule Sutra.Cardano.Transaction.InputTest do
           output_reference: %OutputReference{
             transaction_id: "btx1",
             output_index: 10
-          }
+          },
+          output: @dummy_output
         }
 
       assert Input.sort_inputs([input1, input2, input3, input4]) == [

@@ -249,13 +249,21 @@ defmodule Sutra.Data.MacroHelper.EnumMacro do
     {:ok, struct(module, kind: kind, value: nil)}
   end
 
-  def handle_decoded_enum({:ok, %{constructor: constructor_name, fields: field_map}}, _index, module)
+  def handle_decoded_enum(
+        {:ok, %{constructor: constructor_name, fields: field_map}},
+        _index,
+        module
+      )
       when map_size(field_map) == 0 do
     kind = constructor_name |> Macro.underscore() |> String.to_atom()
     {:ok, struct(module, kind: kind, value: nil)}
   end
 
-  def handle_decoded_enum({:ok, %{constructor: constructor_name, fields: field_map}}, _index, module) do
+  def handle_decoded_enum(
+        {:ok, %{constructor: constructor_name, fields: field_map}},
+        _index,
+        module
+      ) do
     kind = constructor_name |> Macro.underscore() |> String.to_atom()
     value = EnumMacro.extract_enum_value(field_map)
     {:ok, struct(module, kind: kind, value: value)}

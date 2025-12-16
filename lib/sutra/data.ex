@@ -53,7 +53,9 @@ defmodule Sutra.Data do
 
   defmacro __using__(_) do
     quote do
-      import Sutra.Data, only: [defdata: 2, defdata: 1, defenum: 1, defenum: 2, deftype: 1, data: 3, data: 2]
+      import Sutra.Data,
+        only: [defdata: 2, defdata: 1, defenum: 1, defenum: 2, deftype: 1, data: 3, data: 2]
+
       import Sutra.Data.Option
     end
   end

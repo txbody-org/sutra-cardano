@@ -87,9 +87,9 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
 
   @doc """
   Set Wallet address
-    
+
     ## Examples
-      
+
       iex> new_tx() |> set_wallet_address(%Address{})
       %TxBuilder{}
 
@@ -108,11 +108,11 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   Set Custom change address
 
     ## Examples
-    
+
         iex> new_tx() |> set_change_address(%Address{})
         %TxBuilder{}
 
-        # Change Address with datum 
+        # Change Address with datum
         iex> new_tx() |> set_change_address(%Address{}, {:inline_datum, some_plutus_data})
         %TxBuilder{}
   """
@@ -141,20 +141,20 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   Adds Inputs To Transaction
 
   ## Parameters
-    
+
       - `%TxBuilder{}` - The TxBuilder instance containing the transaction details.
       - `inputs`    - The list of `%Input{}` trying to spend
 
-  ## Options 
+  ## Options
       - `witness`   - The witness for input. Can be `%Script{}`, `%NativeScript{}`, `:vkey_witness`, `%Input{}`, `:ref_scripts` based on input. (defaults to `:vkey_witness`)
-      - `redeemer`  - Redeemer for spending inputs if needed. 
+      - `redeemer`  - Redeemer for spending inputs if needed.
                       Required only for inputs trying to consume from script address
 
-      - `datum`     - The datum info needed to spend utxos from script. Useful only for utxos with datum type `datum_hash`. 
+      - `datum`     - The datum info needed to spend utxos from script. Useful only for utxos with datum type `datum_hash`.
                       Note: If Datum is already available from provider for input, datum will be overriden by datum fetched from provider
 
   ## Examples
-    
+
       iex> new_tx() |> add_input(inputs_from_user_wallet)
       %TxBuilder{}
 
@@ -163,17 +163,17 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
 
       iex> new_tx() |> add_input(script_inputs, witness: %Script{}, redeemer: redeemer_info)
       %TxBuilder{}
-      
+
       # Pass Input as reference_script
       iex> new_tx() |> add_input(script_inputs, witness: %Input{}, redeemer: redeemer_info)
       %TxBuilder{}
-      
-      # If script is already added as reference_script in pipeline we can 
+
+      # If script is already added as reference_script in pipeline we can
       # simply pass :ref_inputs
       iex> new_tx() |> add_input(script_inputs, witness: :ref_inputs, redeemer: redeemer_info)
       %TxBuilder{}
-   
-    
+
+
   """
   def add_input(%__MODULE__{} = cfg, [%Input{} | _] = inputs, opts \\ []) do
     witness = opts[:witness] || :vkey_witness
@@ -291,14 +291,14 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   Creates Output in transaction.
 
     ## Examples
-      
+
       iex> add_output(%TxBuilder{}, %Output{})
       %TxBuilder{}
-      
+
       # Creates output without Datum
       iex> add_output(%TxBuilder{}, %Address{} = address, asset)
       %TxBuilder{}
-      
+
       # Creates output with inline datum
       iex> add_output(%TxBuilder{}, %Address{} = address, asset, {:inline_datum, plutus_data})
       %TxBuilder{}
@@ -306,7 +306,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
       # Creates output with datum hash
       iex> add_output(%TxBuilder{}, %Address{} = address, asset, {:datum_hash, plutus_data})
       %TxBuilder{}
-      
+
   """
   def add_output(%__MODULE__{} = cfg, %Output{} = output) do
     plutus_data =
@@ -337,10 +337,10 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   defp extract_datum(_), do: {nil, Datum.no_datum()}
 
   @doc """
-  Mint Assets 
+  Mint Assets
 
     ## Parameters
-    
+
       - `%TxBuilder{}` - The TxBuilder instance containing the transaction details.
       - `policy_id` - policy_id of token being minted
       - `assets`  - Assets being minted under some policy
@@ -348,7 +348,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
       - `redeemer` - Redeemer for minting policy. Needed for Plutus script Minting policy
 
     ## Examples
-      
+
       iex> mint_asset(%TxBuilder{}, %{"asset1.." => 1}, %NativeScript{})
       %TxBuilder{}
 
@@ -412,7 +412,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
     - `Script`  - The script to attach as reference script. Can be either `Plutus Script` or `NativeScript`
 
   ##  Examples
-    
+
       iex> deploy_script(%TxBuilder{}, %Address{}, %Script{})
       %TxBuilder{}
 
@@ -471,7 +471,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   Attach plutus data in witness
 
   ## Examples
-    
+
     iex> attach_datum(%TxBuilder{}, %Constr{})
     %TxBuilder{}
 
@@ -496,8 +496,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   ## Examples
 
     iex> attach_metadata(%TxBuilder{}, 721, metadata_info)
-    %TxBuilder{}  
-    
+    %TxBuilder{}
+
   """
   def attach_metadata(%__MODULE__{} = builder, label, metadata)
       when not is_nil(metadata) and is_integer(label) do

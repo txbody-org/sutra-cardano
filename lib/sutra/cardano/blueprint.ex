@@ -113,13 +113,46 @@ defmodule Sutra.Cardano.Blueprint do
   end
 
   # Handle map type
-  def encode(value, %{"dataType" => "map", "keys" => keys_schema, "values" => values_schema}, definitions) do
+  def encode(
+        value,
+        %{"dataType" => "map", "keys" => keys_schema, "values" => values_schema},
+        definitions
+      ) do
     encode_map(value, keys_schema, values_schema, definitions)
+  end
+
+  # Handle single constructor schema (not wrapped in anyOf)
+  def encode(value, %{"dataType" => "constructor"} = schema, definitions) do
+    # Wrap in anyOf and delegate to constructor encoding
+    encode_constructor(value, [schema], definitions)
   end
 
   # Handle "Data" type (any plutus data - pass through)
   def encode(value, %{"title" => "Data"}, _definitions) do
     {:ok, value}
+  end
+
+  # Handle module reference - delegate to module's schema/functions
+  def encode(value, %{"$module" => module}, _definitions) when is_atom(module) do
+    Code.ensure_loaded(module)
+
+    cond do
+      # If value is already the right struct and module has to_plutus, use it
+      is_struct(value) and function_exported?(value.__struct__, :to_plutus, 1) ->
+        {:ok, value.__struct__.to_plutus(value)}
+
+      # If module has __schema__, use Blueprint with that schema
+      function_exported?(module, :__schema__, 0) ->
+        encode(value, module.__schema__())
+
+      # If module has to_plutus, use it directly
+      function_exported?(module, :to_plutus, 1) ->
+        {:ok, module.to_plutus(value)}
+
+      true ->
+        {:error,
+         {:encode_error, "Module #{inspect(module)} does not have __schema__/0 or to_plutus/1"}}
+    end
   end
 
   # Handle empty schema (pass through as raw data)
@@ -201,13 +234,42 @@ defmodule Sutra.Cardano.Blueprint do
   end
 
   # Handle map type
-  def decode(plutus_data, %{"dataType" => "map", "keys" => keys_schema, "values" => values_schema}, definitions) do
+  def decode(
+        plutus_data,
+        %{"dataType" => "map", "keys" => keys_schema, "values" => values_schema},
+        definitions
+      ) do
     decode_map(plutus_data, keys_schema, values_schema, definitions)
+  end
+
+  # Handle single constructor schema (not wrapped in anyOf)
+  def decode(plutus_data, %{"dataType" => "constructor"} = schema, definitions) do
+    # Wrap in anyOf and delegate to constructor decoding
+    decode_constructor(plutus_data, [schema], definitions)
   end
 
   # Handle "Data" type (any plutus data - pass through)
   def decode(plutus_data, %{"title" => "Data"}, _definitions) do
     {:ok, plutus_data}
+  end
+
+  # Handle module reference - delegate to module's schema/functions
+  def decode(plutus_data, %{"$module" => module}, _definitions) when is_atom(module) do
+    Code.ensure_loaded(module)
+
+    cond do
+      # If module has from_plutus, use it directly (preferred as it returns struct)
+      function_exported?(module, :from_plutus, 1) ->
+        module.from_plutus(plutus_data)
+
+      # If module has __schema__, use Blueprint with that schema
+      function_exported?(module, :__schema__, 0) ->
+        decode(plutus_data, module.__schema__())
+
+      true ->
+        {:error,
+         {:decode_error, "Module #{inspect(module)} does not have __schema__/0 or from_plutus/1"}}
+    end
   end
 
   # Handle empty schema (pass through as raw data)
@@ -330,12 +392,48 @@ defmodule Sutra.Cardano.Blueprint do
   end
 
   defp encode_constructor(value, variants, definitions) do
-    case find_matching_variant(value, variants) do
-      {:ok, variant, index, field_values} ->
-        encode_constructor_fields(variant, index, field_values, definitions)
+    # Special handling for nil - look for None variant (Option type)
+    if is_nil(value) do
+      case Enum.find(variants, fn v -> v["title"] == "None" end) do
+        nil ->
+          {:error, {:encode_error, "Got nil but no None constructor found"}}
 
-      {:error, _} = error ->
-        error
+        none_variant ->
+          {:ok, %Constr{index: none_variant["index"], fields: []}}
+      end
+    else
+      # Handle Option Some - if we have a raw value and there's a Some variant
+      some_variant = Enum.find(variants, fn v -> v["title"] == "Some" end)
+
+      value_to_encode =
+        if some_variant && !is_map(value) do
+          # Wrap raw value as Some
+          [schema] = some_variant["fields"] || []
+
+          case encode(value, schema, definitions) do
+            {:ok, encoded} -> {:ok, %Constr{index: some_variant["index"], fields: [encoded]}}
+            error -> error
+          end
+        else
+          nil
+        end
+
+      case value_to_encode do
+        {:ok, _} = result ->
+          result
+
+        {:error, _} = error ->
+          error
+
+        nil ->
+          case find_matching_variant(value, variants) do
+            {:ok, variant, index, field_values} ->
+              encode_constructor_fields(variant, index, field_values, definitions)
+
+            {:error, _} = error ->
+              error
+          end
+      end
     end
   end
 
@@ -364,9 +462,7 @@ defmodule Sutra.Cardano.Blueprint do
         if variant["fields"] == [] do
           {:ok, variant, variant["index"], %{}}
         else
-          {:error,
-           {:encode_error,
-            "Constructor #{name} requires fields, but none provided"}}
+          {:error, {:encode_error, "Constructor #{name} requires fields, but none provided"}}
         end
     end
   end
@@ -408,7 +504,9 @@ defmodule Sutra.Cardano.Blueprint do
     results =
       Enum.reduce_while(field_schemas, {:ok, []}, fn schema, {:ok, acc} ->
         field_name = schema["title"]
-        field_value = Map.get(field_values, field_name) || Map.get(field_values, String.to_atom(field_name))
+
+        field_value =
+          Map.get(field_values, field_name) || Map.get(field_values, String.to_atom(field_name))
 
         case encode(field_value, schema, definitions) do
           {:ok, encoded} -> {:cont, {:ok, [encoded | acc]}}
@@ -449,8 +547,12 @@ defmodule Sutra.Cardano.Blueprint do
   # Decoding Helpers
   # ============================================================================
 
-  defp decode_bytes(%CBOR.Tag{tag: :bytes, value: value}), do: {:ok, value}
-  defp decode_bytes(value) when is_binary(value), do: {:ok, value}
+  # Decode bytes returns hex-encoded string for consistency with defdata behavior
+  defp decode_bytes(%CBOR.Tag{tag: :bytes, value: value}),
+    do: {:ok, Base.encode16(value, case: :lower)}
+
+  defp decode_bytes(value) when is_binary(value),
+    do: {:ok, Base.encode16(value, case: :lower)}
 
   defp decode_bytes(value) do
     {:error, {:decode_error, "Expected bytes, got: #{inspect(value)}"}}
@@ -505,7 +607,8 @@ defmodule Sutra.Cardano.Blueprint do
         end)
 
       case results do
-        {:ok, decoded_list} -> {:ok, Enum.reverse(decoded_list)}
+        # Return Elixir tuple, not list
+        {:ok, decoded_list} -> {:ok, List.to_tuple(Enum.reverse(decoded_list))}
         error -> error
       end
     end
@@ -551,21 +654,33 @@ defmodule Sutra.Cardano.Blueprint do
     field_schemas = variant["fields"] || []
     title = variant["title"]
 
-    if field_schemas == [] do
-      {:ok, %{constructor: title, fields: %{}}}
-    else
-      if length(fields) != length(field_schemas) do
-        {:error,
-         {:decode_error,
-          "Field count mismatch for #{title}: expected #{length(field_schemas)}, got #{length(fields)}"}}
-      else
-        decoded_fields = decode_fields(fields, field_schemas, definitions)
+    # Handle Option type specially - unwrap Some/None
+    case title do
+      "None" ->
+        {:ok, nil}
 
-        case decoded_fields do
-          {:ok, field_map} -> {:ok, %{constructor: title, fields: field_map}}
-          error -> error
+      "Some" when length(field_schemas) == 1 ->
+        [value] = fields
+        [schema] = field_schemas
+        decode(value, schema, definitions)
+
+      _ ->
+        if field_schemas == [] do
+          {:ok, %{constructor: title, fields: %{}}}
+        else
+          if length(fields) != length(field_schemas) do
+            {:error,
+             {:decode_error,
+              "Field count mismatch for #{title}: expected #{length(field_schemas)}, got #{length(fields)}"}}
+          else
+            decoded_fields = decode_fields(fields, field_schemas, definitions)
+
+            case decoded_fields do
+              {:ok, field_map} -> {:ok, %{constructor: title, fields: field_map}}
+              error -> error
+            end
+          end
         end
-      end
     end
   end
 

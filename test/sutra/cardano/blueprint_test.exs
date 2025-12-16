@@ -202,15 +202,15 @@ defmodule Sutra.Cardano.BlueprintTest do
       assert {:ok, 42} = Blueprint.decode(42, schema)
     end
 
-    test "decodes bytes from CBOR.Tag" do
+    test "decodes bytes from CBOR.Tag as hex string" do
       schema = %{"dataType" => "bytes"}
       tag = %CBOR.Tag{tag: :bytes, value: <<1, 2, 3>>}
-      assert {:ok, <<1, 2, 3>>} = Blueprint.decode(tag, schema)
+      assert {:ok, "010203"} = Blueprint.decode(tag, schema)
     end
 
-    test "decodes raw binary bytes" do
+    test "decodes raw binary bytes as hex string" do
       schema = %{"dataType" => "bytes"}
-      assert {:ok, "hello"} = Blueprint.decode("hello", schema)
+      assert {:ok, "68656c6c6f"} = Blueprint.decode("hello", schema)
     end
   end
 
@@ -228,7 +228,7 @@ defmodule Sutra.Cardano.BlueprintTest do
   end
 
   describe "decode/3 - tuples" do
-    test "decodes tuple from PList" do
+    test "decodes tuple from PList as Elixir tuple" do
       schema = %{
         "dataType" => "list",
         "items" => [
@@ -238,7 +238,8 @@ defmodule Sutra.Cardano.BlueprintTest do
       }
 
       plist = %PList{value: [42, "hello"]}
-      assert {:ok, [42, "hello"]} = Blueprint.decode(plist, schema)
+      # Returns tuple, bytes as hex
+      assert {:ok, {42, "68656c6c6f"}} = Blueprint.decode(plist, schema)
     end
   end
 

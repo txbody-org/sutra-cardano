@@ -16,7 +16,6 @@
     Encodes the value according to the schema and returns Plutus data.
     """
     def <%= @func_name %>(value) do
-      {:ok, encoded} = Blueprint.encode(value, @schema)
-      encoded
+      Blueprint.encode(value, @schema)
     end
   end

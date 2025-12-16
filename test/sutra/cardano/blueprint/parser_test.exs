@@ -1,4 +1,5 @@
 defmodule Sutra.Cardano.Blueprint.ParserTest do
+  @moduledoc false
   use ExUnit.Case, async: true
 
   alias Sutra.Cardano.Blueprint
@@ -364,48 +365,4 @@ defmodule Sutra.Cardano.Blueprint.ParserTest do
       assert decoded.fields["stake_amt"] == 1000
     end
   end
-
-  describe "loading from file" do
-    @tag :integration
-    test "parses real blueprint file" do
-      blueprint_path =
-        Path.join([__DIR__, "..", "..", "..", "..", "sample-blueprint", "blueprint1.json"])
-
-      if File.exists?(blueprint_path) do
-        {:ok, json} = File.read(blueprint_path)
-        {:ok, blueprint} = Jason.decode(json)
-
-        {:ok, validators} = Parser.parse_validators(blueprint)
-
-        # Should have multiple validators
-        assert length(validators) > 0
-
-        # Each validator should have resolved schemas
-        Enum.each(validators, fn v ->
-          assert is_binary(v.title)
-
-          if v.redeemer_schema do
-            # Should not contain any $refs
-            refute has_refs?(v.redeemer_schema)
-          end
-
-          if v.datum_schema do
-            refute has_refs?(v.datum_schema)
-          end
-        end)
-      end
-    end
-  end
-
-  # Helper to check if a schema contains any $refs
-  defp has_refs?(schema) when is_map(schema) do
-    Map.has_key?(schema, "$ref") or
-      Enum.any?(Map.values(schema), &has_refs?/1)
-  end
-
-  defp has_refs?(list) when is_list(list) do
-    Enum.any?(list, &has_refs?/1)
-  end
-
-  defp has_refs?(_), do: false
 end

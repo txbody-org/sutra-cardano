@@ -39,8 +39,8 @@ defmodule Mix.Tasks.Sutra.Blueprint.Gen do
 
   ## Generated Structure
 
-  For a blueprint with validators like `lending.lending_validator.spend` and
-  `lending.lending_validator.mint`, this will generate:
+  For a blueprint with validators like `lvalidator.spend` and
+  `lvalidator.mint`, this will generate:
 
   ```
   lib/my_app/contracts/lending/lending_validator.ex

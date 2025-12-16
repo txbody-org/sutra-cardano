@@ -57,7 +57,6 @@ defmodule Sutra.CoinSelection.LargestFirst do
 
   defp calculate_result(selected_inputs, current_value, to_fill, left_over) do
     # Change = (Current - Target) + LeftOver
-    # We use Asset.negate(to_fill) to subtract target
     surplus = Asset.merge(current_value, Asset.negate(to_fill))
     change = Asset.merge(surplus, left_over)
 
@@ -89,7 +88,7 @@ defmodule Sutra.CoinSelection.LargestFirst do
          {policy, name, target_amount},
          {selected, available, current_val}
        ) do
-    current_amount = get_quantity(current_val, policy, name)
+    current_amount = Asset.get_quantity(current_val, policy, name)
 
     if current_amount >= target_amount do
       {:cont, {selected, available, current_val}}
@@ -121,10 +120,10 @@ defmodule Sutra.CoinSelection.LargestFirst do
     candidates =
       available
       |> Enum.filter(fn input ->
-        get_quantity(input.output.value, policy, name) > 0
+        Asset.get_quantity(input.output.value, policy, name) > 0
       end)
       |> Enum.sort_by(
-        fn input -> get_quantity(input.output.value, policy, name) end,
+        fn input -> Asset.get_quantity(input.output.value, policy, name) end,
         :desc
       )
 
@@ -138,7 +137,7 @@ defmodule Sutra.CoinSelection.LargestFirst do
       {:cont, {selected ++ newly_selected, new_available, new_val}}
     else
       # Failed to satisfy a token requirement
-      missing_amount = target_amount - get_quantity(new_val, policy, name)
+      missing_amount = target_amount - Asset.get_quantity(new_val, policy, name)
       {:halt, {:error, %{policy => %{name => missing_amount}}}}
     end
   end
@@ -148,7 +147,7 @@ defmodule Sutra.CoinSelection.LargestFirst do
       candidates,
       {[], current_val, needed},
       fn input, {sel, val, current_needed} ->
-        input_qty = get_quantity(input.output.value, policy, name)
+        input_qty = Asset.get_quantity(input.output.value, policy, name)
         new_val = Asset.merge(val, input.output.value)
         new_sel = [input | sel]
 
@@ -177,12 +176,6 @@ defmodule Sutra.CoinSelection.LargestFirst do
     Enum.reduce(tokens, acc, fn {name, amount}, inner_acc ->
       if amount > 0, do: [{policy, name, amount} | inner_acc], else: inner_acc
     end)
-  end
-
-  defp get_quantity(asset, "lovelace", _), do: Asset.lovelace_of(asset)
-
-  defp get_quantity(asset, policy, name) do
-    get_in(asset, [policy, name]) || 0
   end
 
   defp sum_values(inputs) do

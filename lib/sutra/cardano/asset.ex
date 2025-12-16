@@ -139,19 +139,50 @@ defmodule Sutra.Cardano.Asset do
   def from_lovelace(_), do: nil
 
   @doc """
-    Returns lovelace amount from asset. returns 0 if no lovelace is found in asset
+  Returns lovelace amount from asset. returns 0 if no lovelace is found in asset
 
-      ## Examples
+    ## Examples
 
-            iex> lovelace_of(%{"policy" => %{"asset" => 1}})
-            0
+        iex> lovelace_of(%{"policy" => %{"asset" => 1}})
+        0
 
-            iex> lovelace_of(from_lovelace(134_000))
-            134_000
+        iex> lovelace_of(from_lovelace(134_000))
+        134_000
 
   """
   def lovelace_of(asset) when is_map(asset), do: Map.get(asset, "lovelace", 0)
   def lovelace_of(_), do: 0
+
+  @doc """
+    Returns quantity of specific token from asset. returns 0 if no such token is found
+
+      ## Examples
+
+            iex> asset = %{"policy-1" => %{"asset-1" => 500, "asset-2" => 300}}
+            iex> get_quantity(asset, "policy-1", "asset-1")
+            500
+
+            iex> get_quantity(%{"policy-1" => %{"asset-1" => 100}}, "policy-1", "asset-3")
+            0
+
+            iex> get_quantity(%{"policy-1" => %{"asset-1" => 100}}, "policy-2", "asset-1")
+            0
+
+            iex> get_quantity(from_lovelace(1000), "lovelace")
+            1000
+
+            iex> get_quantity(%{}, "lovelace")
+            0
+
+  """
+  def get_quantity(asset, policy_id, asset_name)
+      when is_map(asset) and is_binary(policy_id) and is_binary(asset_name) do
+    asset
+    |> Map.get(policy_id, %{})
+    |> Map.get(asset_name, 0)
+  end
+
+  def get_quantity(asset, "lovelace"), do: lovelace_of(asset)
 
   @doc """
     Merge two asset values into one,

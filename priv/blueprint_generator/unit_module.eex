@@ -1,5 +1,6 @@
   defmodule <%= @name %> do
     @moduledoc "Constructor with index <%= @index %>"
+    alias Sutra.Data.Plutus.Constr
 
     defstruct []
 

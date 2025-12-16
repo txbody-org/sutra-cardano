@@ -22,7 +22,6 @@ defmodule Sutra.Cardano.Blueprint do
       {:ok, blueprint} = Jason.decode(blueprint_json)
 
       # Get a schema definition
-      schema = %{"$ref" => "#/definitions/nuvola/types/LendingRedeemer"}
 
       # Encode a value
       value = %{constructor: "CreateLend", fields: %{}}
@@ -34,6 +33,7 @@ defmodule Sutra.Cardano.Blueprint do
 
   alias Sutra.Data.Plutus
   alias Sutra.Data.Plutus.{Constr, PList}
+  alias Sutra.Utils
 
   @type schema :: map()
   @type definitions :: map()
@@ -101,26 +101,6 @@ defmodule Sutra.Cardano.Blueprint do
 
   def encode(value, %{"dataType" => "integer"}, _definitions) do
     encode_integer(value)
-  end
-
-# ...
-
-  defp encode_bytes(value, %{"format" => "utf8"}) when is_binary(value) do
-     {:ok, %CBOR.Tag{tag: :bytes, value: value}}
-  end
-
-  defp encode_bytes(value, _schema) when is_binary(value) do
-    # Try to decode as hex first, otherwise use raw bytes
-    case Base.decode16(value, case: :mixed) do
-      {:ok, bytes} -> {:ok, %CBOR.Tag{tag: :bytes, value: bytes}}
-      :error -> {:ok, %CBOR.Tag{tag: :bytes, value: value}}
-    end
-  end
-
-  defp encode_bytes(%CBOR.Tag{tag: :bytes} = tag, _schema), do: {:ok, tag}
-
-  defp encode_bytes(value, _schema) do
-    {:error, {:encode_error, "Expected binary for bytes type, got: #{inspect(value)}"}}
   end
 
   # Handle lists with single item schema (homogeneous list)
@@ -321,6 +301,24 @@ defmodule Sutra.Cardano.Blueprint do
     {:error, {:encode_error, "Invalid reference format: #{ref}"}}
   end
 
+  defp encode_bytes(value, %{"format" => "utf8"}) when is_binary(value) do
+    {:ok, %CBOR.Tag{tag: :bytes, value: value}}
+  end
+
+  defp encode_bytes(value, _schema) when is_binary(value) do
+    # Try to decode as hex first, otherwise use raw bytes
+    case Base.decode16(value, case: :mixed) do
+      {:ok, bytes} -> {:ok, %CBOR.Tag{tag: :bytes, value: bytes}}
+      :error -> {:ok, %CBOR.Tag{tag: :bytes, value: value}}
+    end
+  end
+
+  defp encode_bytes(%CBOR.Tag{tag: :bytes} = tag, _schema), do: {:ok, tag}
+
+  defp encode_bytes(value, _schema) do
+    {:error, {:encode_error, "Expected binary for bytes type, got: #{inspect(value)}"}}
+  end
+
   defp encode_integer(value) when is_integer(value), do: {:ok, value}
 
   defp encode_integer(value) do
@@ -427,11 +425,16 @@ defmodule Sutra.Cardano.Blueprint do
 
   defp encode_some_variant(value, variants, definitions) do
     some_variant = Enum.find(variants, fn v -> v["title"] == "Some" end)
-    [schema] = some_variant["fields"] || []
 
-    case encode(value, schema, definitions) do
-      {:ok, encoded} -> {:ok, %Constr{index: some_variant["index"], fields: [encoded]}}
-      error -> error
+    case some_variant["fields"] do
+      [schema] ->
+        encode(value, schema, definitions)
+        |> Utils.when_ok(fn encoded ->
+          {:ok, %Constr{index: some_variant["index"], fields: [encoded]}}
+        end)
+
+      _ ->
+        nil
     end
   end
 

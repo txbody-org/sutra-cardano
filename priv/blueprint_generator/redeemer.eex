@@ -15,13 +15,12 @@
     @doc "<%= variant.title %> redeemer (constructor index: <%= variant.index %>)"
 <%= if variant.fields == [] do %>
     def <%= Macro.underscore(variant.title) %>() do
-      %Constr{index: <%= variant.index %>, fields: []}
+      {:ok, %Constr{index: <%= variant.index %>, fields: []}}
     end
 <% else %>
     def <%= Macro.underscore(variant.title) %>(<%= variant.field_args %>) do
       value = %{constructor: "<%= variant.title %>", fields: %{<%= variant.field_map %>}}
-      {:ok, encoded} = Blueprint.encode(value, @schema)
-      encoded
+      Blueprint.encode(value, @schema)
     end
 <% end %>
 <% end %>

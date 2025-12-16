@@ -1,17 +1,45 @@
 defmodule Sutra.Data.MacroHelper.EnumMacro do
   @moduledoc """
-    Helper function to define Enum
+  Macro Helper for Enum definitions.
+
+  Generates Blueprint schemas from `defenum` declarations and uses
+  `Blueprint.encode/2` and `Blueprint.decode/2` for all encoding/decoding.
+
+  ## Usage
+
+  Define enum with explicit field names and types:
+
+      defenum name: Datum do
+        field :no_datum, :null
+        field :datum_hash, :string
+        field :inline_datum, :string
+      end
+
+  With explicit constructor indices:
+
+      defenum name: Datum do
+        field :inline_datum, :string, index: 1
+        field :datum_hash, :string, index: 0
+        field :no_datum, :null, index: 2
+      end
+
+  With tuple fields (multiple constructor arguments):
+
+      defenum name: UserRole do
+        field :admin, {:string, :integer}
+        field :normal, {:string, :string, :string}
+      end
   """
 
-  alias Sutra.Data.Cbor
+  alias Sutra.Data.MacroHelper.SchemaBuilder
   alias Sutra.Data.Plutus.Constr
   alias __MODULE__, as: EnumMacro
-  alias Sutra.Data.MacroHelper
 
-  def __define__(opts) do
-    ast = prepare_ast(Keyword.delete(opts, :module))
+  @doc "Define an enum with a block of field declarations"
+  def __define__(opts, block) do
+    ast = prepare_ast_with_block(opts, block)
 
-    case opts[:module] do
+    case opts[:name] do
       nil ->
         quote do
           unquote(ast)
@@ -26,35 +54,57 @@ defmodule Sutra.Data.MacroHelper.EnumMacro do
     end
   end
 
-  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
-  def prepare_ast(fields) do
-    quote bind_quoted: [fields: fields] do
-      @type t() :: %__MODULE__{kind: atom(), value: any()}
+  @doc "Define an enum without explicit name (inline or do block)"
+  def __define__(opts) when is_list(opts) do
+    cond do
+      # Handle defenum do ... end (opts is [do: block])
+      block = opts[:do] ->
+        opts = Keyword.delete(opts, :do)
+        __define__(opts, block)
 
-      ## Need to validate the fields
+      Keyword.has_key?(opts, :name) or Keyword.has_key?(opts, :module) ->
+        raise ArgumentError, "defenum with :name / :module requires a do block"
+
+      true ->
+        raise ArgumentError,
+              "Legacy defenum syntax is no longer supported. Use block syntax: defenum do field :name, :type end"
+    end
+  end
+
+  # ============================================================================
+  # New Block-Based Implementation
+  # ============================================================================
+
+  defp prepare_ast_with_block(_opts, block) do
+    quote do
+      Module.register_attribute(__MODULE__, :__enum_fields, accumulate: true)
+
+      import Sutra.Data.MacroHelper.EnumMacro, only: [field: 2, field: 3]
+
+      unquote(block)
+
+      @type t() :: %__MODULE__{kind: atom(), value: any()}
       @enforce_keys [:kind]
       defstruct [:kind, :value]
 
-      quote do
-        unquote(
-          Enum.with_index(fields, fn {kind, kind_info}, indx ->
-            kind_info = EnumMacro.prepare_kind_info(kind_info)
-            type = Keyword.get(kind_info, :field_kind)
+      alias Sutra.Cardano.Blueprint
 
-            exact_index = Keyword.get(kind_info, :index, indx)
+      # Build variants from accumulated fields
+      @__variants__ EnumMacro.build_variants(@__enum_fields)
 
-            with_encoded_decoded_info =
-              MacroHelper.with_encoder_decoder(type, kind_info)
-              |> Keyword.put(:index, exact_index)
+      # Build the Blueprint schema at compile time
+      @__blueprint_schema__ SchemaBuilder.build_enum_schema(__MODULE__, @__variants__)
 
-            def unquote(:__enum_kind__)(unquote(exact_index)) do
-              unquote(kind)
-            end
+      @doc "Returns the Blueprint schema for this enum"
+      def __schema__, do: @__blueprint_schema__
 
-            def unquote(:__enum_field__)(unquote(kind)),
-              do: unquote(Macro.escape(with_encoded_decoded_info))
-          end)
-        )
+      # Generate kind/index lookup functions
+      for {kind, index, _} <- @__variants__ do
+        @__current_kind__ kind
+        @__current_index__ index
+
+        def __enum_kind__(@__current_index__), do: @__current_kind__
+        def __enum_index__(@__current_kind__), do: @__current_index__
       end
 
       defimpl CBOR.Encoder do
@@ -63,6 +113,7 @@ defmodule Sutra.Data.MacroHelper.EnumMacro do
           do: v.__struct__.to_plutus(v) |> CBOR.Encoder.encode_into(acc)
       end
 
+      @doc "Decode from hex-encoded CBOR or raw Plutus data"
       def from_plutus(data) when is_binary(data) do
         case Sutra.Data.decode(data) do
           {:ok, decoded} -> from_plutus(decoded)
@@ -70,58 +121,133 @@ defmodule Sutra.Data.MacroHelper.EnumMacro do
         end
       end
 
-      def from_plutus(%Constr{index: indx, fields: flds}) do
-        kind = apply(__MODULE__, :__enum_kind__, [indx])
-        field_info = apply(__MODULE__, :__enum_field__, [kind])
-
-        case {MacroHelper.handle_from_plutus(field_info, kind, flds), field_info[:field_kind]} do
-          {{:ok, _}, :null} ->
+      def from_plutus(%Constr{index: index} = plutus_data) do
+        case Blueprint.decode(plutus_data, @__blueprint_schema__) do
+          {:ok, nil} ->
+            # None variant (null type)
+            kind = __enum_kind__(index)
             {:ok, %__MODULE__{kind: kind, value: nil}}
 
-          {{:ok, [value]}, _} ->
-            {:ok, %__MODULE__{kind: kind, value: Cbor.extract_value!(value)}}
+          {:ok, %{constructor: constructor_name, fields: field_map}}
+          when map_size(field_map) == 0 ->
+            kind = constructor_name |> Macro.underscore() |> String.to_atom()
+            {:ok, %__MODULE__{kind: kind, value: nil}}
 
-          {{:ok, value}, _} ->
+          {:ok, %{constructor: constructor_name, fields: field_map}} ->
+            kind = constructor_name |> Macro.underscore() |> String.to_atom()
+            value = EnumMacro.extract_enum_value(field_map)
             {:ok, %__MODULE__{kind: kind, value: value}}
 
-          {error, _} ->
+          {:ok, value} ->
+            # Direct value (e.g., from tuple field)
+            kind = __enum_kind__(index)
+            {:ok, %__MODULE__{kind: kind, value: value}}
+
+          error ->
             error
         end
       end
 
       def from_plutus(nil), do: {:error, %{reason: :invalid_enum_data_to_parse_from_nil}}
 
-      def to_plutus(%__MODULE__{} = mod) do
-        field_info = apply(__MODULE__, :__enum_field__, [mod.kind])
+      @doc "Encode enum to Plutus data"
+      def to_plutus(%__MODULE__{kind: kind, value: value}) do
+        variant_title = kind |> to_string() |> Macro.camelize()
 
-        encode_fn =
-          if is_function(field_info[:encode_with], 1),
-            do: field_info[:encode_with],
-            else: fn v ->
-              MacroHelper.handle_to_plutus(field_info, v)
-            end
+        # Get the variant info to determine field structure
+        {_, _index, field_schema} =
+          Enum.find(@__variants__, fn {k, _, _} -> k == kind end)
 
-        value = if is_nil(mod.value), do: [], else: encode_fn.(mod.value)
+        encoded_value = EnumMacro.build_enum_encode_value(value, field_schema, variant_title)
 
-        %Constr{
-          index: field_info[:index],
-          fields: if(is_list(value), do: value, else: [value])
-        }
+        case Blueprint.encode(encoded_value, @__blueprint_schema__) do
+          {:ok, encoded} -> encoded
+          {:error, reason} -> raise "Encoding failed: #{inspect(reason)}"
+        end
       end
     end
   end
 
-  def prepare_kind_info(kind_info) when kind_info == :null or kind_info == nil,
-    do: [field_kind: :null]
+  @doc false
+  defmacro field(name, type, opts \\ []) do
+    quote bind_quoted: [name: name, type: type, opts: opts] do
+      index = Keyword.get(opts, :index)
+      Module.put_attribute(__MODULE__, :__enum_fields, {name, type, index})
+    end
+  end
 
-  def prepare_kind_info(kind_info) when is_atom(kind_info),
-    do: [field_kind: kind_info]
+  @doc "Build variant list from accumulated fields"
+  def build_variants(fields) do
+    fields
+    |> Enum.reverse()
+    |> Enum.with_index()
+    |> Enum.map(fn {{name, type, explicit_index}, auto_index} ->
+      index = explicit_index || auto_index
+      field_schema = SchemaBuilder.type_to_schema(type)
+      {name, index, field_schema}
+    end)
+    |> Enum.sort_by(fn {_, index, _} -> index end)
+  end
 
-  def prepare_kind_info(kind_info) when is_list(kind_info),
-    do: kind_info
+  @doc "Extract value from decoded field map"
+  def extract_enum_value(field_map) when map_size(field_map) == 0, do: nil
 
-  def prepare_kind_info(kind_info) when is_tuple(kind_info), do: [field_kind: kind_info]
+  def extract_enum_value(field_map) when map_size(field_map) == 1 do
+    [{_key, value}] = Map.to_list(field_map)
+    value
+  end
 
-  def prepare_kind_info(kind_info),
-    do: raise(ArgumentError, "Invalid Argument #{inspect(kind_info)}")
+  def extract_enum_value(field_map) do
+    # Multiple fields - return as tuple in order
+    field_map
+    |> Enum.sort_by(fn {key, _} -> key end)
+    |> Enum.map(fn {_, v} -> v end)
+    |> List.to_tuple()
+  end
+
+  @doc "Build the encode value structure for Blueprint"
+  def build_enum_encode_value(nil, nil, variant_title) do
+    %{constructor: variant_title, fields: %{}}
+  end
+
+  def build_enum_encode_value(nil, _schema, variant_title) do
+    %{constructor: variant_title, fields: %{}}
+  end
+
+  def build_enum_encode_value(value, schema, variant_title) when is_tuple(value) do
+    # Tuple fields - check if schema expects positional fields
+    case schema do
+      %{"dataType" => "list", "items" => items} when is_list(items) ->
+        # It's a tuple type schema - convert to named positional fields
+        fields =
+          value
+          |> Tuple.to_list()
+          |> Enum.with_index()
+          |> Enum.into(%{}, fn {v, idx} -> {"field_#{idx}", v} end)
+
+        %{constructor: variant_title, fields: fields}
+
+      _ ->
+        %{constructor: variant_title, fields: %{"value" => value}}
+    end
+  end
+
+  def build_enum_encode_value(value, _schema, variant_title) do
+    %{constructor: variant_title, fields: %{"value" => value}}
+  end
+
+  # Helper to encode nested structs
+  def maybe_encode_nested(value) when is_struct(value) do
+    if function_exported?(value.__struct__, :to_plutus, 1) do
+      value.__struct__.to_plutus(value)
+    else
+      value
+    end
+  end
+
+  def maybe_encode_nested(value) when is_list(value) do
+    Enum.map(value, &maybe_encode_nested/1)
+  end
+
+  def maybe_encode_nested(value), do: value
 end

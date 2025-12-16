@@ -23,18 +23,27 @@ defmodule Sutra.Data do
 
     ## Defining Enum
 
+    New block-based syntax:
+
     ```elixir
-      defmodule Datum do
-        use Sutra.Data
-
-
-        defenum(
-          no_datum: :null,
-          datum_hash: :string,
-          inline_datum: :string
-        )
+      defenum name: Datum do
+        field :no_datum, :null
+        field :datum_hash, :string
+        field :inline_datum, :string
       end
     ```
+
+    With explicit indices:
+
+    ```elixir
+      defenum name: Datum do
+        field :inline_datum, :string, index: 1
+        field :datum_hash, :string, index: 0
+        field :no_datum, :null, index: 2
+      end
+    ```
+
+
   """
 
   alias Sutra.Data.MacroHelper.EnumMacro
@@ -43,7 +52,7 @@ defmodule Sutra.Data do
 
   defmacro __using__(_) do
     quote do
-      import Sutra.Data, only: [defdata: 2, defdata: 1, defenum: 1, data: 3, data: 2]
+      import Sutra.Data, only: [defdata: 2, defdata: 1, defenum: 1, defenum: 2, data: 3, data: 2]
       import Sutra.Data.Option
     end
   end
@@ -53,7 +62,12 @@ defmodule Sutra.Data do
   @spec data(atom(), atom(), Keyword.t()) :: Macro.t()
   defmacro data(name, type, opts \\ []), do: ObjectMacro.__setup_data__(name, type, opts)
 
+  # New block-based defenum syntax
+  defmacro defenum(opts, do: block), do: EnumMacro.__define__(opts, block)
+
+  # Legacy keyword list defenum syntax
   defmacro defenum(opts), do: EnumMacro.__define__(opts)
+
   defdelegate encode(data), to: Sutra.Data.Plutus
   defdelegate decode(hex), to: Sutra.Data.Plutus
   defdelegate decode!(hex), to: Sutra.Data.Plutus

@@ -226,7 +226,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
     initial_required_asset = Asset.merge(builder.total_deposit, tx_body.fee)
 
     with {:ok, %CoinSelection{selected_inputs: selected_inputs} = c_selection} <-
-           balance_tx(initial_required_asset, tx_body, wallet_inputs),
+           balance_tx(initial_required_asset, tx_body, wallet_inputs, builder),
          {:ok, %Transaction{tx_body: %TxBody{}, witnesses: %Witness{}} = tx} <-
            derive_tx(tx_body, c_selection, builder, witnesses),
          {:ok, {collateral_refs, collateral_return, collateral_used}} <-
@@ -413,7 +413,12 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
     end)
   end
 
-  defp balance_tx(initial_asset_to_cover, %TxBody{} = tx_body, [%Input{} | _] = wallet_inputs) do
+  defp balance_tx(
+         initial_asset_to_cover,
+         %TxBody{} = tx_body,
+         [%Input{} | _] = wallet_inputs,
+         %TxBuilder{} = builder
+       ) do
     total_with_mint =
       Enum.reduce(tx_body.inputs, tx_body.mint, fn i, acc ->
         Asset.merge(i.output.value, acc)
@@ -426,40 +431,40 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
 
     to_fill_asset = Asset.diff(total_with_mint, total_output_assets) |> Asset.only_positive()
     leftover_asset = Asset.diff(total_output_assets, total_with_mint) |> Asset.only_positive()
+    diff_inputs = wallet_inputs -- tx_body.inputs
 
-    update_change = fn %CoinSelection{} = c ->
-      change =
-        Enum.reduce(c.selected_inputs, leftover_asset, fn i, acc ->
-          Asset.merge(i.output.value, acc)
+    # Step 1: Initial selection (if needed)
+    initial_result =
+      if Asset.zero() != to_fill_asset do
+        LargestFirst.select_utxos(diff_inputs, to_fill_asset, leftover_asset)
+      else
+        {:ok, %CoinSelection{selected_inputs: [], change: leftover_asset}}
+      end
+
+    with {:ok, %CoinSelection{} = selection} <- initial_result do
+      # Step 2: Check min ADA for change
+      change_output_template = Output.new(builder.config.change_address, selection.change)
+
+      min_ada_output =
+        calculate_min_ada_for_output(change_output_template, builder.config.protocol_params)
+
+      min_ada_required = Asset.lovelace_of(min_ada_output.value)
+
+      if Asset.lovelace_of(selection.change) >= min_ada_required do
+        {:ok, selection}
+      else
+        needed = min_ada_required - Asset.lovelace_of(selection.change)
+        remaining_inputs = diff_inputs -- selection.selected_inputs
+
+        CoinSelection.select_utxos_for_lovelace(remaining_inputs, needed, selection.change)
+        |> Utils.when_ok(fn extra ->
+          {:ok,
+           %CoinSelection{
+             selected_inputs: selection.selected_inputs ++ extra.selected_inputs,
+             change: extra.change
+           }}
         end)
-
-      {:ok,
-       %CoinSelection{
-         c
-         | change: change
-       }}
-    end
-
-    cond do
-      # Fetch Utxos for remaining Asset to cover
-      Asset.zero() != to_fill_asset ->
-        diff_inputs = wallet_inputs -- tx_body.inputs
-        selection = LargestFirst.select_utxos(diff_inputs, to_fill_asset, leftover_asset)
-        selection
-
-      Asset.lovelace_of(leftover_asset) > 1_000_000 ->
-        # current inputs is enough to cover output with Change
-        {:ok,
-         %CoinSelection{
-           selected_inputs: [],
-           change: leftover_asset
-         }}
-
-      # current inputs cannot cover enough minAda for change output
-      true ->
-        (wallet_inputs -- tx_body.inputs)
-        |> CoinSelection.select_utxos_for_lovelace(1_500_000, leftover_asset)
-        |> Utils.when_ok(&update_change.(&1))
+      end
     end
   end
 

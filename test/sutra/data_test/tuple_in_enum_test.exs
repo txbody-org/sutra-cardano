@@ -8,8 +8,8 @@ defmodule Sutra.DataTest.TupleInEnumTest do
       type UserRole{
         Admin(ByteArray, Int)
         Normal(ByteArray, ByteArray, ByteArray)
-      }   
-    
+      }
+
     ```
   """
   alias Sutra.Data.Cbor
@@ -17,10 +17,10 @@ defmodule Sutra.DataTest.TupleInEnumTest do
 
   use Sutra.Data
 
-  defenum(
-    admin: {:string, :integer},
-    normal: {:string, :string, :string}
-  )
+  defenum do
+    field(:admin, {:string, :integer})
+    field(:normal, {:string, :string, :string})
+  end
 
   @expected_admin_hex "D8799F42C1231832FF"
   @expected_normal_hex "D87A9F42C12342C12242C121FF"

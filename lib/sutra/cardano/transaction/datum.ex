@@ -8,7 +8,11 @@ defmodule Sutra.Cardano.Transaction.Datum do
 
   use Sutra.Data
 
-  defenum(no_datum: :null, datum_hash: :string, inline_datum: :string)
+  defenum do
+    field(:no_datum, :null)
+    field(:datum_hash, :string)
+    field(:inline_datum, :string)
+  end
 
   def from_cbor(cbor) do
     case cbor do

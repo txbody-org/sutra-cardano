@@ -55,7 +55,8 @@ defmodule Sutra.Cardano.Transaction.Output do
     %__MODULE__{
       address: Address.Parser.decode(raw_addr),
       value: Asset.from_cbor(assets),
-      datum: dtm_hash |> Utils.safe_head() |> Cbor.extract_value!() |> Datum.from_cbor()
+      datum: dtm_hash |> Utils.safe_head() |> Cbor.extract_value!() |> Datum.from_cbor(),
+      datum_raw: nil
     }
   end
 
@@ -66,7 +67,8 @@ defmodule Sutra.Cardano.Transaction.Output do
       address: Address.Parser.decode(addr_value),
       value: Asset.from_cbor(ops[1]),
       datum: Datum.from_cbor(ops[2]),
-      reference_script: ref_script
+      reference_script: ref_script,
+      datum_raw: nil
     }
   end
 

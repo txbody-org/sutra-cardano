@@ -114,6 +114,7 @@ defmodule Sutra.Data.MacroHelper.SchemaBuilder do
   - `%Option{option: type}` -> optional (anyOf with None/Some)
   - Module name -> reference to module's schema
   """
+  def type_to_schema(:text), do: %{"dataType" => "bytes", "title" => "String", "format" => "utf8"}
   def type_to_schema(:string), do: %{"dataType" => "bytes", "title" => "ByteArray"}
   def type_to_schema(:bytes), do: %{"dataType" => "bytes", "title" => "ByteArray"}
   def type_to_schema(:integer), do: %{"dataType" => "integer", "title" => "Int"}
@@ -122,6 +123,13 @@ defmodule Sutra.Data.MacroHelper.SchemaBuilder do
 
   # List type
   def type_to_schema({:list, item_type}) do
+    %{
+      "dataType" => "list",
+      "items" => type_to_schema(item_type)
+    }
+  end
+
+  def type_to_schema([item_type]) do
     %{
       "dataType" => "list",
       "items" => type_to_schema(item_type)

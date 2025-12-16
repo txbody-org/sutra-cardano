@@ -93,12 +93,34 @@ defmodule Sutra.Cardano.Blueprint do
   end
 
   # Handle primitive types
-  def encode(value, %{"dataType" => "bytes"}, _definitions) do
-    encode_bytes(value)
+  def encode(value, %{"dataType" => "bytes"} = schema, _definitions) do
+    encode_bytes(value, schema)
   end
+
+  # ... (leaving integer encode as is or modify context if contiguous)
 
   def encode(value, %{"dataType" => "integer"}, _definitions) do
     encode_integer(value)
+  end
+
+# ...
+
+  defp encode_bytes(value, %{"format" => "utf8"}) when is_binary(value) do
+     {:ok, %CBOR.Tag{tag: :bytes, value: value}}
+  end
+
+  defp encode_bytes(value, _schema) when is_binary(value) do
+    # Try to decode as hex first, otherwise use raw bytes
+    case Base.decode16(value, case: :mixed) do
+      {:ok, bytes} -> {:ok, %CBOR.Tag{tag: :bytes, value: bytes}}
+      :error -> {:ok, %CBOR.Tag{tag: :bytes, value: value}}
+    end
+  end
+
+  defp encode_bytes(%CBOR.Tag{tag: :bytes} = tag, _schema), do: {:ok, tag}
+
+  defp encode_bytes(value, _schema) do
+    {:error, {:encode_error, "Expected binary for bytes type, got: #{inspect(value)}"}}
   end
 
   # Handle lists with single item schema (homogeneous list)
@@ -213,8 +235,8 @@ defmodule Sutra.Cardano.Blueprint do
   end
 
   # Handle primitive types
-  def decode(plutus_data, %{"dataType" => "bytes"}, _definitions) do
-    decode_bytes(plutus_data)
+  def decode(plutus_data, %{"dataType" => "bytes"} = schema, _definitions) do
+    decode_bytes(plutus_data, schema)
   end
 
   def decode(plutus_data, %{"dataType" => "integer"}, _definitions) do
@@ -297,24 +319,6 @@ defmodule Sutra.Cardano.Blueprint do
 
   defp resolve_ref(ref, _definitions) do
     {:error, {:encode_error, "Invalid reference format: #{ref}"}}
-  end
-
-  # ============================================================================
-  # Encoding Helpers
-  # ============================================================================
-
-  defp encode_bytes(value) when is_binary(value) do
-    # Try to decode as hex first, otherwise use raw bytes
-    case Base.decode16(value, case: :mixed) do
-      {:ok, bytes} -> {:ok, %CBOR.Tag{tag: :bytes, value: bytes}}
-      :error -> {:ok, %CBOR.Tag{tag: :bytes, value: value}}
-    end
-  end
-
-  defp encode_bytes(%CBOR.Tag{tag: :bytes} = tag), do: {:ok, tag}
-
-  defp encode_bytes(value) do
-    {:error, {:encode_error, "Expected binary for bytes type, got: #{inspect(value)}"}}
   end
 
   defp encode_integer(value) when is_integer(value), do: {:ok, value}
@@ -556,13 +560,27 @@ defmodule Sutra.Cardano.Blueprint do
   # ============================================================================
 
   # Decode bytes returns hex-encoded string for consistency with defdata behavior
-  defp decode_bytes(%CBOR.Tag{tag: :bytes, value: value}),
+  defp decode_bytes(%CBOR.Tag{tag: :bytes, value: value}, %{"format" => "utf8"}), do: {:ok, value}
+
+  # If we have a binary (e.g. from existing hex string), we assume it's already the value we want
+  # if it's utf8, OR we might need to decode it if it was hex encoded?
+  # Existing tests expect hex strings to be returned for standard bytes.
+  # For utf8, if we get "616161" (hex for "aaa"), we want "aaa".
+  # If we get "aaa" (raw), we want "aaa".
+  defp decode_bytes(value, %{"format" => "utf8"}) when is_binary(value) do
+    case Base.decode16(value, case: :mixed) do
+      {:ok, decoded} -> {:ok, decoded}
+      :error -> {:ok, value}
+    end
+  end
+
+  defp decode_bytes(%CBOR.Tag{tag: :bytes, value: value}, _schema),
     do: {:ok, Base.encode16(value, case: :lower)}
 
-  defp decode_bytes(value) when is_binary(value),
+  defp decode_bytes(value, _schema) when is_binary(value),
     do: {:ok, Base.encode16(value, case: :lower)}
 
-  defp decode_bytes(value) do
+  defp decode_bytes(value, _schema) do
     {:error, {:decode_error, "Expected bytes, got: #{inspect(value)}"}}
   end
 

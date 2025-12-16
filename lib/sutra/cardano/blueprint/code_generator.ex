@@ -122,25 +122,31 @@ defmodule Sutra.Cardano.Blueprint.CodeGenerator do
   end
 
   defp filter_by_type(validators, opts) do
-    type_filters = [
-      {:only_spend, ".spend"},
-      {:only_mint, ".mint"},
-      {:only_withdraw, ".withdraw"},
-      {:only_publish, ".publish"},
-      {:only_vote, ".vote"}
-    ]
-
-    active_filters =
-      Enum.filter(type_filters, fn {key, _suffix} -> opts[key] end)
-      |> Enum.map(fn {_key, suffix} -> suffix end)
+    active_filters = get_active_filters(opts)
 
     if active_filters == [] do
       validators
     else
-      Enum.filter(validators, fn v ->
-        Enum.any?(active_filters, fn suffix -> String.ends_with?(v.title, suffix) end)
-      end)
+      Enum.filter(validators, &validator_matches_any_filter?(&1, active_filters))
     end
+  end
+
+  defp get_active_filters(opts) do
+    filter_map = [
+      only_spend: ".spend",
+      only_mint: ".mint",
+      only_withdraw: ".withdraw",
+      only_publish: ".publish",
+      only_vote: ".vote"
+    ]
+
+    Enum.reduce(filter_map, [], fn {key, suffix}, acc ->
+      if opts[key], do: [suffix | acc], else: acc
+    end)
+  end
+
+  defp validator_matches_any_filter?(validator, filters) do
+    Enum.any?(filters, fn suffix -> String.ends_with?(validator.title, suffix) end)
   end
 
   # ============================================================================
@@ -167,8 +173,7 @@ defmodule Sutra.Cardano.Blueprint.CodeGenerator do
     parts =
       validator_base
       |> String.split(".")
-      |> Enum.map(&Macro.camelize/1)
-      |> Enum.join(".")
+      |> Enum.map_join(".", &Macro.camelize/1)
 
     "#{base_module}.#{parts}"
   end
@@ -190,12 +195,11 @@ defmodule Sutra.Cardano.Blueprint.CodeGenerator do
       validators
       |> Enum.reject(fn v -> String.ends_with?(v.title, ".else") end)
       |> Enum.filter(fn v -> v.redeemer_schema != nil end)
-      |> Enum.map(fn v ->
+      |> Enum.map_join("\n\n", fn v ->
         purpose = validator_type(v.title)
         module_name = "Redeemer#{purpose |> Atom.to_string() |> Macro.camelize()}"
         generate_redeemer_module(v.redeemer_schema, module_name, purpose)
       end)
-      |> Enum.join("\n\n")
 
     # Get hash and compiled code from first validator (they're all the same)
     first_validator = hd(validators)
@@ -274,22 +278,20 @@ defmodule Sutra.Cardano.Blueprint.CodeGenerator do
   defp generate_redeemer_field_args(fields) do
     fields
     |> Enum.with_index()
-    |> Enum.map(fn {f, idx} ->
+    |> Enum.map_join(", ", fn {f, idx} ->
       name = f["title"] || "field_#{idx}"
       Macro.underscore(name)
     end)
-    |> Enum.join(", ")
   end
 
   defp generate_redeemer_field_map(fields) do
     fields
     |> Enum.with_index()
-    |> Enum.map(fn {f, idx} ->
+    |> Enum.map_join(", ", fn {f, idx} ->
       name = f["title"] || "field_#{idx}"
       arg_name = Macro.underscore(name)
       "\"#{name}\" => #{arg_name}"
     end)
-    |> Enum.join(", ")
   end
 
   # ============================================================================
@@ -306,10 +308,9 @@ defmodule Sutra.Cardano.Blueprint.CodeGenerator do
     # Multiple constructors - generate as enum with variant submodules
     variant_modules =
       variants
-      |> Enum.map(fn variant ->
+      |> Enum.map_join("\n\n", fn variant ->
         generate_datum_variant_module(variant)
       end)
-      |> Enum.join("\n\n")
 
     type_union = Enum.map_join(variants, " | ", fn v -> v["title"] <> ".t()" end)
 
@@ -407,12 +408,11 @@ defmodule Sutra.Cardano.Blueprint.CodeGenerator do
 
   defp generate_field_types(fields) do
     Enum.with_index(fields)
-    |> Enum.map(fn {f, idx} ->
+    |> Enum.map_join(",\n", fn {f, idx} ->
       name = f["title"] || "field_#{idx}"
       type = field_type_spec(f)
       "      #{name}: #{type}"
     end)
-    |> Enum.join(",\n")
   end
 
   defp field_type_spec(%{"dataType" => "integer"}), do: "integer()"
@@ -434,13 +434,12 @@ defmodule Sutra.Cardano.Blueprint.CodeGenerator do
 
   defp generate_to_plutus_fields(fields) do
     Enum.with_index(fields)
-    |> Enum.map(fn {f, idx} ->
+    |> Enum.map_join(",\n", fn {f, idx} ->
       name = f["title"] || "field_#{idx}"
       atom_name = String.to_atom(name)
       encode_expr = field_to_plutus(f, "data.#{atom_name}")
       "        #{encode_expr}"
     end)
-    |> Enum.join(",\n")
   end
 
   defp field_to_plutus(%{"dataType" => "bytes"}, expr) do
@@ -462,13 +461,12 @@ defmodule Sutra.Cardano.Blueprint.CodeGenerator do
 
   defp generate_from_plutus_fields(fields) do
     Enum.with_index(fields)
-    |> Enum.map(fn {f, idx} ->
+    |> Enum.map_join(",\n", fn {f, idx} ->
       name = f["title"] || "field_#{idx}"
       atom_name = String.to_atom(name)
       decode_expr = field_from_plutus(f, "f#{idx}")
       "          #{atom_name}: #{decode_expr}"
     end)
-    |> Enum.join(",\n")
   end
 
   defp field_from_plutus(%{"dataType" => "bytes"}, expr) do

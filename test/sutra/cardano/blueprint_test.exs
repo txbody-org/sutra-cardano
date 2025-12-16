@@ -137,8 +137,8 @@ defmodule Sutra.Cardano.BlueprintTest do
         ]
       }
 
-      value = %{constructor: "ApplyLoan", fields: %{"timestamp" => 12345}}
-      assert {:ok, %Constr{index: 0, fields: [12345]}} = Blueprint.encode(value, schema)
+      value = %{constructor: "ApplyLoan", fields: %{"timestamp" => 12_345}}
+      assert {:ok, %Constr{index: 0, fields: [12_345]}} = Blueprint.encode(value, schema)
     end
 
     test "encodes constructor with positional fields" do
@@ -155,8 +155,8 @@ defmodule Sutra.Cardano.BlueprintTest do
         ]
       }
 
-      value = {:constr, 0, [12345]}
-      assert {:ok, %Constr{index: 0, fields: [12345]}} = Blueprint.encode(value, schema)
+      value = {:constr, 0, [12_345]}
+      assert {:ok, %Constr{index: 0, fields: [12_345]}} = Blueprint.encode(value, schema)
     end
 
     test "returns error for unknown constructor" do
@@ -273,9 +273,9 @@ defmodule Sutra.Cardano.BlueprintTest do
         ]
       }
 
-      constr = %Constr{index: 0, fields: [12345]}
+      constr = %Constr{index: 0, fields: [12_345]}
 
-      assert {:ok, %{constructor: "ApplyLoan", fields: %{"timestamp" => 12345}}} =
+      assert {:ok, %{constructor: "ApplyLoan", fields: %{"timestamp" => 12_345}}} =
                Blueprint.decode(constr, schema)
     end
 

@@ -350,24 +350,28 @@ defmodule Sutra.Cardano.Blueprint do
        {:encode_error,
         "Tuple size mismatch: expected #{length(item_schemas)}, got #{length(values_list)}"}}
     else
-      results =
-        Enum.zip(values_list, item_schemas)
-        |> Enum.reduce_while({:ok, []}, fn {v, schema}, {:ok, acc} ->
-          case encode(v, schema, definitions) do
-            {:ok, encoded} -> {:cont, {:ok, [encoded | acc]}}
-            error -> {:halt, error}
-          end
-        end)
-
-      case results do
-        {:ok, encoded_list} -> {:ok, %PList{value: Enum.reverse(encoded_list)}}
-        error -> error
-      end
+      do_encode_tuple(values_list, item_schemas, definitions)
     end
   end
 
   defp encode_tuple(value, _item_schemas, _definitions) do
     {:error, {:encode_error, "Expected list or tuple, got: #{inspect(value)}"}}
+  end
+
+  defp do_encode_tuple(values_list, item_schemas, definitions) do
+    results =
+      Enum.zip(values_list, item_schemas)
+      |> Enum.reduce_while({:ok, []}, fn {v, schema}, {:ok, acc} ->
+        case encode(v, schema, definitions) do
+          {:ok, encoded} -> {:cont, {:ok, [encoded | acc]}}
+          error -> {:halt, error}
+        end
+      end)
+
+    case results do
+      {:ok, encoded_list} -> {:ok, %PList{value: Enum.reverse(encoded_list)}}
+      error -> error
+    end
   end
 
   defp encode_map(value, keys_schema, values_schema, definitions) when is_map(value) do
@@ -392,48 +396,48 @@ defmodule Sutra.Cardano.Blueprint do
   end
 
   defp encode_constructor(value, variants, definitions) do
-    # Special handling for nil - look for None variant (Option type)
-    if is_nil(value) do
-      case Enum.find(variants, fn v -> v["title"] == "None" end) do
-        nil ->
-          {:error, {:encode_error, "Got nil but no None constructor found"}}
+    cond do
+      is_nil(value) ->
+        encode_none_variant(variants)
 
-        none_variant ->
-          {:ok, %Constr{index: none_variant["index"], fields: []}}
-      end
-    else
-      # Handle Option Some - if we have a raw value and there's a Some variant
-      some_variant = Enum.find(variants, fn v -> v["title"] == "Some" end)
+      should_encode_as_some?(value, variants) ->
+        encode_some_variant(value, variants, definitions)
 
-      value_to_encode =
-        if some_variant && !is_map(value) do
-          # Wrap raw value as Some
-          [schema] = some_variant["fields"] || []
+      true ->
+        encode_standard_variant(value, variants, definitions)
+    end
+  end
 
-          case encode(value, schema, definitions) do
-            {:ok, encoded} -> {:ok, %Constr{index: some_variant["index"], fields: [encoded]}}
-            error -> error
-          end
-        else
-          nil
-        end
+  defp encode_none_variant(variants) do
+    case Enum.find(variants, fn v -> v["title"] == "None" end) do
+      nil -> {:error, {:encode_error, "Got nil but no None constructor found"}}
+      none_variant -> {:ok, %Constr{index: none_variant["index"], fields: []}}
+    end
+  end
 
-      case value_to_encode do
-        {:ok, _} = result ->
-          result
+  defp should_encode_as_some?(value, variants) do
+    # Check if we have a raw value (not a map/struct) and there is a "Some" variant
+    # This detects if we should treat this as an Option.Some wrapping a value
+    !is_map(value) and Enum.any?(variants, fn v -> v["title"] == "Some" end)
+  end
 
-        {:error, _} = error ->
-          error
+  defp encode_some_variant(value, variants, definitions) do
+    some_variant = Enum.find(variants, fn v -> v["title"] == "Some" end)
+    [schema] = some_variant["fields"] || []
 
-        nil ->
-          case find_matching_variant(value, variants) do
-            {:ok, variant, index, field_values} ->
-              encode_constructor_fields(variant, index, field_values, definitions)
+    case encode(value, schema, definitions) do
+      {:ok, encoded} -> {:ok, %Constr{index: some_variant["index"], fields: [encoded]}}
+      error -> error
+    end
+  end
 
-            {:error, _} = error ->
-              error
-          end
-      end
+  defp encode_standard_variant(value, variants, definitions) do
+    case find_matching_variant(value, variants) do
+      {:ok, variant, index, field_values} ->
+        encode_constructor_fields(variant, index, field_values, definitions)
+
+      {:error, _} = error ->
+        error
     end
   end
 
@@ -527,19 +531,23 @@ defmodule Sutra.Cardano.Blueprint do
        {:encode_error,
         "Field count mismatch: expected #{length(field_schemas)}, got #{length(field_values)}"}}
     else
-      results =
-        Enum.zip(field_values, field_schemas)
-        |> Enum.reduce_while({:ok, []}, fn {value, schema}, {:ok, acc} ->
-          case encode(value, schema, definitions) do
-            {:ok, encoded} -> {:cont, {:ok, [encoded | acc]}}
-            error -> {:halt, error}
-          end
-        end)
+      do_encode_fields_list(field_values, field_schemas, definitions)
+    end
+  end
 
-      case results do
-        {:ok, fields} -> {:ok, Enum.reverse(fields)}
-        error -> error
-      end
+  defp do_encode_fields_list(field_values, field_schemas, definitions) do
+    results =
+      Enum.zip(field_values, field_schemas)
+      |> Enum.reduce_while({:ok, []}, fn {value, schema}, {:ok, acc} ->
+        case encode(value, schema, definitions) do
+          {:ok, encoded} -> {:cont, {:ok, [encoded | acc]}}
+          error -> {:halt, error}
+        end
+      end)
+
+    case results do
+      {:ok, fields} -> {:ok, Enum.reverse(fields)}
+      error -> error
     end
   end
 
@@ -597,25 +605,29 @@ defmodule Sutra.Cardano.Blueprint do
        {:decode_error,
         "Tuple size mismatch: expected #{length(item_schemas)}, got #{length(values)}"}}
     else
-      results =
-        Enum.zip(values, item_schemas)
-        |> Enum.reduce_while({:ok, []}, fn {v, schema}, {:ok, acc} ->
-          case decode(v, schema, definitions) do
-            {:ok, decoded} -> {:cont, {:ok, [decoded | acc]}}
-            error -> {:halt, error}
-          end
-        end)
-
-      case results do
-        # Return Elixir tuple, not list
-        {:ok, decoded_list} -> {:ok, List.to_tuple(Enum.reverse(decoded_list))}
-        error -> error
-      end
+      do_decode_tuple(values, item_schemas, definitions)
     end
   end
 
   defp decode_tuple(value, _item_schemas, _definitions) do
     {:error, {:decode_error, "Expected list, PList or tuple, got: #{inspect(value)}"}}
+  end
+
+  defp do_decode_tuple(values, item_schemas, definitions) do
+    results =
+      Enum.zip(values, item_schemas)
+      |> Enum.reduce_while({:ok, []}, fn {v, schema}, {:ok, acc} ->
+        case decode(v, schema, definitions) do
+          {:ok, decoded} -> {:cont, {:ok, [decoded | acc]}}
+          error -> {:halt, error}
+        end
+      end)
+
+    case results do
+      # Return Elixir tuple, not list
+      {:ok, decoded_list} -> {:ok, List.to_tuple(Enum.reverse(decoded_list))}
+      error -> error
+    end
   end
 
   defp decode_map(pairs, keys_schema, values_schema, definitions) when is_list(pairs) do
@@ -650,56 +662,59 @@ defmodule Sutra.Cardano.Blueprint do
     {:error, {:decode_error, "Expected Constr, got: #{inspect(value)}"}}
   end
 
+  defp decode_constructor_fields(%{"title" => "None"}, _fields, _definitions) do
+    {:ok, nil}
+  end
+
+  defp decode_constructor_fields(
+         %{"title" => "Some", "fields" => [schema]},
+         [value],
+         definitions
+       ) do
+    decode(value, schema, definitions)
+  end
+
   defp decode_constructor_fields(variant, fields, definitions) do
     field_schemas = variant["fields"] || []
     title = variant["title"]
 
-    # Handle Option type specially - unwrap Some/None
-    case title do
-      "None" ->
-        {:ok, nil}
+    if field_schemas == [] do
+      {:ok, %{constructor: title, fields: %{}}}
+    else
+      if length(fields) != length(field_schemas) do
+        {:error,
+         {:decode_error,
+          "Field count mismatch for #{title}: expected #{length(field_schemas)}, got #{length(fields)}"}}
+      else
+        process_decoded_fields(title, fields, field_schemas, definitions)
+      end
+    end
+  end
 
-      "Some" when length(field_schemas) == 1 ->
-        [value] = fields
-        [schema] = field_schemas
-        decode(value, schema, definitions)
-
-      _ ->
-        if field_schemas == [] do
-          {:ok, %{constructor: title, fields: %{}}}
-        else
-          if length(fields) != length(field_schemas) do
-            {:error,
-             {:decode_error,
-              "Field count mismatch for #{title}: expected #{length(field_schemas)}, got #{length(fields)}"}}
-          else
-            decoded_fields = decode_fields(fields, field_schemas, definitions)
-
-            case decoded_fields do
-              {:ok, field_map} -> {:ok, %{constructor: title, fields: field_map}}
-              error -> error
-            end
-          end
-        end
+  defp process_decoded_fields(title, fields, field_schemas, definitions) do
+    case decode_fields(fields, field_schemas, definitions) do
+      {:ok, field_map} -> {:ok, %{constructor: title, fields: field_map}}
+      error -> error
     end
   end
 
   defp decode_fields(field_values, field_schemas, definitions) do
-    results =
-      Enum.zip(field_values, field_schemas)
-      |> Enum.reduce_while({:ok, %{}}, fn {value, schema}, {:ok, acc} ->
-        field_name = schema["title"]
+    Enum.zip(field_values, field_schemas)
+    |> Enum.reduce_while({:ok, %{}}, fn {value, schema}, {:ok, acc} ->
+      decode_field_and_put(value, schema, acc, definitions)
+    end)
+  end
 
-        case decode(value, schema, definitions) do
-          {:ok, decoded} ->
-            key = if field_name, do: field_name, else: map_size(acc)
-            {:cont, {:ok, Map.put(acc, key, decoded)}}
+  defp decode_field_and_put(value, schema, acc, definitions) do
+    field_name = schema["title"]
 
-          error ->
-            {:halt, error}
-        end
-      end)
+    case decode(value, schema, definitions) do
+      {:ok, decoded} ->
+        key = if field_name, do: field_name, else: map_size(acc)
+        {:cont, {:ok, Map.put(acc, key, decoded)}}
 
-    results
+      error ->
+        {:halt, error}
+    end
   end
 end

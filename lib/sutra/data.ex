@@ -48,11 +48,12 @@ defmodule Sutra.Data do
 
   alias Sutra.Data.MacroHelper.EnumMacro
   alias Sutra.Data.MacroHelper.ObjectMacro
+  alias Sutra.Data.MacroHelper.TypeMacro
   alias Sutra.Data.Plutus.Constr
 
   defmacro __using__(_) do
     quote do
-      import Sutra.Data, only: [defdata: 2, defdata: 1, defenum: 1, defenum: 2, data: 3, data: 2]
+      import Sutra.Data, only: [defdata: 2, defdata: 1, defenum: 1, defenum: 2, deftype: 1, data: 3, data: 2]
       import Sutra.Data.Option
     end
   end
@@ -67,6 +68,9 @@ defmodule Sutra.Data do
 
   # Legacy keyword list defenum syntax
   defmacro defenum(opts), do: EnumMacro.__define__(opts)
+
+  # Type definition macro
+  defmacro deftype(opts), do: TypeMacro.__define_type__(opts)
 
   defdelegate encode(data), to: Sutra.Data.Plutus
   defdelegate decode(hex), to: Sutra.Data.Plutus

@@ -1,0 +1,23 @@
+  defmodule <%= @name %> do
+    @moduledoc "Enum type with <%= length(@variants) %> variants"
+
+    @type t() :: <%= @type_union %>
+
+    @doc "Returns the constructor index for a variant name"
+    def constructor_index(name) do
+      case name do
+<%= for v <- @variants do %>        <%= inspect(v["title"]) %> -> {:ok, <%= v["index"] %>}
+<% end %>        _ -> {:error, :unknown_variant}
+      end
+    end
+
+    @doc "Returns the variant name for a constructor index"
+    def variant_name(index) do
+      case index do
+<%= for v <- @variants do %>        <%= v["index"] %> -> {:ok, <%= inspect(v["title"]) %>}
+<% end %>        _ -> {:error, :unknown_index}
+      end
+    end
+
+<%= @variant_modules %>
+  end

@@ -1,0 +1,22 @@
+defmodule <%= @module_name %> do
+  @moduledoc """
+  Auto-generated module from CIP-57 Blueprint.
+
+  Hash: <%= @hash %>
+  """
+
+  alias Sutra.Data.Plutus
+  alias Sutra.Data.Plutus.{Constr, PList}
+
+<%= @datum_module %>
+
+<%= @redeemer_modules %>
+
+  @doc "Returns the script hash"
+  def hash, do: "<%= @hash %>"
+
+  @doc "Returns the compiled Plutus code (hex-encoded)"
+  def compiled_code do
+    "<%= @compiled_code %>"
+  end
+end

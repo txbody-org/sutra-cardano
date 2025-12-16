@@ -31,6 +31,7 @@ defmodule Sutra.Data.MacroHelper.EnumMacro do
       end
   """
 
+  alias Sutra.Cardano.Blueprint
   alias Sutra.Data.MacroHelper.SchemaBuilder
   alias Sutra.Data.Plutus.Constr
   alias __MODULE__, as: EnumMacro
@@ -76,6 +77,18 @@ defmodule Sutra.Data.MacroHelper.EnumMacro do
   # ============================================================================
 
   defp prepare_ast_with_block(_opts, block) do
+    preamble = preamble_ast(block)
+    helpers = helpers_ast()
+    postamble = postamble_ast()
+
+    quote do
+      unquote(preamble)
+      unquote(helpers)
+      unquote(postamble)
+    end
+  end
+
+  defp preamble_ast(block) do
     quote do
       Module.register_attribute(__MODULE__, :__enum_fields, accumulate: true)
 
@@ -88,7 +101,11 @@ defmodule Sutra.Data.MacroHelper.EnumMacro do
       defstruct [:kind, :value]
 
       alias Sutra.Cardano.Blueprint
+    end
+  end
 
+  defp helpers_ast do
+    quote do
       # Build variants from accumulated fields
       @__variants__ EnumMacro.build_variants(@__enum_fields)
 
@@ -106,7 +123,11 @@ defmodule Sutra.Data.MacroHelper.EnumMacro do
         def __enum_kind__(@__current_index__), do: @__current_kind__
         def __enum_index__(@__current_kind__), do: @__current_index__
       end
+    end
+  end
 
+  defp postamble_ast do
+    quote do
       defimpl CBOR.Encoder do
         @impl true
         def encode_into(v, acc),
@@ -122,48 +143,18 @@ defmodule Sutra.Data.MacroHelper.EnumMacro do
       end
 
       def from_plutus(%Constr{index: index} = plutus_data) do
-        case Blueprint.decode(plutus_data, @__blueprint_schema__) do
-          {:ok, nil} ->
-            # None variant (null type)
-            kind = __enum_kind__(index)
-            {:ok, %__MODULE__{kind: kind, value: nil}}
-
-          {:ok, %{constructor: constructor_name, fields: field_map}}
-          when map_size(field_map) == 0 ->
-            kind = constructor_name |> Macro.underscore() |> String.to_atom()
-            {:ok, %__MODULE__{kind: kind, value: nil}}
-
-          {:ok, %{constructor: constructor_name, fields: field_map}} ->
-            kind = constructor_name |> Macro.underscore() |> String.to_atom()
-            value = EnumMacro.extract_enum_value(field_map)
-            {:ok, %__MODULE__{kind: kind, value: value}}
-
-          {:ok, value} ->
-            # Direct value (e.g., from tuple field)
-            kind = __enum_kind__(index)
-            {:ok, %__MODULE__{kind: kind, value: value}}
-
-          error ->
-            error
-        end
+        EnumMacro.handle_decoded_enum(
+          Blueprint.decode(plutus_data, @__blueprint_schema__),
+          index,
+          __MODULE__
+        )
       end
 
       def from_plutus(nil), do: {:error, %{reason: :invalid_enum_data_to_parse_from_nil}}
 
       @doc "Encode enum to Plutus data"
       def to_plutus(%__MODULE__{kind: kind, value: value}) do
-        variant_title = kind |> to_string() |> Macro.camelize()
-
-        # Get the variant info to determine field structure
-        {_, _index, field_schema} =
-          Enum.find(@__variants__, fn {k, _, _} -> k == kind end)
-
-        encoded_value = EnumMacro.build_enum_encode_value(value, field_schema, variant_title)
-
-        case Blueprint.encode(encoded_value, @__blueprint_schema__) do
-          {:ok, encoded} -> encoded
-          {:error, reason} -> raise "Encoding failed: #{inspect(reason)}"
-        end
+        EnumMacro.encode_enum_value(kind, value, @__variants__, @__blueprint_schema__)
       end
     end
   end
@@ -250,4 +241,46 @@ defmodule Sutra.Data.MacroHelper.EnumMacro do
   end
 
   def maybe_encode_nested(value), do: value
+
+  @doc "Handle the result of Blueprint.decode for enum generation"
+  def handle_decoded_enum({:ok, nil}, index, module) do
+    # None variant (null type)
+    kind = module.__enum_kind__(index)
+    {:ok, struct(module, kind: kind, value: nil)}
+  end
+
+  def handle_decoded_enum({:ok, %{constructor: constructor_name, fields: field_map}}, _index, module)
+      when map_size(field_map) == 0 do
+    kind = constructor_name |> Macro.underscore() |> String.to_atom()
+    {:ok, struct(module, kind: kind, value: nil)}
+  end
+
+  def handle_decoded_enum({:ok, %{constructor: constructor_name, fields: field_map}}, _index, module) do
+    kind = constructor_name |> Macro.underscore() |> String.to_atom()
+    value = EnumMacro.extract_enum_value(field_map)
+    {:ok, struct(module, kind: kind, value: value)}
+  end
+
+  def handle_decoded_enum({:ok, value}, index, module) do
+    # Direct value (e.g., from tuple field)
+    kind = module.__enum_kind__(index)
+    {:ok, struct(module, kind: kind, value: value)}
+  end
+
+  def handle_decoded_enum(error, _index, _module), do: error
+
+  @doc "Encode an enum value to Plutus data"
+  def encode_enum_value(kind, value, variants, schema) do
+    variant_title = kind |> to_string() |> Macro.camelize()
+
+    {_, _index, field_schema} =
+      Enum.find(variants, fn {k, _, _} -> k == kind end)
+
+    encoded_value = build_enum_encode_value(value, field_schema, variant_title)
+
+    case Blueprint.encode(encoded_value, schema) do
+      {:ok, encoded} -> encoded
+      {:error, reason} -> raise "Encoding failed: #{inspect(reason)}"
+    end
+  end
 end

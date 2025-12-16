@@ -309,28 +309,7 @@ defmodule Sutra.Cardano.Blueprint.Parser do
   defp resolve_fields(fields, definitions, visited) do
     results =
       Enum.reduce_while(fields, {:ok, []}, fn field, {:ok, acc} ->
-        # Field can have $ref or be a full schema
-        resolved_field =
-          cond do
-            Map.has_key?(field, "$ref") ->
-              case resolve_schema(field, definitions, visited) do
-                {:ok, resolved} ->
-                  # Preserve title if present in original field
-                  if field["title"] do
-                    {:ok, Map.put(resolved, "title", field["title"])}
-                  else
-                    {:ok, resolved}
-                  end
-
-                error ->
-                  error
-              end
-
-            true ->
-              resolve_schema(field, definitions, visited)
-          end
-
-        case resolved_field do
+        case resolve_field(field, definitions, visited) do
           {:ok, resolved} -> {:cont, {:ok, [resolved | acc]}}
           error -> {:halt, error}
         end
@@ -340,6 +319,24 @@ defmodule Sutra.Cardano.Blueprint.Parser do
       {:ok, resolved} -> {:ok, Enum.reverse(resolved)}
       error -> error
     end
+  end
+
+  defp resolve_field(%{"$ref" => _} = field, definitions, visited) do
+    case resolve_schema(field, definitions, visited) do
+      {:ok, resolved} ->
+        # Preserve title if present in original field
+        resolved =
+          if field["title"], do: Map.put(resolved, "title", field["title"]), else: resolved
+
+        {:ok, resolved}
+
+      error ->
+        error
+    end
+  end
+
+  defp resolve_field(field, definitions, visited) do
+    resolve_schema(field, definitions, visited)
   end
 
   # Resolve list of schemas (for tuple items)
@@ -362,18 +359,9 @@ defmodule Sutra.Cardano.Blueprint.Parser do
   defp resolve_parameters(parameters, definitions) do
     results =
       Enum.reduce_while(parameters, {:ok, []}, fn param, {:ok, acc} ->
-        case param do
-          %{"schema" => schema} = p ->
-            case resolve_schema(schema, definitions, MapSet.new()) do
-              {:ok, resolved} ->
-                {:cont, {:ok, [Map.put(p, "schema", resolved) | acc]}}
-
-              error ->
-                {:halt, error}
-            end
-
-          p ->
-            {:cont, {:ok, [p | acc]}}
+        case resolve_parameter(param, definitions) do
+          {:ok, resolved} -> {:cont, {:ok, [resolved | acc]}}
+          error -> {:halt, error}
         end
       end)
 
@@ -382,6 +370,15 @@ defmodule Sutra.Cardano.Blueprint.Parser do
       error -> error
     end
   end
+
+  defp resolve_parameter(%{"schema" => schema} = param, definitions) do
+    case resolve_schema(schema, definitions, MapSet.new()) do
+      {:ok, resolved} -> {:ok, Map.put(param, "schema", resolved)}
+      error -> error
+    end
+  end
+
+  defp resolve_parameter(param, _definitions), do: {:ok, param}
 
   # Look up a definition by reference path
   defp lookup_definition("#/definitions/" <> path, definitions) do

@@ -71,25 +71,7 @@ defmodule Sutra.Data.MacroHelper.SchemaBuilder do
           |> to_string()
           |> Macro.camelize()
 
-        fields =
-          case field_schema do
-            nil ->
-              []
-
-            # Tuple type - expand to multiple positional fields
-            %{"dataType" => "list", "items" => items} when is_list(items) ->
-              items
-              |> Enum.with_index()
-              |> Enum.map(fn {item_schema, idx} ->
-                Map.put(item_schema, "title", "field_#{idx}")
-              end)
-
-            %{"dataType" => _} ->
-              [Map.put(field_schema, "title", "value")]
-
-            schema when is_map(schema) ->
-              [Map.put(schema, "title", "value")]
-          end
+        fields = get_variant_fields(field_schema)
 
         %{
           "title" => variant_title,
@@ -103,6 +85,21 @@ defmodule Sutra.Data.MacroHelper.SchemaBuilder do
       "title" => title,
       "anyOf" => any_of
     }
+  end
+
+  defp get_variant_fields(nil), do: []
+
+  defp get_variant_fields(%{"dataType" => "list", "items" => items}) when is_list(items) do
+    # Tuple type - expand to multiple positional fields
+    items
+    |> Enum.with_index()
+    |> Enum.map(fn {item_schema, idx} ->
+      Map.put(item_schema, "title", "field_#{idx}")
+    end)
+  end
+
+  defp get_variant_fields(field_schema) when is_map(field_schema) do
+    [Map.put(field_schema, "title", "value")]
   end
 
   @doc """

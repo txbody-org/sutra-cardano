@@ -112,7 +112,20 @@ defmodule Mix.Tasks.Sutra.Blueprint.Gen do
   end
 
   defp generate_modules(blueprint, module_name, opts) do
-    gen_opts = [
+    gen_opts = build_gen_opts(opts)
+    output_dir = opts[:output_dir] || "lib"
+
+    case CodeGenerator.generate(blueprint, module_name, gen_opts) do
+      {:ok, modules} ->
+        process_generated_modules(modules, output_dir)
+
+      {:error, reason} ->
+        Mix.raise("Failed to generate modules: #{inspect(reason)}")
+    end
+  end
+
+  defp build_gen_opts(opts) do
+    [
       only_title: opts[:only_title],
       only_spend: opts[:only_spend] || false,
       only_mint: opts[:only_mint] || false,
@@ -120,23 +133,18 @@ defmodule Mix.Tasks.Sutra.Blueprint.Gen do
       only_publish: opts[:only_publish] || false,
       only_vote: opts[:only_vote] || false
     ]
+  end
 
-    output_dir = opts[:output_dir] || "lib"
+  defp process_generated_modules(modules, _output_dir) when map_size(modules) == 0 do
+    Mix.shell().info("No validators matched the criteria. Nothing generated.")
+  end
 
-    case CodeGenerator.generate(blueprint, module_name, gen_opts) do
-      {:ok, modules} when map_size(modules) == 0 ->
-        Mix.shell().info("No validators matched the criteria. Nothing generated.")
+  defp process_generated_modules(modules, output_dir) do
+    Enum.each(modules, fn {mod_name, source} ->
+      write_module(mod_name, source, output_dir)
+    end)
 
-      {:ok, modules} ->
-        Enum.each(modules, fn {mod_name, source} ->
-          write_module(mod_name, source, output_dir)
-        end)
-
-        Mix.shell().info("\n✅ Generated #{map_size(modules)} module(s)")
-
-      {:error, reason} ->
-        Mix.raise("Failed to generate modules: #{inspect(reason)}")
-    end
+    Mix.shell().info("\n✅ Generated #{map_size(modules)} module(s)")
   end
 
   defp write_module(module_name, source, output_dir) do
@@ -145,8 +153,7 @@ defmodule Mix.Tasks.Sutra.Blueprint.Gen do
     relative_path =
       module_name
       |> String.split(".")
-      |> Enum.map(&Macro.underscore/1)
-      |> Enum.join("/")
+      |> Enum.map_join("/", &Macro.underscore/1)
 
     file_path = Path.join(output_dir, "#{relative_path}.ex")
 

@@ -7,6 +7,7 @@ defmodule Sutra.Data.MacroHelper.ObjectMacro do
   """
 
   alias __MODULE__, as: ObjectMacro
+  alias Sutra.Data.MacroHelper
   alias Sutra.Data.MacroHelper.SchemaBuilder
   alias Sutra.Data.Plutus.Constr
 
@@ -68,20 +69,10 @@ defmodule Sutra.Data.MacroHelper.ObjectMacro do
       end
 
       def from_plutus(%Constr{} = plutus_data) do
-        case Blueprint.decode(plutus_data, @__blueprint_schema__) do
-          {:ok, %{constructor: _, fields: field_map}} ->
-            # Convert string keys to atom keys for struct
-            struct_data =
-              Enum.reduce(field_map, %{}, fn {key, value}, acc ->
-                atom_key = if is_binary(key), do: String.to_atom(key), else: key
-                Map.put(acc, atom_key, value)
-              end)
-
-            {:ok, struct(__MODULE__, struct_data)}
-
-          error ->
-            error
-        end
+        ObjectMacro.handle_decoded_object(
+          Blueprint.decode(plutus_data, @__blueprint_schema__),
+          __MODULE__
+        )
       end
 
       def from_plutus(nil), do: {:error, %{reason: :cannot_parse_data_nil}}
@@ -122,12 +113,12 @@ defmodule Sutra.Data.MacroHelper.ObjectMacro do
       Module.put_attribute(mod, :__fields, name)
 
       # Only add to @__required if not nullable AND not virtual
-      if not Sutra.Data.MacroHelper.nullable?(type) and not is_virtual,
+      if not MacroHelper.nullable?(type) and not is_virtual,
         do: Module.put_attribute(mod, :__required, name)
 
       # Only store field schema for non-virtual fields
       unless is_virtual do
-        field_schema = Sutra.Data.MacroHelper.SchemaBuilder.type_to_schema(type)
+        field_schema = SchemaBuilder.type_to_schema(type)
         Module.put_attribute(mod, :__field_schemas, {name, field_schema})
       end
     end
@@ -154,4 +145,17 @@ defmodule Sutra.Data.MacroHelper.ObjectMacro do
   end
 
   def maybe_encode_nested(value), do: value
+
+  def handle_decoded_object({:ok, %{constructor: _, fields: field_map}}, module) do
+    # Convert string keys to atom keys for struct
+    struct_data =
+      Enum.reduce(field_map, %{}, fn {key, value}, acc ->
+        atom_key = if is_binary(key), do: String.to_atom(key), else: key
+        Map.put(acc, atom_key, value)
+      end)
+
+    {:ok, struct(module, struct_data)}
+  end
+
+  def handle_decoded_object(error, _module), do: error
 end

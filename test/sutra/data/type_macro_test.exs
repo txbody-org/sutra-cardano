@@ -4,22 +4,24 @@ defmodule Sutra.Data.TypeMacroTest do
   alias Sutra.Data.Cbor
 
   # Define a type alias for List<(Int, ByteArray)>
-  deftype name: RedeemerList, type: [{:integer, :bytes}]
+  deftype(name: RedeemerList, type: [{:integer, :bytes}])
 
   # Define a simple type alias for Integer
-  deftype name: MyInt, type: :integer
+  deftype(name: MyInt, type: :integer)
 
   # Define type for List<List<ByteArray>>
-  deftype name: BytesListList, type: [[:text]]
+  deftype(name: BytesListList, type: [[:text]])
 
   # Define type for (List<Int>, ByteArray)
-  deftype name: TupleListByteArray, type: {[:integer], :bytes}
+  deftype(name: TupleListByteArray, type: {[:integer], :bytes})
 
   describe "deftype" do
     test "generates __schema__ function" do
       schema = RedeemerList.__schema__()
       assert schema["dataType"] == "list"
-      assert schema["items"]["dataType"] == "list" # Tuple is represented as list in blueprint usually? Or specialized tuple schema?
+      # Tuple is represented as list in blueprint usually? Or specialized tuple schema?
+      assert schema["items"]["dataType"] == "list"
+
       # SchemaBuilder.type_to_schema({:integer, :bytes}) creates a list with items [int, bytes] and title Tuple
     end
 

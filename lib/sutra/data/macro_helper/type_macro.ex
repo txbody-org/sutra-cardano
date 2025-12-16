@@ -32,10 +32,10 @@ defmodule Sutra.Data.MacroHelper.TypeMacro do
 
         @doc "Decode from Plutus data"
         def from_plutus(plutus_data) do
-           case Blueprint.decode(plutus_data, @__blueprint_schema__) do
-             {:ok, decoded} -> {:ok, decoded}
-             error -> error
-           end
+          case Blueprint.decode(plutus_data, @__blueprint_schema__) do
+            {:ok, decoded} -> {:ok, decoded}
+            error -> error
+          end
         end
       end
     end

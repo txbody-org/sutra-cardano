@@ -27,3 +27,5 @@ sutra_offchain-*.tar
 
 .elixir_ls
 target
+
+sample-blueprint

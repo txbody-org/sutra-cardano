@@ -1,0 +1,22 @@
+  defmodule <%= @module_name %> do
+    @moduledoc """
+    Redeemer functions for <%= @purpose %> validator.
+
+    Redeemer type: <%= @title %>
+    """
+
+    alias Sutra.Cardano.Blueprint
+
+    # Schema for this redeemer (resolved from blueprint)
+    @schema <%= inspect(@schema, limit: :infinity, printable_limit: :infinity) %>
+
+    @doc """
+    Create <%= @title %> redeemer.
+
+    Encodes the value according to the schema and returns Plutus data.
+    """
+    def <%= @func_name %>(value) do
+      {:ok, encoded} = Blueprint.encode(value, @schema)
+      encoded
+    end
+  end

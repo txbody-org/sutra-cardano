@@ -1,0 +1,28 @@
+  defmodule <%= @module_name %> do
+    @moduledoc """
+    Redeemer functions for <%= @purpose %> validator.
+
+    Each function returns the appropriate Plutus data for the redeemer.
+    """
+
+    alias Sutra.Cardano.Blueprint
+    alias Sutra.Data.Plutus.Constr
+
+    # Schema for this redeemer (resolved from blueprint)
+    @schema <%= inspect(@schema, limit: :infinity, printable_limit: :infinity) %>
+
+<%= for variant <- @variants do %>
+    @doc "<%= variant.title %> redeemer (constructor index: <%= variant.index %>)"
+<%= if variant.fields == [] do %>
+    def <%= Macro.underscore(variant.title) %>() do
+      %Constr{index: <%= variant.index %>, fields: []}
+    end
+<% else %>
+    def <%= Macro.underscore(variant.title) %>(<%= variant.field_args %>) do
+      value = %{constructor: "<%= variant.title %>", fields: %{<%= variant.field_map %>}}
+      {:ok, encoded} = Blueprint.encode(value, @schema)
+      encoded
+    end
+<% end %>
+<% end %>
+  end

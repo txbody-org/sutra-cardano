@@ -1,0 +1,17 @@
+  defmodule <%= @name %> do
+    @moduledoc "Constructor with index <%= @index %>"
+
+    defstruct []
+
+    @type t() :: %__MODULE__{}
+
+    @doc "Creates a new <%= @name %>"
+    def new, do: %__MODULE__{}
+
+    @doc "Converts to Plutus data"
+    def to_plutus(%__MODULE__{}), do: %Constr{index: <%= @index %>, fields: []}
+
+    @doc "Converts from Plutus data"
+    def from_plutus(%Constr{index: <%= @index %>, fields: []}), do: {:ok, %__MODULE__{}}
+    def from_plutus(_), do: {:error, :invalid_data}
+  end

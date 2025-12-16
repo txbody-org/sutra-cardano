@@ -1,0 +1,33 @@
+  defmodule <%= @name %> do
+    @moduledoc "Constructor with index <%= @index %>"
+
+    defstruct <%= inspect(@struct_fields) %>
+
+    @type t() :: %__MODULE__{
+<%= @field_types %>
+    }
+
+    @doc "Creates a new <%= @name %>"
+    def new(attrs \\ %{}), do: struct(__MODULE__, attrs)
+
+    @doc "Converts to Plutus data"
+    def to_plutus(%__MODULE__{} = data) do
+      fields = [
+<%= @to_plutus_fields %>
+      ]
+      %Constr{index: <%= @index %>, fields: fields}
+    end
+
+    @doc "Converts from Plutus data"
+    def from_plutus(%Constr{index: <%= @index %>, fields: field_values}) do
+      case field_values do
+        [<%= @field_pattern %>] ->
+          {:ok, %__MODULE__{
+<%= @from_plutus_fields %>
+          }}
+        _ ->
+          {:error, :field_count_mismatch}
+      end
+    end
+    def from_plutus(_), do: {:error, :invalid_data}
+  end

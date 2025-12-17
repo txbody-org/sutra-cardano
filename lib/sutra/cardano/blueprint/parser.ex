@@ -70,7 +70,6 @@ defmodule Sutra.Cardano.Blueprint.Parser do
 
       Enum.each(validators, fn v ->
         IO.puts("Validator: \#{v.title}")
-        IO.inspect(v.redeemer_schema, label: "Redeemer")
       end)
   """
   @spec parse_validators(map()) :: {:ok, [validator_info()]} | {:error, any()}

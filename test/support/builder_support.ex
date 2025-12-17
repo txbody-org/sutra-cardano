@@ -3,6 +3,7 @@ defmodule Sutra.Test.Support.BuilderSupport do
 
   alias Sutra.Blake2b
   alias Sutra.Cardano.Address
+  alias Sutra.Cardano.Asset
   alias Sutra.Cardano.Script
   alias Sutra.Cardano.Script.NativeScript
   alias Sutra.Cardano.Transaction.Input
@@ -53,6 +54,21 @@ defmodule Sutra.Test.Support.BuilderSupport do
       min_fee_ref_script_cost_per_byte: 100,
       ada_per_utxo_byte: 60
     }
+  end
+
+  def sample_wallet_utxos do
+    [
+      input(%{"lovelace" => 500_000}),
+      input(
+        Asset.add(
+          %{},
+          Script.hash_script(%Script{script_type: :native, data: "a1"}),
+          "aeo2",
+          1
+        )
+      ),
+      input(%{"lovelace" => 1_000_000_000})
+    ]
   end
 
   def sample_native_script do

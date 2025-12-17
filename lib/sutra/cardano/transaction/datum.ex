@@ -2,6 +2,7 @@ defmodule Sutra.Cardano.Transaction.Datum do
   @moduledoc """
     Cardano Transaction Datum
   """
+  alias Sutra.Data
   alias Sutra.Data.Cbor
 
   import Sutra.Data.Cbor, only: [extract_value!: 1]
@@ -51,4 +52,11 @@ defmodule Sutra.Cardano.Transaction.Datum do
 
   def datum_kind(%__MODULE__{} = datum), do: datum.kind
   def datum_kind(_), do: :no_datum
+
+  def calculate_datum_hash(data) when is_binary(data) do
+    data
+    |> Data.decode!()
+    |> CBOR.encode()
+    |> Sutra.Blake2b.blake2b_256()
+  end
 end

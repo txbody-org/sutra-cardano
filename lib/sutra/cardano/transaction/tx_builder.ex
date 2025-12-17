@@ -227,8 +227,9 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
       end)
 
     %__MODULE__{
-      ref_inputs: builder.ref_inputs ++ inputs,
-      script_lookup: new_script_lookup
+      builder
+      | ref_inputs: builder.ref_inputs ++ inputs,
+        script_lookup: new_script_lookup
     }
   end
 
@@ -484,7 +485,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
       | plutus_data:
           Map.put_new(
             cfg.plutus_data,
-            Blake2b.blake2b_256(encoded_datum),
+            Datum.get_datum_hash(encoded_datum),
             Data.decode!(encoded_datum)
           )
     }
@@ -598,7 +599,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
           inputs: inputs,
           ref_inputs: ref_inputs,
           used_scripts: MapSet.to_list(cfg.used_scripts),
-          certificates: Enum.reverse(cfg.certificates)
+          certificates: Enum.reverse(cfg.certificates),
+          outputs: Enum.reverse(cfg.outputs)
       }
       |> Internal.process_build_tx(wallet_inputs, collateral_inputs)
     end

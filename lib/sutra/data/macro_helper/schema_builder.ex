@@ -7,6 +7,7 @@ defmodule Sutra.Data.MacroHelper.SchemaBuilder do
   `Sutra.Cardano.Blueprint.encode/2` and `decode/2`.
   """
 
+  alias Sutra.Cardano.Blueprint.Common
   alias Sutra.Data.Option
 
   @doc """
@@ -182,8 +183,11 @@ defmodule Sutra.Data.MacroHelper.SchemaBuilder do
         %{"$module" => module}
 
       _ ->
-        # Unknown atom type
-        raise ArgumentError, "Unsupported type: #{inspect(module)}"
+        common_schema = Common.get(module)
+
+        if is_nil(common_schema),
+          do: raise(ArgumentError, "Unsupported type: #{inspect(module)}"),
+          else: type_to_schema(common_schema)
     end
   end
 

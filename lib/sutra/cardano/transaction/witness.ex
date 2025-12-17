@@ -255,7 +255,7 @@ defmodule Sutra.Cardano.Transaction.Witness do
   defp do_encode_witness_to_cbor(%PlutusData{value: value}, acc) do
     Map.get(acc, 4)
     |> extract_value!()
-    |> maybe([value], &[&1 | value])
+    |> maybe([value], &[value | &1])
     |> Cbor.as_nonempty_set()
     |> Cbor.as_indexed_map(4, acc)
   end

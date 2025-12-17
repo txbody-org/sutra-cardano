@@ -359,7 +359,6 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
          %TxBuilder{config: %TxConfig{protocol_params: protocol_params}} = builder
        ) do
     Enum.map(builder.outputs, &calculate_min_ada_for_output(&1, protocol_params))
-    |> Enum.reverse()
   end
 
   defp calculate_min_ada_for_output(%Output{} = output, %ProtocolParams{} = params) do

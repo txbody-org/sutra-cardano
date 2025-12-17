@@ -48,6 +48,7 @@ defmodule Sutra.Cardano.Blueprint.Common do
   These schemas can be referenced from modules using `defdata` and `defenum` macros
   by storing the schema as a module attribute and using `Blueprint.encode/2` in `to_plutus/1`.
   """
+  alias Sutra.Cardano.Address
 
   # ============================================================================
   # Primitive Types
@@ -335,7 +336,7 @@ defmodule Sutra.Cardano.Blueprint.Common do
       output_reference: output_reference(),
       credential: credential(),
       stake_credential: stake_credential(),
-      address: address(),
+      address: Address,
       lovelace: lovelace(),
       asset_quantity: asset_quantity(),
       datum: datum(),

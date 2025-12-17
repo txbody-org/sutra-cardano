@@ -485,7 +485,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
       | plutus_data:
           Map.put_new(
             cfg.plutus_data,
-            Datum.get_datum_hash(encoded_datum),
+            Datum.calculate_datum_hash(encoded_datum),
             Data.decode!(encoded_datum)
           )
     }

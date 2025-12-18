@@ -332,7 +332,9 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
 
   defp extract_datum({:datum_hash, val}) do
     raw_data = Data.encode(val)
-    {Data.decode!(raw_data), Datum.datum_hash(Blake2b.blake2b_256(raw_data))}
+    hashed_datum = Blake2b.blake2b_256(raw_data)
+
+    {Data.decode!(raw_data), Datum.datum_hash(hashed_datum)}
   end
 
   defp extract_datum(_), do: {nil, Datum.no_datum()}
@@ -479,13 +481,14 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   """
   def attach_datum(%__MODULE__{} = cfg, datum) do
     encoded_datum = Data.encode(datum)
+    datum_hash = Sutra.Blake2b.blake2b_256(encoded_datum)
 
     %__MODULE__{
       cfg
       | plutus_data:
           Map.put_new(
             cfg.plutus_data,
-            Datum.calculate_datum_hash(encoded_datum),
+            datum_hash,
             Data.decode!(encoded_datum)
           )
     }

@@ -5,7 +5,6 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   require Sutra.Cardano.Script
   require Sutra.Data.Plutus
 
-  alias Sutra.Blake2b
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Address.Credential
   alias Sutra.Cardano.Asset
@@ -332,7 +331,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
 
   defp extract_datum({:datum_hash, val}) do
     raw_data = Data.encode(val)
-    hashed_datum = Blake2b.blake2b_256(raw_data)
+    hashed_datum = Datum.calculate_datum_hash(raw_data)
 
     {Data.decode!(raw_data), Datum.datum_hash(hashed_datum)}
   end
@@ -481,7 +480,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   """
   def attach_datum(%__MODULE__{} = cfg, datum) do
     encoded_datum = Data.encode(datum)
-    datum_hash = Sutra.Blake2b.blake2b_256(encoded_datum)
+    datum_hash = Datum.calculate_datum_hash(encoded_datum)
 
     %__MODULE__{
       cfg

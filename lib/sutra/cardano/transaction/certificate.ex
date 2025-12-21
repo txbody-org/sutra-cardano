@@ -43,7 +43,7 @@ defmodule Sutra.Cardano.Transaction.Certificate do
     field(:margin_ratio, {pos_integer(), pos_integer()}, enforce: true)
     field(:reward_account, :string, enforce: true)
     field(:owners, [:string], enforce: true)
-    field(:relays, [__MODULE__.PoolRelay.t()], enforce: true)
+    field(:relays, [PoolRelay.t()], enforce: true)
     field(:metadata, %{url: :string, hash: :string})
   end
 

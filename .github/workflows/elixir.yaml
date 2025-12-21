@@ -124,6 +124,7 @@ jobs:
       # Step: Run Provider Integration Tests
       # Only run if secrets are available (usually on push to main or from forks with access)
       - name: Run Provider Integration Tests
+        if: ${{ secrets.BLOCKFROST_PROJECT_ID != '' || secrets.MAESTRO_API_KEY != '' }}
         env:
           BLOCKFROST_PROJECT_ID: ${{ secrets.BLOCKFROST_PROJECT_ID }}
           BLOCKFROST_TEST_ADDRESS: ${{ secrets.BLOCKFROST_TEST_ADDRESS }}

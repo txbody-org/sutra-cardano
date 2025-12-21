@@ -5,6 +5,7 @@ defmodule Sutra.Provider do
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Transaction
   alias Sutra.Cardano.Transaction.OutputReference
+  alias Sutra.Common.ExecutionUnits
   alias Sutra.ProtocolParams
   alias Sutra.SlotConfig
 
@@ -13,13 +14,13 @@ defmodule Sutra.Provider do
 
     To resolve datum we can pass `resolve_datum: true` as options
   """
-  @callback utxos_at(addresses :: [Address.bech_32() | Address.t()]) ::
+  @callback utxos_at_addresses(addresses :: [Address.bech_32() | Address.t()]) ::
               [Transaction.input()]
 
   @doc """
     Query Utxos at list of OutputReference
   """
-  @callback utxos_at_refs(refs :: [OutputReference.t() | String.t()]) :: [Transaction.input()]
+  @callback utxos_at_tx_refs(refs :: [OutputReference.t() | String.t()]) :: [Transaction.input()]
 
   @doc """
     Query Protocol params
@@ -52,12 +53,22 @@ defmodule Sutra.Provider do
 
   @callback tx_cbor([txhash :: binary()]) :: %{(tx_hash :: binary()) => cbor :: binary()}
 
-  def utxos_at(addresses) do
-    get_provider!().utxos_at(addresses)
+  @doc """
+    Evaluate Tx cbor
+  """
+  @callback evaluate_tx(cbor :: binary()) ::
+              {:ok, ExecutionUnits.t()}
+              | {:ok, map()}
+              | {:ok, [any()]}
+              | {:error, String.t()}
+  @optional_callbacks evaluate_tx: 1
+
+  def utxos_at_addresses(addresses) do
+    get_provider!().utxos_at_addresses(addresses)
   end
 
-  def utxos_at_refs(refs) do
-    get_provider!().utxos_at_refs(refs)
+  def utxos_at_tx_refs(refs) do
+    get_provider!().utxos_at_tx_refs(refs)
   end
 
   def protocol_params do
@@ -78,6 +89,16 @@ defmodule Sutra.Provider do
 
   def tx_cbor(tx_hash) do
     get_provider!().tx_cbor(tx_hash)
+  end
+
+  def evaluate_tx(tx_cbor) do
+    provider = get_provider!()
+
+    if function_exported?(provider, :evaluate_tx, 1) do
+      provider.evaluate_tx(tx_cbor)
+    else
+      {:error, "Provider does not support execute_tx"}
+    end
   end
 
   def provider?(mod) do

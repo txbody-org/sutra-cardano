@@ -120,3 +120,19 @@ jobs:
       # Step: Execute the tests.
       - name: Run tests
         run: mix test
+
+      # Step: Run Provider Integration Tests
+      # Only run if secrets are available (usually on push to main or from forks with access)
+      - name: Run Provider Integration Tests
+        env:
+          BLOCKFROST_PROJECT_ID: ${{ secrets.BLOCKFROST_PROJECT_ID }}
+          BLOCKFROST_TEST_ADDRESS: ${{ secrets.BLOCKFROST_TEST_ADDRESS }}
+          BLOCKFROST_TEST_SIGNING_KEY: ${{ secrets.BLOCKFROST_TEST_SIGNING_KEY }}
+          MAESTRO_API_KEY: ${{ secrets.MAESTRO_API_KEY }}
+          MAESTRO_TEST_ADDRESS: ${{ secrets.MAESTRO_TEST_ADDRESS }}
+          MAESTRO_TEST_SIGNING_KEY: ${{ secrets.MAESTRO_TEST_SIGNING_KEY }}
+          KOIOS_API_KEY: ${{ secrets.KOIOS_API_KEY }}
+          KOIOS_TEST_ADDRESS: ${{ secrets.KOIOS_TEST_ADDRESS }}
+          KOIOS_TEST_SIGNING_KEY: ${{ secrets.KOIOS_TEST_SIGNING_KEY }}
+          # Networks are defaulted to preprod in the script, but can be overridden here
+        run: ./examples/run_provider_tests.sh

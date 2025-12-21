@@ -94,16 +94,9 @@ defmodule Sutra.PrivnetTest do
   def set_yaci_provider_env do
     Application.put_env(:sutra, :provider, Yaci)
 
-    Application.put_env(
-      :sutra,
-      :yaci_general_api_url,
-      System.get_env("YACI_GENERAL_API_URL", "http://localhost:8080")
-    )
-
-    Application.put_env(
-      :sutra,
-      :yaci_admin_api_url,
-      System.get_env("YACI_ADMIN_API_URL", "http://localhost:10000")
+    Application.put_env(:sutra, :yaci,
+      yaci_general_api_url: System.get_env("YACI_GENERAL_API_URL", "http://localhost:8080"),
+      yaci_admin_api_url: System.get_env("YACI_ADMIN_API_URL", "http://localhost:10000")
     )
   end
 end

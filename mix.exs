@@ -4,7 +4,7 @@ defmodule Sutra.MixProject do
   def project do
     [
       app: :sutra,
-      version: "0.2.3",
+      version: "0.2.4",
       elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -60,9 +60,7 @@ defmodule Sutra.MixProject do
     [
       "guides/overview.md",
       # Provider Guides
-      "guides/provider_integration/yaci_devkit.md",
-      "guides/provider_integration/kupogmios.md",
-      "guides/provider_integration/koios.md",
+      "guides/provider_integration/setup_provider.md",
 
       # Transaction Building
       "guides/transaction_building/simple_tx.md",

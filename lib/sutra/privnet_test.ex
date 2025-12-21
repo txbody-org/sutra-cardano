@@ -4,7 +4,7 @@ defmodule Sutra.PrivnetTest do
   """
   alias Sutra.Cardano.Asset
   alias Sutra.Crypto.Key
-  alias Sutra.Provider.YaciProvider
+  alias Sutra.Provider.Yaci
   alias Sutra.Utils
 
   use ExUnit.CaseTemplate
@@ -27,7 +27,7 @@ defmodule Sutra.PrivnetTest do
 
     {:ok, address} = Key.address(signing_key, :preprod)
 
-    if YaciProvider.balance_of(address) == Asset.zero() do
+    if Yaci.balance_of(address) == Asset.zero() do
       load_ada(address, [10_000, 5])
     end
 
@@ -40,7 +40,7 @@ defmodule Sutra.PrivnetTest do
         only Support 20 default wallet user Index. supplied: #{user_indx}
       """)
 
-  def load_ada(address, amt) when is_integer(amt), do: YaciProvider.topup(address, amt)
+  def load_ada(address, amt) when is_integer(amt), do: Yaci.topup(address, amt)
 
   def load_ada(address, amounts) when is_list(amounts) do
     Enum.map(amounts, &load_ada(address, &1))
@@ -68,7 +68,7 @@ defmodule Sutra.PrivnetTest do
   def await_tx(_, retry) when retry < 0, do: nil
 
   def await_tx(tx_id, retry) do
-    case YaciProvider.get_tx_info(tx_id) do
+    case Yaci.get_tx_info(tx_id) do
       resp when is_map(resp) ->
         resp
 
@@ -79,10 +79,10 @@ defmodule Sutra.PrivnetTest do
   end
 
   setup _tags do
-    if Application.get_env(:sutra, :provider) != YaciProvider,
+    if Application.get_env(:sutra, :provider) != Yaci,
       do: set_yaci_provider_env()
 
-    if not YaciProvider.running?(),
+    if not Yaci.running?(),
       do:
         raise("""
           Yaci Provider is not running. Start Yaci Provider before running Test
@@ -92,7 +92,7 @@ defmodule Sutra.PrivnetTest do
   end
 
   def set_yaci_provider_env do
-    Application.put_env(:sutra, :provider, YaciProvider)
+    Application.put_env(:sutra, :provider, Yaci)
 
     Application.put_env(
       :sutra,

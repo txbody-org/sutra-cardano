@@ -14,7 +14,6 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxBuilderTest do
   alias Sutra.Cardano.Transaction.OutputReference
   alias Sutra.Cardano.Transaction.TxBuilder
   alias Sutra.Data
-  alias Sutra.Provider.KoiosProvider
   alias Sutra.Provider.Kupogmios
   alias Sutra.SlotConfig
 
@@ -43,8 +42,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxBuilderTest do
     end
 
     test "use_provider/2 overrides provider" do
-      assert %TxBuilder{config: %TxBuilder.TxConfig{provider: KoiosProvider}} =
-               new_tx() |> use_provider(KoiosProvider)
+      assert %TxBuilder{config: %TxBuilder.TxConfig{provider: Sutra.Provider.Koios}} =
+               new_tx() |> use_provider(Sutra.Provider.Koios)
     end
 
     test "set_wallet_address/2 set wallet address to sign & fetch utxos" do

@@ -17,7 +17,6 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.AttachDatumTest do
   alias Sutra.Cardano.Transaction
   alias Sutra.Cardano.Transaction.TxBuilder
   alias Sutra.Data
-  alias Sutra.Provider.KoiosProvider
   alias Sutra.SlotConfig
   import Sutra.Test.Support.BuilderSupport
 
@@ -35,7 +34,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.AttachDatumTest do
                |> attach_multi_datums(@datums_1)
                |> attach_multi_datums(@datum_2)
                |> TxBuilder.set_protocol_params(sample_protocol_params())
-               |> TxBuilder.use_provider(KoiosProvider)
+               |> TxBuilder.use_provider(Sutra.Provider.Koios)
                |> TxBuilder.set_wallet_address([Address.from_bech32(sample_address())])
                |> TxBuilder.build_tx(
                  wallet_utxos: sample_wallet_utxos(),

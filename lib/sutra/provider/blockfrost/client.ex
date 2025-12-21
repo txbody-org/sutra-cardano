@@ -9,8 +9,8 @@ defmodule Sutra.Provider.Blockfrost.Client do
   alias Sutra.Cardano.Transaction.{Datum, Input, Output, OutputReference}
   alias Sutra.Common.ExecutionUnitPrice
   alias Sutra.Common.ExecutionUnits
-  alias Sutra.ProtocolParams
   alias Sutra.Data
+  alias Sutra.ProtocolParams
 
   def new(opts \\ []) do
     project_id = opts[:project_id]

@@ -55,7 +55,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   """
   def new_tx do
     %__MODULE__{
-      config: %TxConfig{}
+      config: %TxConfig{evaluate_provider_uplc: false}
     }
   end
 
@@ -82,6 +82,10 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   """
   def set_protocol_params(%__MODULE__{config: cfg} = builder, %ProtocolParams{} = protocol_params) do
     %__MODULE__{builder | config: TxConfig.__set_cfg(cfg, :protocol_params, protocol_params)}
+  end
+
+  def evaluate_provider_uplc(%__MODULE__{config: cfg} = builder, evaluate \\ true) do
+    %__MODULE__{builder | config: TxConfig.__set_cfg(cfg, :evaluate_provider_uplc, evaluate)}
   end
 
   @doc """
@@ -641,7 +645,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
         do: cfg.wallet_address,
         else: [cfg.wallet_address]
 
-    cfg.provider.utxos_at(addresses)
+    cfg.provider.utxos_at_addresses(addresses)
   end
 
   def sign_tx(%Transaction{witnesses: %Witness{} = witness} = tx, signers)

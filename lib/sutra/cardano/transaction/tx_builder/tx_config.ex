@@ -12,14 +12,14 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxConfig do
 
   import Sutra.Utils, only: [maybe: 2]
 
-  defstruct [
-    :protocol_params,
-    :wallet_address,
-    :change_address,
-    :change_datum,
-    :provider,
-    :slot_config
-  ]
+  defstruct protocol_params: nil,
+            wallet_address: nil,
+            change_address: nil,
+            change_datum: nil,
+            provider: nil,
+            slot_config: nil,
+            evaluate_provider_uplc: false,
+            debug: false
 
   def __override_cfg(%__MODULE__{} = cfg, _, nil), do: cfg
 
@@ -57,6 +57,9 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxConfig do
 
         {:change_address, address} when is_binary(address) ->
           %__MODULE__{acc | change_address: Address.from_bech32(address)}
+
+        {:evaluate_provider_uplc, v} when is_boolean(v) ->
+          %__MODULE__{acc | evaluate_provider_uplc: v}
 
         _ ->
           acc

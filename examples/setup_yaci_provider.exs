@@ -1,6 +1,6 @@
-alias Sutra.Provider.YaciProvider
+alias Sutra.Provider.Yaci
 
-Application.put_env(:sutra, :provider, YaciProvider)
+Application.put_env(:sutra, :provider, Yaci)
 
 Application.put_env(
   :sutra,

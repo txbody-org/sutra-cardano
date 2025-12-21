@@ -4,8 +4,8 @@ defmodule Sutra.Provider.Maestro do
   """
   @behaviour Sutra.Provider
 
-  alias Sutra.Provider.Maestro.Client
   alias Sutra.Cardano.Transaction
+  alias Sutra.Provider.Maestro.Client
   alias Sutra.SlotConfig
 
   defp fetch_env(key), do: Application.get_env(:sutra, :maestro)[key]

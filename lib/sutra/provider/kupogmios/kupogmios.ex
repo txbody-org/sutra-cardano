@@ -4,9 +4,9 @@ defmodule Sutra.Provider.Kupogmios do
   """
   @behaviour Sutra.Provider
 
-  alias Sutra.Provider.Kupogmios.Client
   alias Sutra.Cardano.Transaction
   alias Sutra.Data.Cbor
+  alias Sutra.Provider.Kupogmios.Client
   alias Sutra.SlotConfig
 
   defp fetch_env(key), do: Application.get_env(:sutra, :kupogmios)[key]

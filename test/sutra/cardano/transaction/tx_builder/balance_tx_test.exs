@@ -14,8 +14,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.BalanceTxTest do
 
   defmodule DummyProvider do
     @behaviour Sutra.Provider
-    def utxos_at(_), do: []
-    def utxos_at_refs(_), do: []
+    def utxos_at_addresses(_), do: []
+    def utxos_at_tx_refs(_), do: []
     def protocol_params, do: %{}
 
     def slot_config,

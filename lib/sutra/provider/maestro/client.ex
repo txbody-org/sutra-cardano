@@ -92,16 +92,18 @@ defmodule Sutra.Provider.Maestro.Client do
   def tx_cbor(client, tx_hashes) do
     tx_hashes
     |> Enum.map(fn hash ->
-      Task.async(fn ->
-        case Req.get(client, url: "transactions/#{hash}/cbor") do
-          {:ok, %{status: 200, body: %{"cbor" => cbor}}} -> {hash, cbor}
-          _ -> nil
-        end
-      end)
+      Task.async(fn -> fetch_tx_cbor(client, hash) end)
     end)
     |> Task.await_many(30_000)
     |> Enum.reject(&is_nil/1)
     |> Map.new()
+  end
+
+  defp fetch_tx_cbor(client, hash) do
+    case Req.get(client, url: "transactions/#{hash}/cbor") do
+      {:ok, %{status: 200, body: %{"cbor" => cbor}}} -> {hash, cbor}
+      _ -> nil
+    end
   end
 
   # Helper parsers

@@ -4,16 +4,16 @@ defmodule Sutra.Provider.Kupogmios.Client do
   """
 
   alias Sutra.Cardano.Address
+  alias Sutra.Cardano.Asset
+  alias Sutra.Cardano.Gov.CostModels
   alias Sutra.Cardano.Script
   alias Sutra.Cardano.Script.NativeScript
   alias Sutra.Cardano.Transaction.{Datum, Input, Output, OutputReference}
   alias Sutra.Common.ExecutionUnitPrice
   alias Sutra.Common.ExecutionUnits
-  alias Sutra.Cardano.Gov.CostModels
+  alias Sutra.Data
   alias Sutra.ProtocolParams
   alias Sutra.Utils
-  alias Sutra.Cardano.Asset
-  alias Sutra.Data
 
   import Sutra.Common, only: [rational_from_binary: 1]
   import Sutra.Utils, only: [maybe: 3]

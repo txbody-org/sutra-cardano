@@ -4,10 +4,10 @@ defmodule Sutra.Provider.Yaci do
   """
   @behaviour Sutra.Provider
 
-  alias Sutra.Provider.Yaci.Client
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Transaction
   alias Sutra.ProtocolParams
+  alias Sutra.Provider.Yaci.Client
   alias Sutra.SlotConfig
 
   defp clients do

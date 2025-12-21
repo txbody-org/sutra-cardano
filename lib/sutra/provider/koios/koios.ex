@@ -4,10 +4,10 @@ defmodule Sutra.Provider.Koios do
   """
   @behaviour Sutra.Provider
 
-  alias Sutra.Provider.Koios.Client
   alias Sutra.Cardano.Transaction
   alias Sutra.Cardano.Transaction.{Datum, Input, Output}
   alias Sutra.Data
+  alias Sutra.Provider.Koios.Client
   alias Sutra.SlotConfig
   alias Sutra.Utils
 

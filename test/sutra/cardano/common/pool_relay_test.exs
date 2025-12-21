@@ -1,8 +1,10 @@
 defmodule Sutra.Cardano.Common.PoolRelayTest do
+  @moduledoc false
+
   use ExUnit.Case
 
   alias Sutra.Cardano.Common.PoolRelay
-  alias Sutra.Cardano.Common.PoolRelay.{SingleHostAddr, SingleHostName, MultiHostName}
+  alias Sutra.Cardano.Common.PoolRelay.{MultiHostName, SingleHostAddr, SingleHostName}
 
   describe "decode/1" do
     test "decodes single_host_addr" do

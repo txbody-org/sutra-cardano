@@ -60,11 +60,7 @@ defmodule Sutra.Provider.Blockfrost.Client do
     end)
     |> Enum.group_by(fn {tx_id, _} -> tx_id end, fn {_, index} -> index end)
     |> Enum.map(fn {tx_id, indices} ->
-      Task.async(fn ->
-        Req.get!(client, url: "txs/#{tx_id}/utxos").body["outputs"]
-        |> Enum.filter(fn %{"output_index" => index} -> index in indices end)
-        |> Enum.map(fn out -> parse_utxo(Map.put(out, "tx_hash", tx_id)) end)
-      end)
+      Task.async(fn -> fetch_tx_utxos(client, tx_id, indices) end)
     end)
     |> Task.await_many(30_000)
     |> List.flatten()
@@ -73,12 +69,7 @@ defmodule Sutra.Provider.Blockfrost.Client do
   def datum_of(client, datum_hashes) when is_list(datum_hashes) do
     datum_hashes
     |> Enum.map(fn hash ->
-      Task.async(fn ->
-        case Req.get(client, url: "scripts/datum/#{hash}/cbor") do
-          {:ok, %{status: 200, body: %{"cbor" => cbor}}} -> {hash, cbor}
-          _ -> nil
-        end
-      end)
+      Task.async(fn -> fetch_datum_cbor(client, hash) end)
     end)
     |> Task.await_many(30_000)
     |> Enum.reject(&is_nil/1)
@@ -107,7 +98,7 @@ defmodule Sutra.Provider.Blockfrost.Client do
       ).body
 
     # Blockfrost response might be directly the result or wrapper.
-    case IO.inspect(resp, label: "Blockfrost Eval") do
+    case resp do
       %{"result" => %{"EvaluationResult" => result}} ->
         files =
           Enum.map(result, fn {k, v} ->
@@ -128,19 +119,34 @@ defmodule Sutra.Provider.Blockfrost.Client do
   def tx_cbor(client, tx_hashes) do
     tx_hashes
     |> Enum.map(fn hash ->
-      Task.async(fn ->
-        case Req.get(client, url: "txs/#{hash}/cbor") do
-          {:ok, %{status: 200, body: %{"cbor" => cbor}}} -> {hash, cbor}
-          _ -> nil
-        end
-      end)
+      Task.async(fn -> fetch_tx_cbor(client, hash) end)
     end)
     |> Task.await_many(30_000)
     |> Enum.reject(&is_nil/1)
     |> Map.new()
   end
 
+  defp fetch_datum_cbor(client, hash) do
+    case Req.get(client, url: "scripts/datum/#{hash}/cbor") do
+      {:ok, %{status: 200, body: %{"cbor" => cbor}}} -> {hash, cbor}
+      _ -> nil
+    end
+  end
+
+  defp fetch_tx_cbor(client, hash) do
+    case Req.get(client, url: "txs/#{hash}/cbor") do
+      {:ok, %{status: 200, body: %{"cbor" => cbor}}} -> {hash, cbor}
+      _ -> nil
+    end
+  end
+
   # Helper parsers
+
+  defp fetch_tx_utxos(client, tx_id, indices) do
+    Req.get!(client, url: "txs/#{tx_id}/utxos").body["outputs"]
+    |> Enum.filter(fn %{"output_index" => index} -> index in indices end)
+    |> Enum.map(fn out -> parse_utxo(Map.put(out, "tx_hash", tx_id)) end)
+  end
 
   defp parse_utxo(data) do
     datum =

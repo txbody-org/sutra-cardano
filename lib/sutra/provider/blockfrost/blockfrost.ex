@@ -4,11 +4,11 @@ defmodule Sutra.Provider.Blockfrost do
   """
   @behaviour Sutra.Provider
 
-  alias Sutra.Provider.Blockfrost.Client
   alias Sutra.Cardano.Transaction
-  alias Sutra.SlotConfig
   alias Sutra.Cardano.Transaction.{Datum, Input, Output}
   alias Sutra.Data
+  alias Sutra.Provider.Blockfrost.Client
+  alias Sutra.SlotConfig
   alias Sutra.Utils
 
   defp fetch_env(key), do: Application.get_env(:sutra, :blockfrost)[key]

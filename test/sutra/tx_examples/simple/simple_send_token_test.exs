@@ -7,7 +7,7 @@ defmodule Sutra.TxExamples.Simple.SimpleSendTokenTest do
   alias Sutra.Cardano.Script
   alias Sutra.Cardano.Script.NativeScript
   alias Sutra.Cardano.Transaction
-  alias Sutra.Provider.YaciProvider
+  alias Sutra.Provider.Yaci
 
   import Sutra.Cardano.Transaction.TxBuilder
 
@@ -44,7 +44,7 @@ defmodule Sutra.TxExamples.Simple.SimpleSendTokenTest do
 
         assert submit_tx_resp == Transaction.tx_id(tx)
         await_tx(submit_tx_resp)
-        assert YaciProvider.balance_of(to_address) == Asset.from_lovelace(2_000_000)
+        assert Yaci.balance_of(to_address) == Asset.from_lovelace(2_000_000)
       end)
     end
 
@@ -67,7 +67,7 @@ defmodule Sutra.TxExamples.Simple.SimpleSendTokenTest do
         await_tx(submit_tx_id)
 
         assert %{@policy_id => @mint_token} ==
-                 YaciProvider.balance_of(recv_addr) |> Asset.without_lovelace()
+                 Yaci.balance_of(recv_addr) |> Asset.without_lovelace()
       end)
     end
   end

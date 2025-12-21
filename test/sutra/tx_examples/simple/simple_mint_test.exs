@@ -7,7 +7,7 @@ defmodule Sutra.TxExamples.Simple.SimpleMintTest do
   alias Sutra.Cardano.Script
   alias Sutra.Cardano.Transaction
   alias Sutra.Data
-  alias Sutra.Provider.YaciProvider
+  alias Sutra.Provider.Yaci
 
   import Sutra.Test.Support.BlueprintSupport, only: [get_simple_script: 1]
   import Sutra.Cardano.Transaction.TxBuilder
@@ -46,7 +46,7 @@ defmodule Sutra.TxExamples.Simple.SimpleMintTest do
         await_tx(submit_tx_id)
 
         assert %{policy_id => @mint_asset} ==
-                 YaciProvider.balance_of(to_address) |> Asset.without_lovelace()
+                 Yaci.balance_of(to_address) |> Asset.without_lovelace()
       end)
     end
 
@@ -63,7 +63,7 @@ defmodule Sutra.TxExamples.Simple.SimpleMintTest do
 
         await_tx(ref_tx_id)
 
-        ref_utxos = YaciProvider.utxos_at_refs(["#{ref_tx_id}#0"])
+        ref_utxos = Yaci.utxos_at_tx_refs(["#{ref_tx_id}#0"])
 
         mint_tx_id =
           new_tx()
@@ -77,7 +77,7 @@ defmodule Sutra.TxExamples.Simple.SimpleMintTest do
         await_tx(mint_tx_id)
 
         assert %{policy_id => @mint_asset} ==
-                 YaciProvider.balance_of(to_address) |> Asset.without_lovelace()
+                 Yaci.balance_of(to_address) |> Asset.without_lovelace()
       end)
     end
   end

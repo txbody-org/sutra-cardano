@@ -132,4 +132,26 @@ defmodule Sutra.Provider do
   def get_fetcher, do: get_provider(:fetch_with)
 
   def get_submitter, do: get_provider(:submit_with)
+
+  @doc """
+  Waits for transaction to be confirmed on chain by polling for its 0-index UTxO.
+  Function sleeps for 2s initially and backs off exponentially (1.5x) up to retry_count times.
+  """
+  def await_tx(tx_hash, retry_count \\ 10) do
+    await_tx_impl(tx_hash, retry_count, 2000)
+  end
+
+  defp await_tx_impl(_tx_hash, 0, _delay), do: {:error, :timeout}
+
+  defp await_tx_impl(tx_hash, retries, delay) do
+    # Check if index 0 exists (heuristic)
+    case utxos_at_tx_refs(["#{tx_hash}#0"]) do
+      [_ | _] ->
+        :ok
+
+      _ ->
+        Process.sleep(trunc(delay))
+        await_tx_impl(tx_hash, retries - 1, min(delay * 2.5, 10_000))
+    end
+  end
 end

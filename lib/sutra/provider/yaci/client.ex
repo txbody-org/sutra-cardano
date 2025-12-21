@@ -1,12 +1,12 @@
-defmodule Sutra.Provider.YaciProvider do
+defmodule Sutra.Provider.Yaci.Client do
   @moduledoc """
-    Yaci Devkit Provider
+    Client for Yaci Devkit API using Req.
   """
+
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Asset
   alias Sutra.Cardano.Gov.CostModels
   alias Sutra.Cardano.Script
-  alias Sutra.Cardano.Transaction
   alias Sutra.Cardano.Transaction.Datum
   alias Sutra.Cardano.Transaction.Input
   alias Sutra.Cardano.Transaction.Output
@@ -18,42 +18,17 @@ defmodule Sutra.Provider.YaciProvider do
   alias Sutra.SlotConfig
   alias Sutra.Utils
 
-  defp yaci_general_api_url do
-    Application.fetch_env!(:sutra, :yaci_general_api_url)
+  def new(opts \\ []) do
+    general_api_url = opts[:general_api_url]
+    admin_api_url = opts[:admin_api_url]
+
+    %{
+      general: Req.new(base_url: "#{general_api_url}/api/v1"),
+      admin: Req.new(base_url: "#{admin_api_url}/local-cluster/api")
+    }
   end
 
-  defp yaci_admin_api_url do
-    Application.fetch_env!(:sutra, :yaci_admin_api_url)
-  end
-
-  @behaviour Sutra.Provider
-
-  defp fetch_endpoint(endpoint_type) when endpoint_type in [:general, :admin] do
-    case endpoint_type do
-      :general ->
-        yaci_general_api_url() <> "/api/v1"
-
-      :admin ->
-        yaci_admin_api_url() <> "/local-cluster/api"
-    end
-  end
-
-  @impl true
-  def protocol_params do
-    case fetch_protocol_params(3) do
-      {:error, reason} -> raise reason
-      protocol_params -> protocol_params
-    end
-  end
-
-  @impl true
-  def tx_cbor(_) do
-    raise "tx_cbor callback not implemented in Sutra.Provider.YaciProvider"
-  end
-
-  def fetch_protocol_params(retry \\ 0) do
-    url = "#{fetch_endpoint(:admin)}/epochs/parameters"
-
+  def protocol_params(clients, retry \\ 0) do
     # Map with size greater than 32, keys are not sorted by default
     sorted_map_list = fn map ->
       Map.keys(map)
@@ -61,7 +36,11 @@ defmodule Sutra.Provider.YaciProvider do
       |> Enum.map(&Map.get(map, &1))
     end
 
-    case Req.get(url, max_retries: retry, retry_log_level: false) do
+    case Req.get(clients.admin,
+           url: "epochs/parameters",
+           max_retries: retry,
+           retry_log_level: false
+         ) do
       {:ok, %Req.Response{status: 200, body: resp}} ->
         %ProtocolParams{
           min_fee_A: resp["min_fee_a"],
@@ -102,31 +81,75 @@ defmodule Sutra.Provider.YaciProvider do
     end
   end
 
-  @impl true
-  def utxos_at(addresses) when is_list(addresses) do
+  def utxos_at_addresses(clients, addresses) do
     addresses
     |> Enum.map(fn addr ->
       Task.async(fn ->
-        do_fetch_utxo_at_address(addr)
+        do_fetch_utxo_at_address(clients, addr)
       end)
     end)
     |> Task.await_many()
     |> Utils.merge_list()
-    |> Enum.map(&parse_utxo/1)
+    |> Enum.map(&parse_utxo(&1, clients))
   end
 
-  defp do_fetch_utxo_at_address(%Address{} = addr),
-    do: Address.to_bech32(addr) |> do_fetch_utxo_at_address()
+  defp do_fetch_utxo_at_address(clients, %Address{} = addr),
+    do: do_fetch_utxo_at_address(clients, Address.to_bech32(addr))
 
-  defp do_fetch_utxo_at_address(address) when is_binary(address) do
-    url =
-      "#{fetch_endpoint(:admin)}/addresses/#{address}/utxos?page=1"
-
-    Req.get!(url).body
+  defp do_fetch_utxo_at_address(clients, address) when is_binary(address) do
+    Req.get!(clients.admin, url: "addresses/#{address}/utxos?page=1").body
   end
 
-  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
-  defp parse_utxo(resp) do
+  def utxos_at_tx_refs(clients, refs) do
+    Enum.map(refs, &do_fetch_utxo_at_ref(clients, &1))
+  end
+
+  defp do_fetch_utxo_at_ref(clients, <<t_id::binary-size(64), _::binary-size(1), indx::binary>>) do
+    do_fetch_utxo_at_ref(clients, %OutputReference{transaction_id: t_id, output_index: indx})
+  end
+
+  defp do_fetch_utxo_at_ref(clients, %OutputReference{} = ref) do
+    Req.get!(clients.general, url: "utxos/#{ref.transaction_id}/#{ref.output_index}").body
+    |> parse_utxo(clients)
+  end
+
+  def datum_of(clients, datum_hashes) when is_list(datum_hashes) do
+    Enum.reduce(datum_hashes, %{}, fn hash, acc ->
+      if is_binary(hash), do: Map.merge(acc, datum_of(clients, hash)), else: acc
+    end)
+  end
+
+  def datum_of(clients, datum_hash) when is_binary(datum_hash) do
+    case Req.get!(clients.general, url: "scripts/datum/#{datum_hash}/cbor").body do
+      %{"cbor" => raw_cbor} -> %{datum_hash => raw_cbor}
+      _ -> %{}
+    end
+  end
+
+  def submit_tx(clients, tx_cbor) do
+    Req.post!(clients.admin,
+      url: "tx/submit",
+      body: tx_cbor,
+      headers: %{"Content-Type" => "application/cbor"}
+    ).body
+  end
+
+  def slot_config(clients) do
+    resp = Req.get!(clients.admin, url: "admin/devnet/genesis/shelley").body
+
+    {:ok, zero_time, _} =
+      DateTime.from_iso8601(resp["systemStart"])
+
+    %SlotConfig{
+      zero_time: DateTime.to_unix(zero_time, :millisecond),
+      slot_length: resp["slotLength"] * 1000,
+      zero_slot: 0
+    }
+  end
+
+  # Helper parsers
+
+  defp parse_utxo(resp, clients) do
     ref_script =
       case resp do
         %{"script_ref" => ref} when is_binary(ref) ->
@@ -146,7 +169,7 @@ defmodule Sutra.Provider.YaciProvider do
 
         %{"data_hash" => datum_hash} when is_binary(datum_hash) ->
           raw_datum =
-            Map.get(datum_of(datum_hash), datum_hash)
+            Map.get(datum_of(clients, datum_hash), datum_hash)
             |> Utils.maybe(nil, &Data.decode!/1)
 
           {Datum.datum_hash(datum_hash), raw_datum}
@@ -189,118 +212,24 @@ defmodule Sutra.Provider.YaciProvider do
     end)
   end
 
-  @impl true
-  def utxos_at_refs(refs) do
-    Enum.map(refs, &do_fetch_utxo_at_ref/1)
-  end
+  # Extra functions from original provider (topup, balance_of, etc.)
 
-  def do_fetch_utxo_at_ref(<<t_id::binary-size(64), _::binary-size(1), indx::binary>>) do
-    do_fetch_utxo_at_ref(%OutputReference{transaction_id: t_id, output_index: indx})
-  end
-
-  def do_fetch_utxo_at_ref(%OutputReference{} = ref) do
-    url = "#{fetch_endpoint(:general)}/utxos/#{ref.transaction_id}/#{ref.output_index}"
-
-    Req.get!(url).body
-    |> parse_utxo()
-  end
-
-  @impl true
-  def network, do: :testnet
-
-  @impl true
-  def submit_tx(tx_cbor) when is_binary(tx_cbor) do
-    url = "#{fetch_endpoint(:admin)}/tx/submit"
-
-    Req.post!(url,
-      body: tx_cbor,
-      headers: %{
-        "Content-Type" => "application/cbor"
-      }
+  def topup(clients, address, qty) do
+    Req.post!(clients.admin,
+      url: "addresses/topup",
+      json: %{"address" => address, "adaAmount" => qty}
     ).body
   end
 
-  def submit_tx(%Transaction{} = tx) do
-    Transaction.to_cbor(tx)
-    |> CBOR.encode()
-    |> submit_tx()
-  end
-
-  @impl true
-  def datum_of(datum_hashes) when is_list(datum_hashes) do
-    Enum.reduce(datum_hashes, %{}, fn hash, acc ->
-      if is_binary(hash), do: Map.merge(acc, datum_of(hash)), else: acc
-    end)
-  end
-
-  def datum_of(datum_hash) when is_binary(datum_hash) do
-    url = "#{fetch_endpoint(:general)}/scripts/datum/#{datum_hash}/cbor"
-
-    case Req.get!(url).body do
-      %{"cbor" => raw_cbor} -> %{datum_hash => raw_cbor}
-      _ -> %{}
-    end
-  end
-
-  @impl true
-  def slot_config do
-    yaci_cfg = Application.get_env(:sutra, :yaci) || []
-
-    case yaci_cfg[:slot_config] do
-      %SlotConfig{} = slot_cfg ->
-        slot_cfg
-
-      _ ->
-        get_slot_config()
-    end
-  end
-
-  def get_slot_config do
-    url = "#{fetch_endpoint(:admin)}/admin/devnet/genesis/shelley"
-
-    resp =
-      Req.get!(url).body
-
-    {:ok, zero_time, _} =
-      DateTime.from_iso8601(resp["systemStart"])
-
-    %Sutra.SlotConfig{
-      zero_time: DateTime.to_unix(zero_time, :millisecond),
-      slot_length: resp["slotLength"] * 1000,
-      zero_slot: 0
-    }
-  end
-
-  def topup(address, qty) when is_integer(qty) and is_binary(address) do
-    url = "#{fetch_endpoint(:admin)}/addresses/topup"
-
-    Req.post!(url, json: %{"address" => address, "adaAmount" => qty}).body
-  end
-
-  def topup(%Address{} = addr, qty), do: Address.to_bech32(addr) |> topup(qty)
-
-  def running? do
-    case fetch_protocol_params(0) do
-      %ProtocolParams{} -> true
-      _ -> false
-    end
-  end
-
-  def balance_of(address) when is_binary(address) do
-    url = "#{fetch_endpoint(:general)}/addresses/#{address}/balance"
-
-    case Req.get!(url) do
+  def balance_of(clients, address) do
+    case Req.get!(clients.general, url: "addresses/#{address}/balance") do
       %Req.Response{status: 200, body: %{"amounts" => amounts}} -> parse_asset(amounts)
       _ -> Asset.zero()
     end
   end
 
-  def balance_of(%Address{} = addr), do: Address.to_bech32(addr) |> balance_of()
-
-  def get_tx_info(tx_id) when is_binary(tx_id) do
-    url = "#{fetch_endpoint(:general)}/txs/#{tx_id}"
-
-    case Req.get(url) do
+  def get_tx_info(clients, tx_id) do
+    case Req.get(clients.general, url: "txs/#{tx_id}") do
       {:ok, %Req.Response{status: 200, body: resp}} -> resp
       _ -> nil
     end

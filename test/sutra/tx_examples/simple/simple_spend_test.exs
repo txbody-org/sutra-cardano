@@ -7,7 +7,7 @@ defmodule Sutra.TxExamples.Simple.SimpleSpendTest do
   alias Sutra.Cardano.Asset
   alias Sutra.Cardano.Script
   alias Sutra.Cardano.Transaction.Input
-  alias Sutra.Provider.YaciProvider
+  alias Sutra.Provider.Yaci
 
   import Sutra.Test.Support.BlueprintSupport
   import Sutra.Cardano.Transaction.TxBuilder
@@ -38,7 +38,7 @@ defmodule Sutra.TxExamples.Simple.SimpleSpendTest do
 
         await_tx(place_tx_id)
 
-        script_guess_utxo = YaciProvider.utxos_at_refs(["#{place_tx_id}#0"])
+        script_guess_utxo = Yaci.utxos_at_tx_refs(["#{place_tx_id}#0"])
 
         spend_tx_id =
           new_tx()
@@ -52,7 +52,7 @@ defmodule Sutra.TxExamples.Simple.SimpleSpendTest do
 
         # should return nil for place_tx_id since it is already spent
         place_utxo =
-          YaciProvider.utxos_at([script_addr])
+          Yaci.utxos_at_addresses([script_addr])
           |> Enum.find(fn %Input{output_reference: oref} ->
             oref.transaction_id == place_tx_id
           end)

@@ -19,8 +19,10 @@ defmodule Sutra.Provider.Kupogmios.Client do
   import Sutra.Utils, only: [maybe: 3]
 
   def new(opts \\ []) do
-    kupo_url = opts[:kupo_url]
-    ogmios_url = opts[:ogmios_url]
+    config = Application.get_env(:sutra, :kupogmios, [])
+
+    kupo_url = validate_url!(opts[:kupo_url] || config[:kupo_url], :kupo_url)
+    ogmios_url = validate_url!(opts[:ogmios_url] || config[:ogmios_url], :ogmios_url)
 
     %{
       kupo: Req.new(base_url: kupo_url),
@@ -83,6 +85,14 @@ defmodule Sutra.Provider.Kupogmios.Client do
   end
 
   # Helper functions
+
+  defp validate_url!(url, field_name) do
+    if is_binary(url) and url != "" do
+      url
+    else
+      raise ArgumentError, "#{field_name} is required to be a non-empty string"
+    end
+  end
 
   defp do_fetch_tx_ref(clients, tx_id, indices) do
     pattern = "*@#{tx_id}?unspent&resolve_hashes"

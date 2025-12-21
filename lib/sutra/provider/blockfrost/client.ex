@@ -10,6 +10,7 @@ defmodule Sutra.Provider.Blockfrost.Client do
   alias Sutra.Common.ExecutionUnitPrice
   alias Sutra.Common.ExecutionUnits
   alias Sutra.ProtocolParams
+  alias Sutra.Data
 
   def new(opts \\ []) do
     project_id = opts[:project_id]
@@ -35,17 +36,21 @@ defmodule Sutra.Provider.Blockfrost.Client do
   end
 
   def utxos_at_addresses(client, addresses) do
-    addresses
-    |> Enum.map(fn addr ->
-      addr_str = if is_binary(addr), do: addr, else: Address.to_bech32(addr)
+    raw_utxos =
+      addresses
+      |> Enum.map(fn addr ->
+        addr_str = if is_binary(addr), do: addr, else: Address.to_bech32(addr)
 
-      Task.async(fn ->
-        Req.get!(client, url: "addresses/#{addr_str}/utxos").body
-        |> Enum.map(&parse_utxo/1)
+        Task.async(fn ->
+          Req.get!(client, url: "addresses/#{addr_str}/utxos").body
+        end)
       end)
-    end)
-    |> Task.await_many(30_000)
-    |> List.flatten()
+      |> Task.await_many(30_000)
+      |> List.flatten()
+
+    datums = fetch_datums_for_utxos(client, raw_utxos)
+
+    Enum.map(raw_utxos, &parse_utxo(&1, datums))
   end
 
   def utxos_at_tx_refs(client, refs) do
@@ -60,10 +65,14 @@ defmodule Sutra.Provider.Blockfrost.Client do
     end)
     |> Enum.group_by(fn {tx_id, _} -> tx_id end, fn {_, index} -> index end)
     |> Enum.map(fn {tx_id, indices} ->
-      Task.async(fn -> fetch_tx_utxos(client, tx_id, indices) end)
+      Task.async(fn -> fetch_tx_utxos_raw(client, tx_id, indices) end)
     end)
     |> Task.await_many(30_000)
     |> List.flatten()
+    |> then(fn raw_utxos ->
+      datums = fetch_datums_for_utxos(client, raw_utxos)
+      Enum.map(raw_utxos, &parse_utxo(&1, datums))
+    end)
   end
 
   def datum_of(client, datum_hashes) when is_list(datum_hashes) do
@@ -142,18 +151,59 @@ defmodule Sutra.Provider.Blockfrost.Client do
 
   # Helper parsers
 
-  defp fetch_tx_utxos(client, tx_id, indices) do
-    Req.get!(client, url: "txs/#{tx_id}/utxos").body["outputs"]
-    |> Enum.filter(fn %{"output_index" => index} -> index in indices end)
-    |> Enum.map(fn out -> parse_utxo(Map.put(out, "tx_hash", tx_id)) end)
+  defp fetch_tx_utxos_raw(client, tx_id, indices) do
+    # When outputs is nil, it means 404 or missing, we handle it gracefully
+    case Req.get(client, url: "txs/#{tx_id}/utxos") do
+      {:ok, %{status: 200, body: %{"outputs" => outputs}}} when is_list(outputs) ->
+        outputs
+        |> Enum.filter(fn %{"output_index" => index} -> index in indices end)
+        |> Enum.map(fn out -> Map.put(out, "tx_hash", tx_id) end)
+
+      _ ->
+        []
+    end
   end
 
-  defp parse_utxo(data) do
-    datum =
+  defp fetch_datums_for_utxos(client, utxos) do
+    utxos
+    |> Enum.flat_map(fn data ->
+      if is_nil(data["inline_datum"]) and not is_nil(data["data_hash"]) do
+        [data["data_hash"]]
+      else
+        []
+      end
+    end)
+    |> Enum.uniq()
+    |> then(fn
+      [] -> %{}
+      hashes -> datum_of(client, hashes)
+    end)
+  end
+
+  defp parse_utxo(data, datums_map) do
+    {datum, raw_datum} =
       cond do
-        data["inline_datum"] -> %Datum{kind: :inline_datum, value: data["inline_datum"]}
-        data["data_hash"] -> %Datum{kind: :datum_hash, value: data["data_hash"]}
-        true -> %Datum{kind: :no_datum}
+        data["inline_datum"] ->
+          cbor_hex = data["inline_datum"]
+          raw = Data.decode!(cbor_hex)
+          {%Datum{kind: :inline_datum, value: cbor_hex}, raw}
+
+        data["data_hash"] ->
+          hash = data["data_hash"]
+          # Fetch datum from provider
+          raw =
+            case Map.get(datums_map, hash) do
+              cbor_hex when is_binary(cbor_hex) ->
+                Data.decode!(cbor_hex)
+
+              _ ->
+                nil
+            end
+
+          {%Datum{kind: :datum_hash, value: hash}, raw}
+
+        true ->
+          {%Datum{kind: :no_datum}, nil}
       end
 
     %Input{
@@ -164,6 +214,7 @@ defmodule Sutra.Provider.Blockfrost.Client do
       output: %Output{
         address: Address.from_bech32(data["address"]),
         datum: datum,
+        datum_raw: raw_datum,
         value: parse_amount(data["amount"]),
         reference_script: data["reference_script_hash"]
       }

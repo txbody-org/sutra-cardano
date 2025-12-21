@@ -11,9 +11,11 @@ defmodule Sutra.Provider.Yaci do
   alias Sutra.SlotConfig
 
   defp clients do
+    config = Application.get_env(:sutra, :yaci, [])
+
     Client.new(
-      general_api_url: Application.get_env(:sutra, :yaci_general_api_url),
-      admin_api_url: Application.get_env(:sutra, :yaci_admin_api_url)
+      general_api_url: config[:yaci_general_api_url] || "http://localhost:8080",
+      admin_api_url: config[:yaci_admin_api_url] || "http://localhost:10000"
     )
   end
 

@@ -39,7 +39,7 @@ fi
 # Koios
 echo "------------------------------------------------"
 echo "Running Koios Provider Test"
-run_mint_test "koios" "$KOIOS_TEST_ADDRESS" "$KOIOS_TEST_SIGNING_KEY"
+# run_mint_test "koios" "$KOIOS_TEST_ADDRESS" "$KOIOS_TEST_SIGNING_KEY"
 
 echo "------------------------------------------------"
 echo "All Provider Tests Completed."

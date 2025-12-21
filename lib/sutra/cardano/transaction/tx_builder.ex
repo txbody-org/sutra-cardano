@@ -84,6 +84,13 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
     %__MODULE__{builder | config: TxConfig.__set_cfg(cfg, :protocol_params, protocol_params)}
   end
 
+  @doc """
+  Toggles runtime UPLC script evaluation by the provider during transaction building.
+
+  When set to `true`, the builder will send the transaction to the configured provider (e.g., Blockfrost, Maestro) to evaluate script execution units and validate script logic before finalizing the transaction.
+
+  Defaults to `false`.
+  """
   def evaluate_provider_uplc(%__MODULE__{config: cfg} = builder, evaluate \\ true) do
     %__MODULE__{builder | config: TxConfig.__set_cfg(cfg, :evaluate_provider_uplc, evaluate)}
   end

@@ -97,7 +97,7 @@ defmodule Sutra.Provider do
     if function_exported?(provider, :evaluate_tx, 1) do
       provider.evaluate_tx(tx_cbor)
     else
-      {:error, "Provider does not support execute_tx"}
+      {:error, "Provider does not support evaluate_tx"}
     end
   end
 

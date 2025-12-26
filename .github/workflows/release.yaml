@@ -1,0 +1,36 @@
+name: Release to Hex
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  publish:
+    name: Publish to Hex
+    runs-on: ubuntu-latest
+    env:
+      MIX_ENV: prod
+      HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Libsodium
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libsodium-dev
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: '27.0'
+          elixir-version: '1.17.2'
+
+      - name: Install dependencies
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get
+
+      - name: Publish to Hex
+        run: mix hex.publish --yes

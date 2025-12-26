@@ -15,7 +15,9 @@ defmodule Sutra.MixProject do
       name: "Sutra",
       source_url: "https://github.com/txbody-org/sutra-cardano",
       homepage_url: "https://github.com/txbody-org/sutra-cardano",
-      docs: &docs/0
+      docs: &docs/0,
+      description: description(),
+      package: package()
     ]
   end
 
@@ -40,10 +42,23 @@ defmodule Sutra.MixProject do
       {:rustler, "~> 0.36.2"},
       {:bech32, "~> 1.0"},
       {:req, "~> 0.5.7"},
-      {:mnemonic, git: "https://github.com/piyushthapa/mnemonic"},
-      {:ex_sodium, git: "https://github.com/txbody-org/ex_sodium"},
+      {:mnemonic_tx, "~> 0.3.2"},
+      {:ex_sodium, "~> 0.1.2"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.21", only: :dev, runtime: false}
+    ]
+  end
+
+  defp description do
+    "A User-Friendly Component-Based Cardano SDK for Elixir."
+  end
+
+  defp package do
+    [
+      name: "sutra",
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/txbody-org/sutra-cardano"},
+      files: ~w(lib .formatter.exs mix.exs README.md LICENSE)
     ]
   end
 

@@ -52,7 +52,9 @@ defmodule Sutra.MixProject do
       # The main page in the docs
       main: "overview",
       extras: extras(),
-      groups_for_extras: groups_for_extras()
+      groups_for_extras: groups_for_extras(),
+      filter_modules:
+        ~r/^(Elixir\.)?(Sutra\.(Data(\.Plutus)?|Cardano\.(Address|Asset|Script(\.NativeScript)?|Transaction\.(Input|Output|OutputReference|Datum|TxBuilder)))|Mix\.Tasks\.Sutra\..*)$/
     ]
   end
 
@@ -66,15 +68,22 @@ defmodule Sutra.MixProject do
       "guides/transaction_building/simple_tx.md",
       "guides/transaction_building/mint_asset.md",
       "guides/transaction_building/deploy_script.md",
-      "guides/transaction_building/reference_inputs.md"
+      "guides/transaction_building/reference_inputs.md",
+
+      # Data Definition
+      "guides/plutus_data/plutus_data.md",
+
+      # Testing
+      "guides/testing/privnet_testing.md"
     ]
   end
 
   defp groups_for_extras do
     [
       Provider: ~r/guides\/provider_integration\/.?/,
-      Script: ~r/guides\/script\/.?/,
-      Transaction: ~r/guides\/transaction_building\/.?/
+      Transaction: ~r/guides\/transaction_building\/.?/,
+      "Plutus Data": ~r/guides\/plutus_data\/.?/,
+      Testing: ~r/guides\/testing\/.?/
     ]
   end
 end

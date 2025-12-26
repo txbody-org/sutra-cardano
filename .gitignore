@@ -28,3 +28,4 @@ sutra_offchain-*.tar
 .elixir_ls
 target
 .env
+*.tar

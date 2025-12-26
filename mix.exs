@@ -55,7 +55,7 @@ defmodule Sutra.MixProject do
 
   defp package do
     [
-      name: "sutra",
+      name: "sutra_cardano",
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/txbody-org/sutra-cardano"},
       files: ~w(lib .formatter.exs mix.exs README.md LICENSE)

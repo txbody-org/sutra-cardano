@@ -1,26 +1,45 @@
 # Sutra
 
-** Offchain transaction builder framework for cardano using Elixir.**
-
-> [!WARNING]  
-> SDK is under heavy development and API might change until we have stable version.
+**Offchain transaction builder framework for Cardano using Elixir.**
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `sutra_offchain` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:sutra, "~> 0.2.0"}
+    {:sutra_cardano, "~> 0.2.4"}
   ]
 end
 ```
 
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/sutra_offchain>.
+be found at <https://hexdocs.pm/sutra_cardano>.
+
+## Usage
+
+Sutra provides a pipe-friendly API to build transactions.
+
+```elixir
+import Sutra
+
+# 1. Create a new transaction
+tx =
+  new_tx()
+  |> use_provider(MyProvider) # Configure your provider (Blockfrost, Yaci, etc.)
+  |> add_input(utxos)
+  |> add_output(friend_address, 10_000_000)
+
+# 2. Build and Sign
+signed_tx =
+  tx
+  |> build_tx!()
+  |> sign_tx(private_key)
+
+# 3. Submit
+submit_tx(signed_tx)
+```
 
 ## Supported Providers
 

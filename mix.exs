@@ -54,7 +54,7 @@ defmodule Sutra.MixProject do
       extras: extras(),
       groups_for_extras: groups_for_extras(),
       filter_modules:
-        ~r/^(Elixir\.)?(Sutra\.(Data(\.Plutus)?|Cardano\.(Address|Asset|Script(\.NativeScript)?|Transaction\.(Input|Output|OutputReference|Datum|TxBuilder)))|Mix\.Tasks\.Sutra\..*)$/
+        ~r/^(Elixir\.)?(Sutra|Sutra\.(Data(\.Plutus)?|Cardano\.(Address|Asset|Script(\.NativeScript)?|Transaction\.(Input|Output|OutputReference|Datum|TxBuilder)))|Mix\.Tasks\.Sutra\..*)$/
     ]
   end
 

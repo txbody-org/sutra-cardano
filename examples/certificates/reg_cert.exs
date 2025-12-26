@@ -2,7 +2,6 @@ alias Sutra.Cardano.Script.NativeScript
 alias Sutra.Data
 alias Sutra.Cardano.Script
 alias Sutra.Crypto.Key
-import Sutra.Cardano.Transaction.TxBuilder
 
 Code.eval_file("examples/setup_yaci_provider.exs")
 
@@ -30,13 +29,13 @@ script_json = %{
 }
 
 tx_id =
-  new_tx()
-  |> register_stake_credential(script, Data.void())
-  |> register_stake_credential(NativeScript.from_json(script_json))
-  |> register_stake_credential(wallet_address)
-  |> build_tx!(wallet_address: [wallet_address])
-  |> sign_tx([extended_key])
-  |> sign_tx_with_raw_extended_key(extended_key.stake_key)
-  |> submit_tx()
+  Sutra.new_tx()
+  |> Sutra.register_stake_credential(script, Data.void())
+  |> Sutra.register_stake_credential(NativeScript.from_json(script_json))
+  |> Sutra.register_stake_credential(wallet_address)
+  |> Sutra.build_tx!(wallet_address: [wallet_address])
+  |> Sutra.sign_tx([extended_key])
+  |> Sutra.sign_tx_with_raw_extended_key(extended_key.stake_key)
+  |> Sutra.submit_tx()
 
 IO.inspect(tx_id)

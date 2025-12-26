@@ -15,28 +15,28 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.AttachDatumTest do
 
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Transaction
-  alias Sutra.Cardano.Transaction.TxBuilder
+
   alias Sutra.Data
   alias Sutra.SlotConfig
   import Sutra.Test.Support.BuilderSupport
 
   describe "attach_datum" do
-    defp attach_multi_datums(%TxBuilder{} = tx, datums) do
+    defp attach_multi_datums(%Sutra.Cardano.Transaction.TxBuilder{} = tx, datums) do
       Enum.reduce(datums, tx, fn datum, acc_tx ->
         decoded_datum = Data.decode!(datum)
-        TxBuilder.attach_datum(acc_tx, decoded_datum)
+        Sutra.attach_datum(acc_tx, decoded_datum)
       end)
     end
 
     test "attaches multiple datums to the transaction" do
       assert {:ok, %Transaction{}} =
-               TxBuilder.new_tx()
+               Sutra.new_tx()
                |> attach_multi_datums(@datums_1)
                |> attach_multi_datums(@datum_2)
-               |> TxBuilder.set_protocol_params(sample_protocol_params())
-               |> TxBuilder.use_provider(Sutra.Provider.Koios)
-               |> TxBuilder.set_wallet_address([Address.from_bech32(sample_address())])
-               |> TxBuilder.build_tx(
+               |> Sutra.set_protocol_params(sample_protocol_params())
+               |> Sutra.use_provider(Sutra.Provider.Koios)
+               |> Sutra.set_wallet_address([Address.from_bech32(sample_address())])
+               |> Sutra.build_tx(
                  wallet_utxos: sample_wallet_utxos(),
                  slot_config: SlotConfig.fetch_slot_config(:preprod)
                )

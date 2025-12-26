@@ -6,7 +6,6 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.BalanceTxTest do
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Asset
 
-  import Sutra.Cardano.Transaction.TxBuilder
   import Sutra.Test.Support.BuilderSupport
 
   @addr1 "addr1gx2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer5pnz75xxcrzqf96k"
@@ -42,11 +41,11 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.BalanceTxTest do
 
       # Send 2 ADA
       tx =
-        new_tx()
-        |> use_provider(DummyProvider)
-        |> set_protocol_params(pp)
-        |> add_output(Address.from_bech32(@addr1), Asset.from_lovelace(2_000_000))
-        |> build_tx!(wallet_utxos: wallet_utxos, change_address: @change_addr)
+        Sutra.new_tx()
+        |> Sutra.use_provider(DummyProvider)
+        |> Sutra.set_protocol_params(pp)
+        |> Sutra.add_output(Address.from_bech32(@addr1), Asset.from_lovelace(2_000_000))
+        |> Sutra.build_tx!(wallet_utxos: wallet_utxos, change_address: @change_addr)
 
       # Should select 5 ADA input (LargestFirst)
       assert length(tx.tx_body.inputs) == 1
@@ -72,14 +71,14 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.BalanceTxTest do
 
       # Send 50 tokens
       tx =
-        new_tx()
-        |> use_provider(DummyProvider)
-        |> set_protocol_params(pp)
-        |> add_output(
+        Sutra.new_tx()
+        |> Sutra.use_provider(DummyProvider)
+        |> Sutra.set_protocol_params(pp)
+        |> Sutra.add_output(
           Address.from_bech32(@addr1),
           Asset.from_lovelace(1_500_000) |> Asset.add("policy", "token", 50)
         )
-        |> build_tx!(wallet_utxos: wallet_utxos, change_address: @change_addr)
+        |> Sutra.build_tx!(wallet_utxos: wallet_utxos, change_address: @change_addr)
 
       # Should select the token input
       assert Enum.any?(tx.tx_body.inputs, fn i ->
@@ -98,11 +97,11 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.BalanceTxTest do
 
       # Try to send 2 ADA
       assert_raise RuntimeError, fn ->
-        new_tx()
-        |> use_provider(DummyProvider)
-        |> set_protocol_params(pp)
-        |> add_output(Address.from_bech32(@addr1), Asset.from_lovelace(2_000_000))
-        |> build_tx!(wallet_utxos: wallet_utxos, change_address: @change_addr)
+        Sutra.new_tx()
+        |> Sutra.use_provider(DummyProvider)
+        |> Sutra.set_protocol_params(pp)
+        |> Sutra.add_output(Address.from_bech32(@addr1), Asset.from_lovelace(2_000_000))
+        |> Sutra.build_tx!(wallet_utxos: wallet_utxos, change_address: @change_addr)
       end
     end
 
@@ -118,12 +117,12 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.BalanceTxTest do
       # If we add manual input, it MUST be in the transaction.
 
       tx =
-        new_tx()
-        |> use_provider(DummyProvider)
-        |> set_protocol_params(pp)
-        |> add_input([manual_input])
-        |> add_output(Address.from_bech32(@addr1), Asset.from_lovelace(3_000_000))
-        |> build_tx!(wallet_utxos: wallet_utxos, change_address: @change_addr)
+        Sutra.new_tx()
+        |> Sutra.use_provider(DummyProvider)
+        |> Sutra.set_protocol_params(pp)
+        |> Sutra.add_input([manual_input])
+        |> Sutra.add_output(Address.from_bech32(@addr1), Asset.from_lovelace(3_000_000))
+        |> Sutra.build_tx!(wallet_utxos: wallet_utxos, change_address: @change_addr)
 
       # Manual input must be present
       assert Enum.any?(tx.tx_body.inputs, fn i -> i == manual_input end)
@@ -149,14 +148,14 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.BalanceTxTest do
       ]
 
       tx =
-        new_tx()
-        |> use_provider(DummyProvider)
-        |> set_protocol_params(pp)
-        |> add_output(
+        Sutra.new_tx()
+        |> Sutra.use_provider(DummyProvider)
+        |> Sutra.set_protocol_params(pp)
+        |> Sutra.add_output(
           Address.from_bech32(@addr1),
           Asset.from_lovelace(1_305_930) |> Asset.add("policy", "token", 500)
         )
-        |> build_tx!(wallet_utxos: wallet_utxos, change_address: @change_addr)
+        |> Sutra.build_tx!(wallet_utxos: wallet_utxos, change_address: @change_addr)
 
       # Should select one token input (1M > 500)
       # And potentially the 5 ADA input if 1.03 ADA isn't enough for 1.3 ADA output + fee + change min ADA
@@ -206,11 +205,11 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.BalanceTxTest do
       ]
 
       tx =
-        new_tx()
-        |> use_provider(DummyProvider)
-        |> set_protocol_params(pp)
-        |> add_output(Address.from_bech32(@addr1), Asset.from_lovelace(1_000_000))
-        |> build_tx!(wallet_utxos: wallet_utxos, change_address: @change_addr)
+        Sutra.new_tx()
+        |> Sutra.use_provider(DummyProvider)
+        |> Sutra.set_protocol_params(pp)
+        |> Sutra.add_output(Address.from_bech32(@addr1), Asset.from_lovelace(1_000_000))
+        |> Sutra.build_tx!(wallet_utxos: wallet_utxos, change_address: @change_addr)
 
       assert length(tx.tx_body.inputs) == 1
       change_output = List.last(tx.tx_body.outputs)
@@ -222,11 +221,11 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.BalanceTxTest do
       ]
 
       assert_raise RuntimeError, fn ->
-        new_tx()
-        |> use_provider(DummyProvider)
-        |> set_protocol_params(pp)
-        |> add_output(Address.from_bech32(@addr1), Asset.from_lovelace(1_000_000))
-        |> build_tx!(wallet_utxos: small_wallet_utxos, change_address: @change_addr)
+        Sutra.new_tx()
+        |> Sutra.use_provider(DummyProvider)
+        |> Sutra.set_protocol_params(pp)
+        |> Sutra.add_output(Address.from_bech32(@addr1), Asset.from_lovelace(1_000_000))
+        |> Sutra.build_tx!(wallet_utxos: small_wallet_utxos, change_address: @change_addr)
       end
     end
   end

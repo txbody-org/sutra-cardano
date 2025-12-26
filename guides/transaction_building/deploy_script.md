@@ -3,7 +3,7 @@
 To use reference scripts (CIP-33), you first need to "deploy" the script to the blockchain by sending it to an output.
 
 ```elixir
-import Sutra.Cardano.Transaction.TxBuilder
+
 alias Sutra.Cardano.Script
 alias Sutra.Cardano.Address
 
@@ -14,15 +14,16 @@ script = %Script{
 }
 
 tx_id =
-  new_tx()
-  |> add_input(user_utxos)
+tx_id =
+  Sutra.new_tx()
+  |> Sutra.add_input(user_utxos)
   # Deploy script to an address
   # This creates an output with the script attached as a reference script
   # and a minimal ADA amount.
-  |> deploy_script(%Address{}, script)
-  |> build_tx!(wallet_address: user_address)
-  |> sign_tx(signing_key)
-  |> submit_tx()
+  |> Sutra.deploy_script(%Address{}, script)
+  |> Sutra.build_tx!(wallet_address: user_address)
+  |> Sutra.sign_tx(signing_key)
+  |> Sutra.submit_tx()
 ```
 
 Once confirmed, you can use the resulting UTxO as a reference input in future transactions.

@@ -1,6 +1,28 @@
 defmodule Sutra.Cardano.Transaction.TxBuilder do
   @moduledoc """
-  building blocks to build Transaction in Cardano
+  A composable builder for constructing Cardano Transactions.
+
+  `TxBuilder` provides a pipeline-based API to build transactions step-by-step. It handles:
+  - Adding inputs (spending UTxOs)
+  - Adding outputs (sending payments)
+  - Minting/burning assets
+  - Managing witnesses (signatures, scripts)
+  - Handling collateral and fees
+  - Balancing the transaction (calculating change)
+
+  ## Example Usage
+
+  ```elixir
+  alias Sutra.Cardano.Transaction.TxBuilder
+  import Sutra.Cardano.Transaction.TxBuilder
+
+  new_tx()
+  |> add_input(utxos_to_spend)
+  |> add_output(receiver_address, 10_000_000)
+  |> build_tx!(wallet_address: change_address)
+  |> sign_tx(signing_key)
+  |> submit_tx()
+  ```
   """
   require Sutra.Cardano.Script
   require Sutra.Data.Plutus
@@ -46,12 +68,13 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
             withdrawals: %{}
 
   @doc """
-  Initialize TxBuilder with default values
+  Initialize a new empty `TxBuilder`.
 
-    ## Examples
+  ## Examples
 
       iex> new_tx()
-      %TxBuilder{}
+      %Sutra.Cardano.Transaction.TxBuilder{}
+
   """
   def new_tx do
     %__MODULE__{
@@ -60,12 +83,12 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   end
 
   @doc """
-  overrides provider
+  Overrides the default provider for the transaction builder.
 
-    ## Examples
+  ## Examples
 
-      iex(1)> new_tx()  |> use_provider(KoiosProvider)
-      %TxBuilder{}
+      iex> new_tx() |> use_provider(Sutra.Provider.Koios)
+      %Sutra.Cardano.Transaction.TxBuilder{}
 
   """
   def use_provider(%__MODULE__{config: cfg} = builder, provider) when not is_nil(provider) do
@@ -73,12 +96,16 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   end
 
   @doc """
-  use custom protocol params
+  Sets custom Protocol Parameters for transaction building.
 
-    ## Examples
+  Useful when you want to override the provider's fetched protocol parameters or use specific values for fee calculation.
 
-        iex(1)>  new_tx() |> set_protocol_params(%ProtocolParams{})
-        %TxBuilder{}
+  ## Examples
+
+      iex> params = %Sutra.ProtocolParams{min_fee_a: 44, min_fee_b: 155381}
+      iex> new_tx() |> set_protocol_params(params)
+      %Sutra.Cardano.Transaction.TxBuilder{}
+
   """
   def set_protocol_params(%__MODULE__{config: cfg} = builder, %ProtocolParams{} = protocol_params) do
     %__MODULE__{builder | config: TxConfig.__set_cfg(cfg, :protocol_params, protocol_params)}
@@ -87,24 +114,41 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   @doc """
   Toggles runtime UPLC script evaluation by the provider during transaction building.
 
-  When set to `true`, the builder will send the transaction to the configured provider (e.g., Blockfrost, Maestro) to evaluate script execution units and validate script logic before finalizing the transaction.
+  When set to `true`, the builder will send the transaction to the configured provider (e.g., Blockfrost, Maestro)
+  to evaluate script execution units (ExUnits) and validate script logic before finalizing the transaction.
+
+  This is highly recommended for transactions involving Plutus scripts to ensure they will pass on-chain validation
+  and to accurately calculate execution fees.
 
   Defaults to `false`.
+
+  ## Examples
+
+      iex> new_tx() |> evaluate_provider_uplc(true)
+      %Sutra.Cardano.Transaction.TxBuilder{}
+
   """
   def evaluate_provider_uplc(%__MODULE__{config: cfg} = builder, evaluate \\ true) do
     %__MODULE__{builder | config: TxConfig.__set_cfg(cfg, :evaluate_provider_uplc, evaluate)}
   end
 
   @doc """
-  Set Wallet address
+  Sets the wallet address(es) to be used for the transaction.
 
-    ## Examples
+  This is primarily used to:
+  1. Fetch UTxOs for balancing (if `wallet_utxos` is not provided in `build_tx!`).
+  2. Determine the change address (if `set_change_address` is not explicitly called).
 
-      iex> new_tx() |> set_wallet_address(%Address{})
-      %TxBuilder{}
+  ## Examples
 
-      iex> new_tx() |> set_wallet_address([%Address{}, %Address{}])
-      %TxBuilder{}
+      iex> address = Sutra.Cardano.Address.from_bech32("addr_test1...")
+      iex> new_tx() |> set_wallet_address(address)
+      %Sutra.Cardano.Transaction.TxBuilder{}
+
+      iex> addresses = [address1, address2]
+      iex> new_tx() |> set_wallet_address(addresses)
+      %Sutra.Cardano.Transaction.TxBuilder{}
+
   """
   def set_wallet_address(%__MODULE__{config: cfg} = builder, %Address{} = address) do
     %__MODULE__{builder | config: TxConfig.__set_cfg(cfg, :wallet_address, [address])}
@@ -115,16 +159,22 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   end
 
   @doc """
-  Set Custom change address
+  Sets a custom change address for the transaction.
 
-    ## Examples
+  If not set, the first address from `set_wallet_address` is used as the change address.
+  You can also specify a datum to be attached to the change output.
 
-        iex> new_tx() |> set_change_address(%Address{})
-        %TxBuilder{}
+  ## Examples
 
-        # Change Address with datum
-        iex> new_tx() |> set_change_address(%Address{}, {:inline_datum, some_plutus_data})
-        %TxBuilder{}
+      iex> address = Sutra.Cardano.Address.from_bech32("addr_test1...")
+      iex> new_tx() |> set_change_address(address)
+      %Sutra.Cardano.Transaction.TxBuilder{}
+
+      # Change Address with datum
+      iex> datum = %Sutra.Cardano.Transaction.Datum{kind: :inline_datum, value: "data"}
+      iex> new_tx() |> set_change_address(address, {:inline_datum, datum})
+      %Sutra.Cardano.Transaction.TxBuilder{}
+
   """
   def set_change_address(
         %__MODULE__{config: %TxConfig{} = cfg, plutus_data: prev_plutus_data} = builder,
@@ -148,41 +198,41 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   end
 
   @doc """
-  Adds Inputs To Transaction
+  Adds Inputs (UTxOs) to the transaction.
 
   ## Parameters
 
-      - `%TxBuilder{}` - The TxBuilder instance containing the transaction details.
-      - `inputs`    - The list of `%Input{}` trying to spend
+  - `builder`: The `TxBuilder` instance.
+  - `inputs`: A list of `%Sutra.Cardano.Transaction.Input{}` to spend.
+  - `opts`: options for spending inputs.
 
   ## Options
-      - `witness`   - The witness for input. Can be `%Script{}`, `%NativeScript{}`, `:vkey_witness`, `%Input{}`, `:ref_scripts` based on input. (defaults to `:vkey_witness`)
-      - `redeemer`  - Redeemer for spending inputs if needed.
-                      Required only for inputs trying to consume from script address
 
-      - `datum`     - The datum info needed to spend utxos from script. Useful only for utxos with datum type `datum_hash`.
-                      Note: If Datum is already available from provider for input, datum will be overriden by datum fetched from provider
+  - `witness`: The witness for the input.
+    - `:vkey_witness` (default) - For standard wallet inputs (P2PKH).
+    - `%Script{}` or `%NativeScript{}` - The spending script itself.
+    - `%Input{}` - The reference input containing the spending script (CIP-33).
+    - `:ref_inputs` - Indicates the script is provided via `add_reference_inputs/2`.
+  - `redeemer`: The redeemer data (required for script spending).
+  - `datum`: Explicit datum info (e.g., `{:datum_hash, data}`) if the UTxO from provider doesn't contain it.
 
   ## Examples
 
-      iex> new_tx() |> add_input(inputs_from_user_wallet)
-      %TxBuilder{}
+      # Simple wallet spend
+      iex> new_tx() |> add_input(wallet_inputs)
+      %Sutra.Cardano.Transaction.TxBuilder{}
 
-      iex> new_tx() |> add_input(native_script_inputs, witness: %NativeScript{})
-      %TxBuilder{}
+      # Spending from a Native Script
+      iex> new_tx() |> add_input(native_script_inputs, witness: native_script)
+      %Sutra.Cardano.Transaction.TxBuilder{}
 
-      iex> new_tx() |> add_input(script_inputs, witness: %Script{}, redeemer: redeemer_info)
-      %TxBuilder{}
+      # Spending from a Plutus Script
+      iex> new_tx() |> add_input(script_inputs, witness: script, redeemer: redeemer_data)
+      %Sutra.Cardano.Transaction.TxBuilder{}
 
-      # Pass Input as reference_script
-      iex> new_tx() |> add_input(script_inputs, witness: %Input{}, redeemer: redeemer_info)
-      %TxBuilder{}
-
-      # If script is already added as reference_script in pipeline we can
-      # simply pass :ref_inputs
-      iex> new_tx() |> add_input(script_inputs, witness: :ref_inputs, redeemer: redeemer_info)
-      %TxBuilder{}
-
+      # Spending using a Reference Script on-chain
+      iex> new_tx() |> add_input(script_inputs, witness: ref_script_utxo, redeemer: redeemer_data)
+      %Sutra.Cardano.Transaction.TxBuilder{}
 
   """
   def add_input(%__MODULE__{} = cfg, [%Input{} | _] = inputs, opts \\ []) do
@@ -228,6 +278,20 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
     end)
   end
 
+  @doc """
+  Adds Reference Inputs to the transaction (CIP-31).
+
+  Reference incoming inputs allow reading from UTxOs without spending them.
+  Commonly used for:
+  - Reference scripts (CIP-33) to use scripts without including them in witness set.
+  - Using Inline Datums (CIP-32) from reference inputs.
+
+  ## Examples
+
+      iex> add_reference_inputs(new_tx(), [script_ref_utxo])
+      %Sutra.Cardano.Transaction.TxBuilder{}
+
+  """
   def add_reference_inputs(%__MODULE__{} = builder, [%Input{} | _] = inputs) do
     new_script_lookup =
       Enum.reduce(inputs, builder.script_lookup, fn %Input{} = input, acc ->
@@ -298,25 +362,31 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   defp extract_from_script_lookup(_), do: nil
 
   @doc """
+  Adds an Output to the transaction.
 
-  Creates Output in transaction.
+  You can pass a constructed `%Output{}` struct or use the helper with address, value, and optional datum.
 
-    ## Examples
+  ## Examples
 
-      iex> add_output(%TxBuilder{}, %Output{})
-      %TxBuilder{}
+      iex> output = %Sutra.Cardano.Transaction.Output{address: address, value: %{"lovelace" => 100}}
+      iex> add_output(%TxBuilder{}, output)
+      %Sutra.Cardano.Transaction.TxBuilder{}
 
-      # Creates output without Datum
-      iex> add_output(%TxBuilder{}, %Address{} = address, asset)
-      %TxBuilder{}
+      # Simple payment (Lovelace only)
+      iex> add_output(%TxBuilder{}, address, 5_000_000)
+      %Sutra.Cardano.Transaction.TxBuilder{}
 
-      # Creates output with inline datum
-      iex> add_output(%TxBuilder{}, %Address{} = address, asset, {:inline_datum, plutus_data})
-      %TxBuilder{}
+      # Payment with Native Assets
+      iex> add_output(%TxBuilder{}, address, %{"lovelace" => 2_000_000, "policy_id" => %{"token" => 10}})
+      %Sutra.Cardano.Transaction.TxBuilder{}
 
-      # Creates output with datum hash
-      iex> add_output(%TxBuilder{}, %Address{} = address, asset, {:datum_hash, plutus_data})
-      %TxBuilder{}
+      # Output with inline datum
+      iex> add_output(%TxBuilder{}, address, 2_000_000, {:inline_datum, datum_data})
+      %Sutra.Cardano.Transaction.TxBuilder{}
+
+      # Output with datum hash
+      iex> add_output(%TxBuilder{}, address, 2_000_000, {:datum_hash, datum_data})
+      %Sutra.Cardano.Transaction.TxBuilder{}
 
   """
   def add_output(%__MODULE__{} = cfg, %Output{} = output) do
@@ -350,23 +420,28 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   defp extract_datum(_), do: {nil, Datum.no_datum()}
 
   @doc """
-  Mint Assets
+  Mints or Burns assets.
 
-    ## Parameters
+  ## Parameters
 
-      - `%TxBuilder{}` - The TxBuilder instance containing the transaction details.
-      - `policy_id` - policy_id of token being minted
-      - `assets`  - Assets being minted under some policy
-      - `minting_policy` - The Minting Policy can be Either `%Script{}`, %NativeScript{}, :ref_inputs
-      - `redeemer` - Redeemer for minting policy. Needed for Plutus script Minting policy
+  - `builder`: The `TxBuilder` instance.
+  - `policy_id`: Hex string of the minting policy ID.
+  - `assets`: A map of asset names to quantities (e.g. `%{"tkn" => 100}`). Negative quantities mean burning.
+  - `minting_policy`: The witness for minting.
+    - `%Script{}` or `%NativeScript{}`
+    - `:ref_inputs` (if policy script is in reference inputs)
+  - `redeemer`: Redeemer data (required for Plutus minting).
 
-    ## Examples
+  ## Examples
 
-      iex> mint_asset(%TxBuilder{}, %{"asset1.." => 1}, %NativeScript{})
-      %TxBuilder{}
+      # Minting with Native Script
+      iex> mint_asset(%TxBuilder{}, policy_id, %{"tkn" => 100}, native_script)
+      %Sutra.Cardano.Transaction.TxBuilder{}
 
-      iex> mint_asset(%TxBuilder{}, %{"asset.." => -1}, %Script{}, some_redeemer)
-      %TxBuilder{}
+      # Burning with Plutus Script
+      iex> mint_asset(%TxBuilder{}, policy_id, %{"tkn" => -100}, plutus_script, redeemer)
+      %Sutra.Cardano.Transaction.TxBuilder{}
+
   """
   def mint_asset(builder, policy_id, assets, policy, redeemer \\ nil)
 
@@ -416,21 +491,24 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   end
 
   @doc """
-  Creates output with reference script
+  Deploys a script to the blockchain (Create reference script output).
+
+  Creates an output at the specified address containing the script as a reference script.
+  The output will contain the minimum required Ada.
 
   ## Parameters
 
-    - `%TxBuilder{}` - The TxBuilder instance containing the transaction details.
-    - `%Address{}` - The Address where UtXo with reference script will be sent.
-    - `Script`  - The script to attach as reference script. Can be either `Plutus Script` or `NativeScript`
+  - `builder`: The `TxBuilder` instance.
+  - `out_addr`: The Address where the utility output will be sent.
+  - `script`: The `%Script{}` or `%NativeScript{}` to be attached.
 
-  ##  Examples
+  ## Examples
 
-      iex> deploy_script(%TxBuilder{}, %Address{}, %Script{})
-      %TxBuilder{}
+      iex> deploy_script(new_tx(), address, plutus_script)
+      %Sutra.Cardano.Transaction.TxBuilder{}
 
-      iex> deploy_script(%TxBuilder{}, %Address{}, %NativeScript{})
-      %TxBuilder{}
+      iex> deploy_script(new_tx(), address, native_script)
+      %Sutra.Cardano.Transaction.TxBuilder{}
 
   """
   def deploy_script(%__MODULE__{} = cfg, %Address{} = out_addr, script)
@@ -446,15 +524,18 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   end
 
   @doc """
-  Appends Signer as Required Signers in TxBody
+  Explicitly adds a required signer to the transaction body.
+
+  This is useful when the transaction needs to be signed by a key that isn't necessarily
+  spending a UTxO (e.g., for governance actions or special script requirements).
 
   ## Examples
 
-      iex> add_signer(%TxBuilder{}, %Address{})
-      %TxBuilder{}
+      iex> add_signer(new_tx(), address)
+      %Sutra.Cardano.Transaction.TxBuilder{}
 
-      iex> add_signer(%TxBuilder{}, payment_key_hash)
-      %TxBuilder{}
+      iex> add_signer(new_tx(), "pubkey_hash_hex")
+      %Sutra.Cardano.Transaction.TxBuilder{}
 
   """
   def add_signer(
@@ -481,12 +562,15 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   end
 
   @doc """
-  Attach plutus data in witness
+  Explicitly adds datum to the witness set (lookup map).
+
+  This is useful when you want to include datum in the transaction body without embedding it in an output,
+  usually for script validation purposes.
 
   ## Examples
 
-    iex> attach_datum(%TxBuilder{}, %Constr{})
-    %TxBuilder{}
+      iex> attach_datum(new_tx(), %Sutra.Data.Plutus.Constr{tag: 121, fields: []})
+      %Sutra.Cardano.Transaction.TxBuilder{}
 
   """
   def attach_datum(%__MODULE__{} = cfg, datum) do
@@ -505,12 +589,18 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   end
 
   @doc """
-  Attach Metadata to Transaction
+  Attaches JSON metadata to the transaction.
+
+  ## Parameters
+
+  - `builder`: The `TxBuilder` instance.
+  - `label`: Integer label for the metadata (e.g., 721 for NFTs).
+  - `metadata`: The metadata content (Map, List, String, Integer, etc.).
 
   ## Examples
 
-    iex> attach_metadata(%TxBuilder{}, 721, metadata_info)
-    %TxBuilder{}
+      iex> attach_metadata(new_tx(), 721, %{"policy" => ...})
+      %Sutra.Cardano.Transaction.TxBuilder{}
 
   """
   def attach_metadata(%__MODULE__{} = builder, label, metadata)
@@ -518,6 +608,17 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
     %__MODULE__{builder | metadata: Map.put(%{}, label, metadata)}
   end
 
+  @doc """
+  Sets the transaction validity start interval.
+
+  ## Examples
+
+      iex> valid_from(new_tx(), DateTime.utc_now())
+      %Sutra.Cardano.Transaction.TxBuilder{}
+
+      iex> valid_from(new_tx(), 1678900000000)
+      %Sutra.Cardano.Transaction.TxBuilder{}
+  """
   def valid_from(%__MODULE__{} = cfg, %DateTime{} = dt) do
     %__MODULE__{cfg | valid_from: DateTime.to_unix(dt, :millisecond)}
   end
@@ -525,17 +626,60 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   def valid_from(%__MODULE__{} = cfg, timestamp) when is_integer(timestamp),
     do: %__MODULE__{cfg | valid_from: timestamp}
 
+  @doc """
+  Sets the transaction validity end interval (TTL).
+
+  ## Examples
+
+      iex> valid_to(new_tx(), DateTime.utc_now() |> DateTime.add(300, :second))
+      %Sutra.Cardano.Transaction.TxBuilder{}
+
+      iex> valid_to(new_tx(), 1678900000000)
+      %Sutra.Cardano.Transaction.TxBuilder{}
+  """
+
   def valid_to(%__MODULE__{} = cfg, %DateTime{} = dt) do
-    %__MODULE__{cfg | valid_from: DateTime.to_unix(dt, :millisecond)}
+    %__MODULE__{cfg | valid_to: DateTime.to_unix(dt, :millisecond)}
   end
 
   def valid_to(%__MODULE__{} = cfg, timestamp) when is_integer(timestamp),
     do: %__MODULE__{cfg | valid_to: timestamp}
 
+  @doc """
+  Sets the datum to be used for the change output.
+
+  If not set, the change output will not have a datum.
+
+  ## Examples
+
+      iex> set_change_datum(new_tx(), datum_data)
+      %Sutra.Cardano.Transaction.TxBuilder{}
+  """
   def set_change_datum(%__MODULE__{} = cfg, datum) when Plutus.is_plutus_data(datum) do
     %__MODULE__{cfg | config: TxConfig.__set_cfg(cfg.config, :change_datum, datum)}
   end
 
+  @doc """
+  Withdraws rewards from a stake address.
+
+  ## Parameters
+
+  - `builder`: The `TxBuilder` instance.
+  - `stake_credential`: The stake address or credential to withdraw from.
+  - `lovelace`: The amount to withdraw.
+  - `redeemer`: (Optional) Redeemer if withdrawing from a script credential.
+
+  ## Examples
+
+      # Withdraw from key credential
+      iex> withdraw_stake(new_tx(), stake_address, 500_000)
+      %Sutra.Cardano.Transaction.TxBuilder{}
+
+      # Withdraw from script credential
+      iex> withdraw_stake(new_tx(), script, redeemer, 500_000)
+      %Sutra.Cardano.Transaction.TxBuilder{}
+
+  """
   def withdraw_stake(
         %__MODULE__{} = cfg,
         %Address{
@@ -593,6 +737,29 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
               ),
               to: CertificateHelper
 
+  @doc """
+  Builds the transaction body.
+
+  This function balances the transaction by:
+  1. Fetching UTxOs from the wallet address (if not provided).
+  2. Selecting necessary inputs to cover outputs and fees.
+  3. Calculating fees and change.
+  4. Evaluating script execution units (if `evaluate_provider_uplc` is enabled).
+
+  ## Options
+
+  - `wallet_utxos`: A list of `%Input{}` to be used for balancing. If not provided, they are fetched from the wallet address.
+  - `collateral_inputs`: A list of `%Input{}` to be used as collateral (required for Plutus scripts).
+
+  ## Examples
+
+      iex> build_tx(builder)
+      {:ok, %Sutra.Cardano.Transaction{}}
+
+      iex> build_tx(builder, wallet_utxos: my_utxos)
+      {:ok, %Sutra.Cardano.Transaction{}}
+
+  """
   def build_tx(cfg, opts \\ [])
   def build_tx(%__MODULE__{errors: [_ | _]} = cfg, _opts), do: {:error, cfg.errors}
 
@@ -619,6 +786,9 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
     end
   end
 
+  @doc """
+  Same as `build_tx/2` but raises an exception on error.
+  """
   def build_tx!(%__MODULE__{} = cfg, opts \\ []) do
     case build_tx(cfg, opts) do
       {:ok, tx} ->
@@ -655,6 +825,20 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
     cfg.provider.utxos_at_addresses(addresses)
   end
 
+  @doc """
+  Signs the transaction with the provided key(s).
+
+  ## Parameters
+
+  - `tx`: The `%Transaction{}` struct (usually result of `build_tx!`).
+  - `signers`: A signing key (Bech32 string or key tuple) or a list of signing keys.
+
+  ## Examples
+
+      iex> sign_tx(tx, signing_key)
+      %Sutra.Cardano.Transaction{}
+
+  """
   def sign_tx(%Transaction{witnesses: %Witness{} = witness} = tx, signers)
       when is_list(signers) do
     tx_hash = Transaction.tx_id(tx) |> Base.decode16!(case: :mixed)
@@ -683,6 +867,28 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
 
   def sign_tx(%Transaction{} = tx, signer), do: sign_tx(tx, [signer])
 
+  @doc """
+  Signs the transaction using a raw extended private key.
+
+  This is useful when you have the raw private key bytes (e.g. from a derived child key or a generated keypair)
+  and need to sign the transaction. The key can be a payment key or a stake key.
+
+  ## Examples
+
+      # Basic Usage with Hex String
+      iex> sign_tx_with_raw_extended_key(tx, "5820...")
+      %Sutra.Cardano.Transaction{}
+
+      # Signing with derived keys from Sutra.Crypto.Key
+      # `derive_child/3` returns an `%ExtendedKey{}` containing both payment and stake keys.
+      iex> root_key = Sutra.Crypto.Key.generate_root_key("seed phrase ...")
+      iex> {:ok, %ExtendedKey{} = key} = Sutra.Crypto.Key.derive_child(root_key, 0, 0)
+
+      # Interact with the keys directly
+      iex> tx = sign_tx_with_raw_extended_key(tx, key.payment_key)
+      iex> tx = sign_tx_with_raw_extended_key(tx, key.stake_key)
+
+  """
   def sign_tx_with_raw_extended_key(
         %Transaction{witnesses: %Witness{vkey_witness: vkey_witness} = witness} = tx,
         raw_extended_key
@@ -703,6 +909,20 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
     }
   end
 
+  @doc """
+  Submits the signed transaction to the blockchain.
+
+  If no provider is specified, it uses the globally configured submitter.
+
+  ## Examples
+
+      iex> submit_tx(signed_tx)
+      {:ok, "tx_hash_hex"}
+
+      iex> submit_tx(signed_tx, provider)
+      {:ok, "tx_hash_hex"}
+
+  """
   def submit_tx(%Transaction{} = signed_tx) do
     with {:ok, provider} <- Provider.get_submitter() do
       submit_tx(signed_tx, provider)

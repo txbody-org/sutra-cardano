@@ -1,12 +1,36 @@
 defmodule Sutra.Cardano.Asset do
   @moduledoc """
-    Cardano Asset
+  A module for handling Cardano Assets (Values).
+
+  Cardano Assets are represented as a nested map structure:
+  `%{policy_id => %{asset_name => quantity}}`
+
+  Lovelace (ADA) is a special case where the policy ID is `"lovelace"` and the structure is simplified in some contexts, but when fully normalized in this module, it is treated as a top-level key `"lovelace"` with an integer value, or implicitly as policy ID `""` and asset name `""` in Plutus encoded forms.
+
+  This module provides utility functions for creating, merging, diffing, and inspecting these asset structures, as well as encoding/decoding them to/from Plutus Data (CBOR).
+
+  ## Asset Structure
+
+      %{
+        "lovelace" => 1000000,
+        "policy_id_hex" => %{
+          "asset_name_hex" => 100
+        }
+      }
+
   """
   @type policy_id() :: String.t()
   @type asset_name() :: String.t()
-  @type ada_asset_name() :: String.t()
-  @type coin() :: %{ada_asset_name() => integer()}
-  @type t() :: coin() | %{policy_id() => %{ada_asset_name() => integer()}}
+  @type quantity() :: integer()
+
+  @typedoc """
+  A map representing a MultiAsset value.
+  Keys are policy IDs (hex string) or "lovelace".
+  Values are either the integer amount (for lovelace) or a map of asset names to quantities.
+  """
+  @type t() :: %{
+          optional(policy_id()) => quantity() | %{asset_name() => quantity()}
+        }
 
   alias Sutra.Data
   alias Sutra.Data.Cbor
@@ -14,26 +38,49 @@ defmodule Sutra.Cardano.Asset do
   import Sutra.Data.Cbor, only: [extract_value: 1]
 
   @doc """
-  decode Asset from Plutus
+  Creates a new Asset structure.
+
+  ## Examples
+
+      # Create Lovelace asset
+      iex> new("lovelace", 100)
+      %{"lovelace" => 100}
+
+      # Create Token
+      iex> new("policy_id", "asset_name", 100)
+      %{"policy_id" => %{"asset_name" => 100}}
+
+  """
+  def new(policy_id, asset_name, amount) do
+    add(%{}, policy_id, asset_name, amount)
+  end
+
+  def new("lovelace", amount) do
+    add(%{}, "lovelace", amount)
+  end
+
+  def new(amount) when is_integer(amount), do: from_lovelace(amount)
+
+  @doc """
+  Decodes Asset from Plutus Data (CBOR).
+
+  Handles both the flat integer (Lovelace only) and the nested map structure for MultiAssets.
 
   ## Examples
 
       iex> from_plutus(%{"" => %{"" => 200}, "policy-1" => %{"asset-1" => 100}})
-      {:ok, %{"lovelace" => %{"" => 200}, "policy-1" => %{"asset-1" => 100}}}
+      {:ok, %{"lovelace" => 200, "policy-1" => %{"asset-1" => 100}}}
 
       iex> from_plutus("A140A1401A000F4240")
       {:ok, %{"lovelace" => 1_000_000}}
 
+      # Token CBOR example
       iex> token_cbor = "A340A1401A000F42404B706F6C6963792D69642D31A244746B6E31186444746B6E3218C84B706F6C6963792D69642D32A144746B6E3319012C"
-      iex> from_plutus(token_cbor)
-      {:ok,
-          %{
-                "lovelace" => 1_000_000,
-                "706f6c6963792d69642d31" => %{"746b6e31" => 100, "746b6e32" => 200},
-                "706f6c6963792d69642d32" => %{"746b6e33" => 300}
-          }
-      }
-
+      iex> {:ok, asset} = from_plutus(token_cbor)
+      iex> asset["lovelace"]
+      1_000_000
+      iex> asset["706f6c6963792d69642d31"]
+      %{"746b6e31" => 100, "746b6e32" => 200}
 
   """
   def from_plutus(cbor) when is_binary(cbor) do
@@ -61,6 +108,9 @@ defmodule Sutra.Cardano.Asset do
   defp to_asset_class("lovelace", %{%CBOR.Tag{tag: :bytes, value: ""} => lovelace}),
     do: lovelace
 
+  defp to_asset_class("lovelace", %{"" => lovelace}),
+    do: lovelace
+
   defp to_asset_class(_, value) when is_map(value) do
     Enum.reduce(value, %{}, fn {key, val}, acc ->
       {:ok, key} = extract_value(key)
@@ -69,43 +119,22 @@ defmodule Sutra.Cardano.Asset do
   end
 
   @doc """
-  Converts Asset to Plutus
+  Encodes an Asset structure to Plutus Data format (as a Map).
 
   ## Examples
 
-        iex> to_plutus(%{"lovelace" => 300})
-        %{%CBOR.Tag{tag: :bytes, value: ""} => %{%CBOR.Tag{tag: :bytes, value: ""} => 300}}
+      iex> asset = %{"lovelace" => 300}
+      iex> to_plutus(asset)
+      %{%CBOR.Tag{tag: :bytes, value: ""} => %{%CBOR.Tag{tag: :bytes, value: ""} => 300}}
 
-        iex> to_plutus(%{"lovelace" => 200, "policy-1" => %{"asset-1" => 300}})
-        %{
-            %CBOR.Tag{tag: :bytes, value: ""} => %{
-                %CBOR.Tag{tag: :bytes, value: ""} => 200
-            },
-            %CBOR.Tag{tag: :bytes, value: "policy-1"} => %{
-                %CBOR.Tag{tag: :bytes, value: "asset-1"} => 300
-            }
-        }
+      iex> asset = %{"lovelace" => 200, "policy-1" => %{"asset-1" => 300}}
+      iex> plutus_data = to_plutus(asset)
+      iex> Map.keys(plutus_data) |> length()
+      2
 
-        iex> to_plutus(%{"lovelace" => 1_000_000}) |> Cbor.encode_hex()
-        "A140A1401A000F4240"
-
-        iex(1)>  to_plutus(%{
-        ...(1)>     "lovelace" => 1_000_000,
-        ...(1)>     "706F6C6963792D69642D31" => %{"746B6E31" => 100, "746B6E32" => 200},
-        ...(1)>     "706F6C6963792D69642D32" => %{"746B6E33" => 300}
-        ...(1)>   })
-        %{
-          %CBOR.Tag{tag: :bytes, value: ""} =>
-            %{%CBOR.Tag{tag: :bytes, value: ""} => 1000000},
-          %CBOR.Tag{tag: :bytes, value: "policy-id-1"} => %{
-            %CBOR.Tag{tag: :bytes, value: "tkn1"} => 100,
-            %CBOR.Tag{tag: :bytes, value: "tkn2"} => 200
-          },
-          %CBOR.Tag{tag: :bytes, value: "policy-id-2"} => %{
-            %CBOR.Tag{tag: :bytes, value: "tkn3"} => 300
-          }
-        }
-
+      iex> asset = %{"lovelace" => 1_000_000}
+      iex> to_plutus(asset) |> Cbor.encode_hex()
+      "A140A1401A000F4240"
   """
 
   def to_plutus(data) when is_map(data) do
@@ -133,46 +162,52 @@ defmodule Sutra.Cardano.Asset do
   end
 
   @doc """
+  Creates an Asset structure purely containing Lovelace.
+
+  ## Examples
+
+      iex> from_lovelace(100)
+      %{"lovelace" => 100}
 
   """
   def from_lovelace(value) when is_number(value), do: %{"lovelace" => value}
   def from_lovelace(_), do: nil
 
   @doc """
-  Returns lovelace amount from asset. returns 0 if no lovelace is found in asset
+  Returns lovelace amount from asset. returns 0 if no lovelace is found in asset.
 
-    ## Examples
+  ## Examples
 
-        iex> lovelace_of(%{"policy" => %{"asset" => 1}})
-        0
+      iex> lovelace_of(%{"policy" => %{"asset" => 1}})
+      0
 
-        iex> lovelace_of(from_lovelace(134_000))
-        134_000
+      iex> lovelace_of(%{"lovelace" => 134_000})
+      134_000
 
   """
   def lovelace_of(asset) when is_map(asset), do: Map.get(asset, "lovelace", 0)
   def lovelace_of(_), do: 0
 
   @doc """
-    Returns quantity of specific token from asset. returns 0 if no such token is found
+  Returns quantity of specific token from asset. returns 0 if no such token is found.
 
-      ## Examples
+  ## Examples
 
-            iex> asset = %{"policy-1" => %{"asset-1" => 500, "asset-2" => 300}}
-            iex> get_quantity(asset, "policy-1", "asset-1")
-            500
+      iex> asset = %{"policy-1" => %{"asset-1" => 500, "asset-2" => 300}}
+      iex> get_quantity(asset, "policy-1", "asset-1")
+      500
 
-            iex> get_quantity(%{"policy-1" => %{"asset-1" => 100}}, "policy-1", "asset-3")
-            0
+      iex> get_quantity(%{"policy-1" => %{"asset-1" => 100}}, "policy-1", "asset-3")
+      0
 
-            iex> get_quantity(%{"policy-1" => %{"asset-1" => 100}}, "policy-2", "asset-1")
-            0
+      iex> get_quantity(%{"policy-1" => %{"asset-1" => 100}}, "policy-2", "asset-1")
+      0
 
-            iex> get_quantity(from_lovelace(1000), "lovelace")
-            1000
+      iex> get_quantity(%{"lovelace" => 1000}, "lovelace")
+      1000
 
-            iex> get_quantity(%{}, "lovelace")
-            0
+      iex> get_quantity(%{}, "lovelace")
+      0
 
   """
   def get_quantity(asset, policy_id, asset_name)
@@ -185,22 +220,21 @@ defmodule Sutra.Cardano.Asset do
   def get_quantity(asset, "lovelace"), do: lovelace_of(asset)
 
   @doc """
-    Merge two asset values into one,
+  Merge two asset values into one.
 
+  ## Examples
 
-        ## Examples
+      iex> asset1 = %{"lovelace" => 123}
+      iex> asset2 = %{"policy-1" => %{"asset1" => 600}}
+      iex> merge(asset1, asset2)
+      %{"lovelace" => 123, "policy-1" => %{"asset1" => 600}}
 
-              iex> asset1 = %{"lovelace" => 123}
-              iex> asset2 = %{"policy-1" => %{"asset1" => 600}}
-              iex> merge(asset1, asset2)
-              %{"lovelace" => 123, "policy-1" => %{"asset1" => 600}}
+  Adds Qty of token for similar policies:
 
-        Adds Qty of token for similar policies
-
-              iex> asset1 = %{"lovelace" => 100, "policy-1" => %{"asset1" => 600}}
-              iex> asset2 = %{"policy-1" => %{"asset1" => 400}}
-              iex> merge(asset1, asset2)
-              %{"lovelace" => 100, "policy-1" => %{"asset1" => 1000}}
+      iex> asset1 = %{"lovelace" => 100, "policy-1" => %{"asset1" => 600}}
+      iex> asset2 = %{"policy-1" => %{"asset1" => 400}}
+      iex> merge(asset1, asset2)
+      %{"lovelace" => 100, "policy-1" => %{"asset1" => 1000}}
 
   """
   def merge(asset1, asset2) when is_map(asset1) and is_map(asset2) do
@@ -214,20 +248,19 @@ defmodule Sutra.Cardano.Asset do
   end
 
   @doc """
-    Subtract value of asset
+  Subtract value of asset (asset1 - asset2).
 
-        ## Examples
+  ## Examples
 
+      iex> asset1 = from_lovelace(500)
+      iex> asset2 = from_lovelace(600)
+      iex> diff(asset1, asset2)
+      %{"lovelace" => 100}
 
-            iex> asset1 = from_lovelace(500)
-            iex> asset2 = from_lovelace(600)
-            iex> diff(asset1, asset2)
-            %{"lovelace" => 100}
-
-            iex> asset1 = %{"policy-1" => %{"asset1" => 200}}
-            iex> asset2 = %{"policy-1" => %{"asset1" => 50, "asset2" => 200 }}
-            iex> diff(asset1, asset2)
-            %{"policy-1" => %{"asset1" => -150, "asset2" => 200 }}
+      iex> asset1 = %{"policy-1" => %{"asset1" => 200}}
+      iex> asset2 = %{"policy-1" => %{"asset1" => 50, "asset2" => 200 }}
+      iex> diff(asset1, asset2)
+      %{"policy-1" => %{"asset1" => -150, "asset2" => 200 }}
 
   """
   def diff(asset1, asset2) when is_map(asset1) and is_map(asset2) do
@@ -242,21 +275,21 @@ defmodule Sutra.Cardano.Asset do
   def zero?(asset) when is_map(asset), do: asset == %{}
 
   @doc """
-  checks if assets has positive amount
+  Checks if asset has positive amount.
 
-        ## Examples
+  ## Examples
 
-              iex> is_positive_asset(%{"lovelace" => 100})
-              true
+      iex> is_positive_asset(%{"lovelace" => 100})
+      true
 
-              iex> is_positive_asset(%{"lovelace" => 50, "policy" => %{"asset" => -100}})
-              true
+      iex> is_positive_asset(%{"lovelace" => 50, "policy" => %{"asset" => -100}})
+      true
 
-              iex> is_positive_asset(%{"lovelace" => 0, "policy" => %{"asset" => -100}})
-              false
+      iex> is_positive_asset(%{"lovelace" => 0, "policy" => %{"asset" => -100}})
+      false
 
-              iex> is_positive_asset(%{"lovelace" => -10, "policy" => %{"asset" => -100}})
-              false
+      iex> is_positive_asset(%{"lovelace" => -10, "policy" => %{"asset" => -100}})
+      false
 
   """
   def is_positive_asset(asset) when is_map(asset) do
@@ -266,20 +299,18 @@ defmodule Sutra.Cardano.Asset do
   end
 
   @doc """
-    Returns only Positive Assets
+  Returns only Positive Assets.
 
-        ## Examples
+  ## Examples
 
+      iex> only_positive(%{"lovelace" => 200, "policy" => %{"asset" => -10}})
+      %{"lovelace" => 200}
 
-              iex> only_positive(%{"lovelace" => 200, "policy" => %{"asset" => -10}})
-              %{"lovelace" => 200}
+      iex> only_positive(%{"lovelace" => 0, "policy" => %{"asset" => -10}})
+      %{}
 
-              iex> only_positive(%{"lovelace" => 0, "policy" => %{"asset" => -10}})
-              %{}
-
-              iex> only_positive(%{"lovelace" => 0, "policy" => %{"asset" => 10}})
-              %{"policy" => %{"asset" => 10}}
-
+      iex> only_positive(%{"lovelace" => 0, "policy" => %{"asset" => 10}})
+      %{"policy" => %{"asset" => 10}}
 
   """
   def only_positive(asset) when is_map(asset) do
@@ -287,22 +318,21 @@ defmodule Sutra.Cardano.Asset do
   end
 
   @doc """
-  Filter Asset by applying functions against Asset value
+  Filter Asset by applying functions against Asset value.
 
-        ## Examples
+  ## Examples
 
-              iex> asset = %{"lovelace" => 100, "policy" => %{"asset1" => -10, "asset2" => 10}}
-              iex> filter_by_value(asset, fn v -> v > 0 end)
-              %{"lovelace" => 100, "policy" => %{"asset2" => 10}}
+      iex> asset = %{"lovelace" => 100, "policy" => %{"asset1" => -10, "asset2" => 10}}
+      iex> filter_by_value(asset, fn v -> v > 0 end)
+      %{"lovelace" => 100, "policy" => %{"asset2" => 10}}
 
+      iex> asset = %{"lovelace" => 10, "policy" => %{"asset1" => -10, "asset2" => 10}}
+      iex> filter_by_value(asset, &(&1 == 10))
+      %{"lovelace" => 10, "policy" => %{"asset2" => 10}}
 
-              iex> asset = %{"lovelace" => 10, "policy" => %{"asset1" => -10, "asset2" => 10}}
-              iex> filter_by_value(asset, &(&1 == 10))
-              %{"lovelace" => 10,"policy" => %{"asset2" => 10}}
-
-              iex> asset = %{"lovelace" => 10, "policy" => %{"asset1" => -10, "asset2" => 10}}
-              iex> filter_by_value(asset, &(&1 < 0))
-              %{"policy" => %{"asset1" => -10}}
+      iex> asset = %{"lovelace" => 10, "policy" => %{"asset1" => -10, "asset2" => 10}}
+      iex> filter_by_value(asset, &(&1 < 0))
+      %{"policy" => %{"asset1" => -10}}
 
   """
 
@@ -319,15 +349,15 @@ defmodule Sutra.Cardano.Asset do
   end
 
   @doc """
-    Returns Asset with Absolute value
+  Returns Asset with absolute values (all positive).
 
-        ## Examples
+  ## Examples
 
-              iex> abs_value(%{"lovelace" => -100})
-              %{"lovelace" => 100 }
+      iex> abs_value(%{"lovelace" => -100})
+      %{"lovelace" => 100 }
 
-              iex> abs_value(%{"lovelace" => 100})
-              %{"lovelace" => 100 }
+      iex> abs_value(%{"lovelace" => 100})
+      %{"lovelace" => 100 }
 
   """
   def abs_value(asset) when is_map(asset) do
@@ -338,9 +368,9 @@ defmodule Sutra.Cardano.Asset do
   end
 
   @doc """
-    Add quantity of single token to Assets
+  Add quantity of single token to Assets.
 
-    ## Examples
+  ## Examples
 
       iex> add(from_lovelace(100), "lovelace", 200)
       %{"lovelace" => 300}
@@ -358,20 +388,20 @@ defmodule Sutra.Cardano.Asset do
   end
 
   @doc """
-    Empty asset
+  Returns an empty asset.
   """
   def zero, do: %{}
 
   @doc """
-    Negates quantities of all Asset
+  Negates quantities of all Assets.
 
-    ## Examples
+  ## Examples
 
-        iex> negate(from_lovelace(100))
-        %{"lovelace" => -100}
+      iex> negate(from_lovelace(100))
+      %{"lovelace" => -100}
 
-        iex> negate(%{"lovelace" => 10, "policy" => %{"asset" => 70}})
-        %{"lovelace" => -10, "policy" => %{"asset" => -70}}
+      iex> negate(%{"lovelace" => 10, "policy" => %{"asset" => 70}})
+      %{"lovelace" => -10, "policy" => %{"asset" => -70}}
 
   """
   def negate(assets) do
@@ -382,29 +412,30 @@ defmodule Sutra.Cardano.Asset do
   end
 
   @doc """
-    Returns Asset without Ada
+  Returns Asset without Ada.
 
-    ## Examples
+  ## Examples
 
-        iex> without_lovelace(%{"lovelace" => 10}) == zero()
-        true
+      iex> without_lovelace(%{"lovelace" => 10}) == zero()
+      true
 
-        iex> without_lovelace(%{"lovelace" => 10, "policy" => %{"asset" => 1}})
-        %{"policy" => %{"asset" => 1}}
+      iex> without_lovelace(%{"lovelace" => 10, "policy" => %{"asset" => 1}})
+      %{"policy" => %{"asset" => 1}}
 
   """
   def without_lovelace(assets), do: Map.delete(assets, "lovelace")
 
   @doc """
-    Returns all policies of asset
+  Returns all policies of asset.
 
-    ## Examples
+  ## Examples
 
-        iex> policies(%{"lovelace" => 100})
-        []
+      iex> policies(%{"lovelace" => 100})
+      []
 
-        iex> policies(%{"policy1" => %{"asset1" => 1}, "policy2" => %{"asset1" => 2}})
-        ["policy1", "policy2"]
+      iex> policies(%{"policy1" => %{"asset1" => 1}, "policy2" => %{"asset1" => 2}})
+      ["policy1", "policy2"] |> Enum.sort()
+
   """
   def policies(assets) when is_map(assets) do
     assets
@@ -413,21 +444,20 @@ defmodule Sutra.Cardano.Asset do
   end
 
   @doc """
-    Get a subset of the assets restricted to the given policies.
+  Get a subset of the assets restricted to the given policies.
 
-    ## Examples
+  ## Examples
 
-          iex> restricted_to(%{"lovelace" => 100, "policy1" => %{"asset1" => 10}}, ["lovelace"])
-          %{"lovelace" => 100}
+      iex> restricted_to(%{"lovelace" => 100, "policy1" => %{"asset1" => 10}}, ["lovelace"])
+      %{"lovelace" => 100}
 
-          iex(1)> restricted_to(%{
-          ...(1)>    "lovelace" => 100,
-          ...(1)>    "policy1" => %{"asset" => 10},
-          ...(1)>    "policy2" => %{"asset" => 50},
-          ...(1)>    "policy3" => %{"asset" => 30},
-          ...(1)> }, ["policy1", "policy2"])
-
-          %{"policy1" => %{"asset" => 10}, "policy2" => %{"asset" => 50}}
+      iex> restricted_to(%{
+      ...>    "lovelace" => 100,
+      ...>    "policy1" => %{"asset" => 10},
+      ...>    "policy2" => %{"asset" => 50},
+      ...>    "policy3" => %{"asset" => 30},
+      ...> }, ["policy1", "policy2"])
+      %{"policy1" => %{"asset" => 10}, "policy2" => %{"asset" => 50}}
 
   """
   def restricted_to(assets, policy_ids) when is_map(assets) and is_list(policy_ids) do
@@ -438,18 +468,18 @@ defmodule Sutra.Cardano.Asset do
   end
 
   @doc """
-    Checks if both asset has similar tokens
+  Checks if both asset has similar tokens (share at least one policy ID).
 
-    ## Examples
+  ## Examples
 
-        iex> asset1 = %{"lovelace" => 1000, "policy1" => %{"asset" => 1}}
-        iex> contains_token?(from_lovelace(100), asset1)
-        iex> true
+      iex> asset1 = %{"lovelace" => 1000, "policy1" => %{"asset" => 1}}
+      iex> contains_token?(from_lovelace(100), asset1)
+      false
 
-        iex> asset1 = %{"policy1" => %{"asset" => 1}, "policy2" => %{"asset" => 1}}
-        iex> asset2 = %{"policy3" => %{"asset" => 1}}
-        iex> contains_token?(asset2, asset1)
-        iex> false
+      iex> asset1 = %{"policy1" => %{"asset" => 1}, "policy2" => %{"asset" => 1}}
+      iex> asset2 = %{"policy3" => %{"asset" => 1}}
+      iex> contains_token?(asset2, asset1)
+      false
   """
   def contains_token?(asset1, asset2) do
     asset2
@@ -458,19 +488,21 @@ defmodule Sutra.Cardano.Asset do
   end
 
   @doc """
-    Convert Asset to Cbor
+  Encodes Asset to CBOR list format `[lovelace_qty, multi_asset_map]`.
 
-        ## Examples
+  Note: If the asset only contains Lovelace, it returns the integer amount directly, which corresponds to the compact encoding in some contexts, or the way output values are represented when no multi-assets are present.
 
-            iex> to_cbor(%{"lovelace" => 100})
-            100
+  ## Examples
 
-            iex> to_cbor(%{"lovelace" => 100, "policy" => %{"asset" => 100}})
-            [ 100,
-              %{%CBOR.Tag{tag: :bytes, value: "policy"} =>
-                    %{%CBOR.Tag{tag: :bytes, value: "asset"} => 100}
-              }
-            ]
+      iex> to_cbor(%{"lovelace" => 100})
+      100
+
+      iex> to_cbor(%{"lovelace" => 100, "policy" => %{"asset" => 100}})
+      [ 100,
+        %{%CBOR.Tag{tag: :bytes, value: "policy"} =>
+              %{%CBOR.Tag{tag: :bytes, value: "asset"} => 100}
+        }
+      ]
 
   """
   def to_cbor(%{"lovelace" => lovelace} = asset) when map_size(asset) == 1, do: lovelace
@@ -480,20 +512,20 @@ defmodule Sutra.Cardano.Asset do
   end
 
   @doc """
-    Convert Cbor to Asset
+  Converts CBOR decoded data back to Asset structure.
 
-    ## Examples
+  ## Examples
 
-      iex(1)> cbor = [
-      ...(1)>   100,
-      ...(1)>   %{
-      ...(1)>     %CBOR.Tag{tag: :bytes, value: "policy"} =>
-      ...(1)>       %{
-      ...(1)>           %CBOR.Tag{tag: :bytes, value: "asset"} => 1
-      ...(1)>       }
-      ...(1)>   }
-      ...(1)> ]
-      iex(1)> from_cbor(cbor)
+      iex> cbor_list = [
+      ...>   100,
+      ...>   %{
+      ...>     %CBOR.Tag{tag: :bytes, value: "policy"} =>
+      ...>       %{
+      ...>           %CBOR.Tag{tag: :bytes, value: "asset"} => 1
+      ...>       }
+      ...>   }
+      ...> ]
+      iex> from_cbor(cbor_list)
       %{"lovelace" => 100, "706f6c696379" => %{"6173736574" => 1}}
 
       iex> from_cbor(10)

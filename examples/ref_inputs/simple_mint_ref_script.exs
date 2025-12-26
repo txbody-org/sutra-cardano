@@ -8,8 +8,6 @@ alias Sutra.Data
 alias Sutra.Cardano.Script
 alias Sutra.Cardano.Address
 
-import Sutra.Cardano.Transaction.TxBuilder
-
 blueprint = File.read!("./blueprint.json") |> :elixir_json.decode()
 
 user_address = "addr_test1vq28nc9dpkull96p5aeqz3xg2n6xq0mfdd4ahyrz4aa9rag83cs3c"
@@ -53,39 +51,39 @@ current_posix_time = System.os_time(:millisecond)
 IO.puts("Deploying Script ....")
 
 script_tx =
-  new_tx()
-  |> deploy_script(Address.from_bech32(user_address), simple_mint_script)
-  |> deploy_script(Address.from_bech32(user_address), native_script)
-  |> build_tx!(wallet_address: user_address)
+  Sutra.new_tx()
+  |> Sutra.deploy_script(Address.from_bech32(user_address), simple_mint_script)
+  |> Sutra.deploy_script(Address.from_bech32(user_address), native_script)
+  |> Sutra.build_tx!(wallet_address: user_address)
 
 script_tx_id =
   script_tx
-  |> sign_tx(["ed25519_sk1tmxtkw3ek64zyg9gtn3qkk355hfs9jnfjy33zwp87s8qkdmznd0qvukr43"])
-  |> submit_tx()
+  |> Sutra.sign_tx(["ed25519_sk1tmxtkw3ek64zyg9gtn3qkk355hfs9jnfjy33zwp87s8qkdmznd0qvukr43"])
+  |> Sutra.submit_tx()
 
 IO.puts("Fetching Ref script")
 Process.sleep(2_000)
 script_utxo = Provider.utxos_at_refs(["#{script_tx_id}#0", "#{script_tx_id}#1"])
 
 tx =
-  new_tx()
-  |> attach_metadata(123, "Test Sutra TX")
-  |> add_reference_inputs(script_utxo)
-  |> mint_asset(policy_id, %{out_token_name => 100}, :ref_inputs, Data.void())
-  |> mint_asset(native_policy_id, native_asset, :ref_inputs)
-  |> add_output(mint_script_address, out_value, datum: {:inline_datum, 58})
-  |> add_output(
+  Sutra.new_tx()
+  |> Sutra.attach_metadata(123, "Test Sutra TX")
+  |> Sutra.add_reference_inputs(script_utxo)
+  |> Sutra.mint_asset(policy_id, %{out_token_name => 100}, :ref_inputs, Data.void())
+  |> Sutra.mint_asset(native_policy_id, native_asset, :ref_inputs)
+  |> Sutra.add_output(mint_script_address, out_value, datum: {:inline_datum, 58})
+  |> Sutra.add_output(
     Address.from_bech32(user_address),
     %{native_policy_id => native_asset},
     {:datum_hash, 4}
   )
-  |> valid_from(current_posix_time)
-  |> valid_to(current_posix_time + 20 * 60 * 1000)
-  |> build_tx!(wallet_address: user_address)
+  |> Sutra.valid_from(current_posix_time)
+  |> Sutra.valid_to(current_posix_time + 20 * 60 * 1000)
+  |> Sutra.build_tx!(wallet_address: user_address)
 
 tx_id =
   tx
-  |> sign_tx(["ed25519_sk1tmxtkw3ek64zyg9gtn3qkk355hfs9jnfjy33zwp87s8qkdmznd0qvukr43"])
-  |> submit_tx()
+  |> Sutra.sign_tx(["ed25519_sk1tmxtkw3ek64zyg9gtn3qkk355hfs9jnfjy33zwp87s8qkdmznd0qvukr43"])
+  |> Sutra.submit_tx()
 
 IO.puts("Transaction Submitted with TxId: #{tx_id}")

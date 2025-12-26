@@ -8,7 +8,6 @@ defmodule Sutra.TxExamples.Certificates.DelegateVoteTest do
   use Sutra.PrivnetTest
 
   import Sutra.Test.Support.BlueprintSupport
-  import Sutra.Cardano.Transaction.TxBuilder
 
   setup_all %{} do
     set_yaci_provider_env()
@@ -17,14 +16,14 @@ defmodule Sutra.TxExamples.Certificates.DelegateVoteTest do
       native_script = always_true_native_script(addr)
       plutus_script = always_true_script()
 
-      new_tx()
-      |> register_stake_credential(addr)
-      |> register_stake_credential(native_script)
-      |> register_stake_credential(plutus_script, Data.void())
-      |> build_tx!(wallet_address: [addr])
-      |> sign_tx([skey])
-      |> sign_tx_with_raw_extended_key(skey.stake_key)
-      |> submit_tx()
+      Sutra.new_tx()
+      |> Sutra.register_stake_credential(addr)
+      |> Sutra.register_stake_credential(native_script)
+      |> Sutra.register_stake_credential(plutus_script, Data.void())
+      |> Sutra.build_tx!(wallet_address: [addr])
+      |> Sutra.sign_tx([skey])
+      |> Sutra.sign_tx_with_raw_extended_key(skey.stake_key)
+      |> Sutra.submit_tx()
       |> await_tx()
 
       {:ok,
@@ -38,14 +37,14 @@ defmodule Sutra.TxExamples.Certificates.DelegateVoteTest do
   describe "Delegate vote test" do
     test "delegate vote to drep with address credential", %{wallet_address: addr, skey: skey} do
       assert {:ok, tx} =
-               new_tx()
-               |> delegate_vote(addr, Drep.abstain())
-               |> build_tx(wallet_address: [addr])
+               Sutra.new_tx()
+               |> Sutra.delegate_vote(addr, Drep.abstain())
+               |> Sutra.build_tx(wallet_address: [addr])
 
       assert tx_id =
-               sign_tx(tx, [skey])
-               |> sign_tx_with_raw_extended_key(skey.stake_key)
-               |> submit_tx()
+               Sutra.sign_tx(tx, [skey])
+               |> Sutra.sign_tx_with_raw_extended_key(skey.stake_key)
+               |> Sutra.submit_tx()
 
       assert Transaction.tx_id(tx) == tx_id
     end
@@ -56,13 +55,13 @@ defmodule Sutra.TxExamples.Certificates.DelegateVoteTest do
     } do
       with_new_wallet(fn %{signing_key: skey, address: addr} ->
         assert {:ok, tx} =
-                 new_tx()
-                 |> delegate_vote(native_script, Drep.abstain())
-                 |> build_tx(wallet_address: [addr])
+                 Sutra.new_tx()
+                 |> Sutra.delegate_vote(native_script, Drep.abstain())
+                 |> Sutra.build_tx(wallet_address: [addr])
 
         assert tx_id =
-                 sign_tx(tx, [skey, native_script_owner_skey])
-                 |> submit_tx()
+                 Sutra.sign_tx(tx, [skey, native_script_owner_skey])
+                 |> Sutra.submit_tx()
 
         assert Transaction.tx_id(tx) == tx_id
       end)
@@ -71,13 +70,13 @@ defmodule Sutra.TxExamples.Certificates.DelegateVoteTest do
     test "delegate vote to drep with Plutus script credential", %{plutus_script: plutus_script} do
       with_new_wallet(fn %{signing_key: skey, address: addr} ->
         assert {:ok, tx} =
-                 new_tx()
-                 |> delegate_vote(plutus_script, Drep.no_confidence(), Data.void())
-                 |> build_tx(wallet_address: [addr])
+                 Sutra.new_tx()
+                 |> Sutra.delegate_vote(plutus_script, Drep.no_confidence(), Data.void())
+                 |> Sutra.build_tx(wallet_address: [addr])
 
         assert tx_id =
-                 sign_tx(tx, [skey])
-                 |> submit_tx()
+                 Sutra.sign_tx(tx, [skey])
+                 |> Sutra.submit_tx()
 
         assert Transaction.tx_id(tx) == tx_id
       end)

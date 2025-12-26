@@ -9,8 +9,6 @@ defmodule Sutra.TxExamples.Simple.SimpleSendTokenTest do
   alias Sutra.Cardano.Transaction
   alias Sutra.Provider.Yaci
 
-  import Sutra.Cardano.Transaction.TxBuilder
-
   @mint_script_json %{
     "type" => "all",
     "scripts" => [
@@ -34,13 +32,13 @@ defmodule Sutra.TxExamples.Simple.SimpleSendTokenTest do
         to_address = random_address()
 
         tx =
-          new_tx()
-          |> add_output(to_address, Asset.from_lovelace(2_000_000))
-          |> build_tx!(wallet_address: [wallet_info.address])
+          Sutra.new_tx()
+          |> Sutra.add_output(to_address, Asset.from_lovelace(2_000_000))
+          |> Sutra.build_tx!(wallet_address: [wallet_info.address])
 
         submit_tx_resp =
-          sign_tx(tx, [wallet_info.signing_key])
-          |> submit_tx()
+          Sutra.sign_tx(tx, [wallet_info.signing_key])
+          |> Sutra.submit_tx()
 
         assert submit_tx_resp == Transaction.tx_id(tx)
         await_tx(submit_tx_resp)
@@ -53,15 +51,15 @@ defmodule Sutra.TxExamples.Simple.SimpleSendTokenTest do
         recv_addr = random_address()
 
         tx =
-          new_tx()
-          |> mint_asset(@policy_id, @mint_token, @mint_script)
-          |> add_output(recv_addr, %{@policy_id => @mint_token}, {:datum_hash, 58})
-          |> valid_from(System.os_time(:millisecond))
-          |> build_tx!(wallet_address: [addr])
+          Sutra.new_tx()
+          |> Sutra.mint_asset(@policy_id, @mint_token, @mint_script)
+          |> Sutra.add_output(recv_addr, %{@policy_id => @mint_token}, {:datum_hash, 58})
+          |> Sutra.valid_from(System.os_time(:millisecond))
+          |> Sutra.build_tx!(wallet_address: [addr])
 
         submit_tx_id =
-          sign_tx(tx, [s_key])
-          |> submit_tx()
+          Sutra.sign_tx(tx, [s_key])
+          |> Sutra.submit_tx()
 
         assert submit_tx_id == Transaction.tx_id(tx)
         await_tx(submit_tx_id)

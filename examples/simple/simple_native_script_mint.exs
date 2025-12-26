@@ -3,7 +3,6 @@ alias Sutra.Cardano.Asset
 alias Sutra.Cardano.Script
 alias Sutra.Cardano.Script.NativeScript
 
-import Sutra.Cardano.Transaction.TxBuilder
 # Use Provider
 Code.eval_file("examples/setup_yaci_provider.exs")
 
@@ -29,18 +28,18 @@ assets = %{
 }
 
 tx_id =
-  new_tx()
-  |> mint_asset(policy_id, assets, script)
-  |> add_output(Address.from_bech32(wallet_address), %{
+  Sutra.new_tx()
+  |> Sutra.mint_asset(policy_id, assets, script)
+  |> Sutra.add_output(Address.from_bech32(wallet_address), %{
     policy_id => assets
   })
-  |> add_output(
+  |> Sutra.add_output(
     Address.from_script(policy_id, :testnet),
     Asset.from_lovelace(1000),
     {:datum_hash, "check As Hash"}
   )
-  |> build_tx!(wallet_address: [wallet_address])
-  |> sign_tx([sig])
-  |> submit_tx()
+  |> Sutra.build_tx!(wallet_address: [wallet_address])
+  |> Sutra.sign_tx([sig])
+  |> Sutra.submit_tx()
 
 IO.puts("Tx Submitted for Mint with Native Script TxId: #{tx_id}")

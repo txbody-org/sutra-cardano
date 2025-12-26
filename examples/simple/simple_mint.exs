@@ -18,8 +18,6 @@ defmodule Sutra.Examples.Advance.AlwaysSucceed do
   alias Sutra.Cardano.Script
   alias Sutra.Data
 
-  import Sutra.Cardano.Transaction.TxBuilder
-
   def blueprint, do: File.read!("./blueprint.json") |> :elixir_json.decode()
 
   def get_script(title) do
@@ -50,16 +48,20 @@ defmodule Sutra.Examples.Advance.AlwaysSucceed do
     current_posix_time = System.os_time(:millisecond)
 
     tx_id =
-      new_tx()
-      |> attach_metadata(123, "Test Sutra TX")
-      |> mint_asset(policy_id, %{out_token_name => 100}, simple_mint_script, Data.void())
-      |> add_output(mint_script_address, out_value, {:inline_datum, 58})
-      |> add_output(Address.from_bech32(user_address), %{"lovelace" => 10_000}, {:datum_hash, 4})
-      |> valid_from(current_posix_time - 5 * 60 * 1000)
-      |> valid_to(current_posix_time + 20 * 60 * 1000)
-      |> build_tx!(wallet_address: [Address.from_bech32(user_address)])
-      |> sign_tx([signing_key])
-      |> submit_tx()
+      Sutra.new_tx()
+      |> Sutra.attach_metadata(123, "Test Sutra TX")
+      |> Sutra.mint_asset(policy_id, %{out_token_name => 100}, simple_mint_script, Data.void())
+      |> Sutra.add_output(mint_script_address, out_value, {:inline_datum, 58})
+      |> Sutra.add_output(
+        Address.from_bech32(user_address),
+        %{"lovelace" => 10_000},
+        {:datum_hash, 4}
+      )
+      |> Sutra.valid_from(current_posix_time - 5 * 60 * 1000)
+      |> Sutra.valid_to(current_posix_time + 20 * 60 * 1000)
+      |> Sutra.build_tx!(wallet_address: [Address.from_bech32(user_address)])
+      |> Sutra.sign_tx([signing_key])
+      |> Sutra.submit_tx()
 
     IO.puts(" Tx submitted with : #{tx_id}")
   end

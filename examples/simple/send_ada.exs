@@ -7,8 +7,6 @@ alias Sutra.Cardano.Asset
 alias Sutra.Crypto.Key
 alias SampleData
 
-import Sutra.Cardano.Transaction.TxBuilder
-
 # Use Provider
 Code.eval_file("examples/setup_yaci_provider.exs")
 
@@ -25,11 +23,15 @@ to_addr = Address.from_bech32("addr_test1vq28nc9dpkull96p5aeqz3xg2n6xq0mfdd4ahyr
 IO.puts("User Address: #{Address.to_bech32(wallet_address)}")
 
 tx_id =
-  new_tx()
-  |> add_output(to_addr, Asset.from_lovelace(1000), {:datum_hash, "check As Hash"})
-  |> add_output(to_addr, Asset.from_lovelace(1000), {:inline_datum, SampleData.sample_info()})
-  |> build_tx!(wallet_address: [wallet_address])
-  |> sign_tx([extended_key])
-  |> submit_tx()
+  Sutra.new_tx()
+  |> Sutra.add_output(to_addr, Asset.from_lovelace(1000), {:datum_hash, "check As Hash"})
+  |> Sutra.add_output(
+    to_addr,
+    Asset.from_lovelace(1000),
+    {:inline_datum, SampleData.sample_info()}
+  )
+  |> Sutra.build_tx!(wallet_address: [wallet_address])
+  |> Sutra.sign_tx([extended_key])
+  |> Sutra.submit_tx()
 
 IO.puts("Tx Submitted with TxId: #{tx_id}")

@@ -20,7 +20,7 @@ Here is a complete example of sending ADA from one wallet to another.
 
 ```elixir
 alias Sutra.Cardano.Transaction.TxBuilder
-import Sutra.Cardano.Transaction.TxBuilder
+
 
 # 1. Fetch Inputs
 {:ok, provider} = Sutra.Provider.get_fetcher()
@@ -28,17 +28,18 @@ user_utxos = provider.utxos_at_addresses([user_address])
 
 # 2. Build Transaction
 tx_id = 
-  new_tx()
+tx_id = 
+  Sutra.new_tx()
   # Spend from user
-  |> add_input(user_utxos) 
+  |> Sutra.add_input(user_utxos) 
   # Pay 5 ADA to receiver
-  |> add_output(receiver_address, 5_000_000) 
+  |> Sutra.add_output(receiver_address, 5_000_000) 
   # Balance and build (calculates fees, change)
-  |> build_tx!(wallet_address: user_address) 
+  |> Sutra.build_tx!(wallet_address: user_address) 
   # Sign
-  |> sign_tx(user_signing_key)
+  |> Sutra.sign_tx(user_signing_key)
   # Submit
-  |> submit_tx()
+  |> Sutra.submit_tx()
 
 IO.puts("Tx Submitted: #{tx_id}")
 ```

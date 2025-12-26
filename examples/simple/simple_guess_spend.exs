@@ -17,8 +17,6 @@ defmodule Sutra.Examples.Advance.SimpleGuessSpend do
   alias Sutra.Cardano.Script
   alias Sutra.Provider
 
-  import Sutra.Cardano.Transaction.TxBuilder
-
   def run(wallet_address, sig) do
     script_code =
       File.read!("./blueprint.json")
@@ -39,11 +37,11 @@ defmodule Sutra.Examples.Advance.SimpleGuessSpend do
     IO.puts("Placing Utxo to Script with Guess: 42")
 
     place_tx_id =
-      new_tx()
-      |> add_output(script_address, %{}, {:datum_hash, 42})
-      |> build_tx!(wallet_address: wallet_address)
-      |> sign_tx([sig])
-      |> submit_tx()
+      Sutra.new_tx()
+      |> Sutra.add_output(script_address, %{}, {:datum_hash, 42})
+      |> Sutra.build_tx!(wallet_address: wallet_address)
+      |> Sutra.sign_tx([sig])
+      |> Sutra.submit_tx()
 
     IO.puts("Place Tx Submitted, Txid: #{place_tx_id}")
 
@@ -63,11 +61,11 @@ defmodule Sutra.Examples.Advance.SimpleGuessSpend do
     input_utxos = provider.utxos_at_tx_refs(["#{place_tx_id}#0"])
 
     spend_tx_id =
-      new_tx()
-      |> add_input(input_utxos, witness: script, redeemer: 42)
-      |> build_tx!(wallet_address: wallet_address)
-      |> sign_tx([sig])
-      |> submit_tx()
+      Sutra.new_tx()
+      |> Sutra.add_input(input_utxos, witness: script, redeemer: 42)
+      |> Sutra.build_tx!(wallet_address: wallet_address)
+      |> Sutra.sign_tx([sig])
+      |> Sutra.submit_tx()
 
     case spend_tx_id do
       %{} = error ->

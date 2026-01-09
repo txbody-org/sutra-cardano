@@ -45,7 +45,8 @@ defmodule Sutra.MixProject do
       {:mnemonic_tx, "~> 0.3.2"},
       {:ex_sodium, "~> 0.1.2"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.21", only: :dev, runtime: false}
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
+      {:makeup_html, ">= 0.0.0", only: :dev, runtime: false}
     ]
   end
 

@@ -23,14 +23,19 @@ jobs:
       - name: Set up Elixir
         uses: erlef/setup-beam@v1
         with:
-          otp-version: '27.0'
-          elixir-version: '1.17.2'
+          otp-version: '28.3'
+          elixir-version: '1.19.4'
 
       - name: Install dependencies
         run: |
           mix local.hex --force
           mix local.rebar --force
           mix deps.get
+
+      # Step: Compile the project treating any warnings as errors.
+      # Customize this step if a different behavior is desired.
+      - name: Generate Docs
+        run: mix docs
 
       - name: Publish to Hex
         run: mix hex.publish --yes

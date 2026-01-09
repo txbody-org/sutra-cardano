@@ -59,7 +59,7 @@ defmodule Sutra.MixProject do
       name: "sutra_cardano",
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/txbody-org/sutra-cardano"},
-      files: ~w(lib .formatter.exs mix.exs README.md LICENSE)
+      files: ~w(lib priv native .formatter.exs mix.exs README.md LICENSE)
     ]
   end
 

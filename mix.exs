@@ -3,8 +3,8 @@ defmodule Sutra.MixProject do
 
   def project do
     [
-      app: :sutra,
-      version: "0.2.4",
+      app: :sutra_cardano,
+      version: "0.2.5",
       elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -12,7 +12,7 @@ defmodule Sutra.MixProject do
       consolidate_protocols: Mix.env() != :test,
 
       # Docs
-      name: "Sutra",
+      name: "sutra_cardano",
       source_url: "https://github.com/txbody-org/sutra-cardano",
       homepage_url: "https://github.com/txbody-org/sutra-cardano",
       docs: &docs/0,

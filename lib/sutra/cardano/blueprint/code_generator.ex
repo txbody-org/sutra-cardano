@@ -27,34 +27,53 @@ defmodule Sutra.Cardano.Blueprint.CodeGenerator do
   # ============================================================================
 
   # Compile templates at compile time for better performance
-  @module_template File.read!(Path.join(:code.priv_dir(:sutra), "blueprint_generator/module.eex"))
+  @module_template File.read!(
+                     Path.join(:code.priv_dir(:sutra_cardano), "blueprint_generator/module.eex")
+                   )
   @redeemer_template File.read!(
-                       Path.join(:code.priv_dir(:sutra), "blueprint_generator/redeemer.eex")
+                       Path.join(
+                         :code.priv_dir(:sutra_cardano),
+                         "blueprint_generator/redeemer.eex"
+                       )
                      )
-  @datum_template File.read!(Path.join(:code.priv_dir(:sutra), "blueprint_generator/datum.eex"))
+  @datum_template File.read!(
+                    Path.join(:code.priv_dir(:sutra_cardano), "blueprint_generator/datum.eex")
+                  )
   @unit_module_template File.read!(
-                          Path.join(:code.priv_dir(:sutra), "blueprint_generator/unit_module.eex")
+                          Path.join(
+                            :code.priv_dir(:sutra_cardano),
+                            "blueprint_generator/unit_module.eex"
+                          )
                         )
   @record_module_template File.read!(
                             Path.join(
-                              :code.priv_dir(:sutra),
+                              :code.priv_dir(:sutra_cardano),
                               "blueprint_generator/record_module.eex"
                             )
                           )
   @redeemer_simple_template File.read!(
                               Path.join(
-                                :code.priv_dir(:sutra),
+                                :code.priv_dir(:sutra_cardano),
                                 "blueprint_generator/redeemer_simple.eex"
                               )
                             )
 
   # Mark external resources so module recompiles when templates change
-  @external_resource Path.join(:code.priv_dir(:sutra), "blueprint_generator/module.eex")
-  @external_resource Path.join(:code.priv_dir(:sutra), "blueprint_generator/redeemer.eex")
-  @external_resource Path.join(:code.priv_dir(:sutra), "blueprint_generator/redeemer_simple.eex")
-  @external_resource Path.join(:code.priv_dir(:sutra), "blueprint_generator/datum.eex")
-  @external_resource Path.join(:code.priv_dir(:sutra), "blueprint_generator/unit_module.eex")
-  @external_resource Path.join(:code.priv_dir(:sutra), "blueprint_generator/record_module.eex")
+  @external_resource Path.join(:code.priv_dir(:sutra_cardano), "blueprint_generator/module.eex")
+  @external_resource Path.join(:code.priv_dir(:sutra_cardano), "blueprint_generator/redeemer.eex")
+  @external_resource Path.join(
+                       :code.priv_dir(:sutra_cardano),
+                       "blueprint_generator/redeemer_simple.eex"
+                     )
+  @external_resource Path.join(:code.priv_dir(:sutra_cardano), "blueprint_generator/datum.eex")
+  @external_resource Path.join(
+                       :code.priv_dir(:sutra_cardano),
+                       "blueprint_generator/unit_module.eex"
+                     )
+  @external_resource Path.join(
+                       :code.priv_dir(:sutra_cardano),
+                       "blueprint_generator/record_module.eex"
+                     )
 
   # ============================================================================
   # Public API
@@ -100,7 +119,7 @@ defmodule Sutra.Cardano.Blueprint.CodeGenerator do
   Returns the path to the templates directory.
   """
   def templates_dir do
-    Path.join(:code.priv_dir(:sutra), "blueprint_generator")
+    Path.join(:code.priv_dir(:sutra_cardano), "blueprint_generator")
   end
 
   # ============================================================================

@@ -4,6 +4,7 @@ defmodule Sutra.Cardano.Script.NativeScriptTest do
   use ExUnit.Case, async: true
 
   alias Sutra.Cardano.Address
+  alias Sutra.Cardano.Address.Credential
   alias Sutra.Cardano.Script.NativeScript
 
   # Examples are from
@@ -84,6 +85,34 @@ defmodule Sutra.Cardano.Script.NativeScriptTest do
                |> Address.to_bech32()
 
       assert bech32_addr == "addr1wxa7ec20249sqg87yu2aqkqp735qa02q6yd93u28gzul93ghspjnt"
+    end
+  end
+
+  describe "ScriptRequireGuard witness_set round trip" do
+    test "encodes and decodes a vkey guard credential" do
+      guard_script = %NativeScript.ScriptRequireGuard{
+        credential: %Credential{
+          credential_type: :vkey,
+          hash: "e09d36c79dec9bd1b3d9e152247701cd0bb860b5ebfd1de8abb6735a"
+        }
+      }
+
+      assert guard_script
+             |> NativeScript.to_witness_set()
+             |> NativeScript.from_witness_set() == guard_script
+    end
+
+    test "encodes and decodes a script guard credential" do
+      guard_script = %NativeScript.ScriptRequireGuard{
+        credential: %Credential{
+          credential_type: :script,
+          hash: "a687dcc24e00dd3caafbeb5e68f97ca8ef269cb6fe971345eb951756"
+        }
+      }
+
+      assert guard_script
+             |> NativeScript.to_witness_set()
+             |> NativeScript.from_witness_set() == guard_script
     end
   end
 

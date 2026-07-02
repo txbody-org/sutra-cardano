@@ -3,6 +3,7 @@ defmodule Sutra.Cardano.Script.NativeScript do
    Cardano Native Script
   """
 
+  alias Sutra.Cardano.Address.Credential
   alias Sutra.Cardano.Script
   alias Sutra.Cardano.Script.NativeScript
   alias Sutra.Data.Cbor
@@ -15,6 +16,7 @@ defmodule Sutra.Cardano.Script.NativeScript do
           | __MODULE__.ScriptNOfK.t()
           | __MODULE__.ScriptInvalidBefore.t()
           | __MODULE__.ScriptInvalidHereafter.t()
+          | __MODULE__.ScriptRequireGuard.t()
 
   use TypedStruct
 
@@ -43,6 +45,10 @@ defmodule Sutra.Cardano.Script.NativeScript do
     field(:slot, integer())
   end
 
+  typedstruct(module: ScriptRequireGuard) do
+    field(:credential, Credential.t())
+  end
+
   def from_witness_set([0, pubkey]) do
     %ScriptPubkey{pubkey_hash: Cbor.extract_value!(pubkey)}
   end
@@ -67,6 +73,10 @@ defmodule Sutra.Cardano.Script.NativeScript do
     %ScriptInvalidHereafter{slot: slot}
   end
 
+  def from_witness_set([6, credential]) do
+    %ScriptRequireGuard{credential: decode_credential(credential)}
+  end
+
   def to_witness_set(%ScriptPubkey{pubkey_hash: pubkey}) do
     [0, Cbor.as_byte(pubkey)]
   end
@@ -89,6 +99,10 @@ defmodule Sutra.Cardano.Script.NativeScript do
 
   def to_witness_set(%ScriptInvalidHereafter{slot: slot}) do
     [5, slot]
+  end
+
+  def to_witness_set(%ScriptRequireGuard{credential: credential}) do
+    [6, encode_credential(credential)]
   end
 
   def from_cbor(cbor_hex) when is_binary(cbor_hex) do
@@ -135,5 +149,15 @@ defmodule Sutra.Cardano.Script.NativeScript do
   defp do_parse_from_json(%{"type" => "sig", "keyHash" => pubkey_hash})
        when is_binary(pubkey_hash) do
     %__MODULE__.ScriptPubkey{pubkey_hash: pubkey_hash}
+  end
+
+  defp decode_credential([cred_type, hash]) do
+    credential_type = if cred_type == 0, do: :vkey, else: :script
+    %Credential{credential_type: credential_type, hash: Cbor.extract_value!(hash)}
+  end
+
+  defp encode_credential(%Credential{} = credential) do
+    credential_type = if credential.credential_type == :vkey, do: 0, else: 1
+    [credential_type, Cbor.as_byte(credential.hash)]
   end
 end

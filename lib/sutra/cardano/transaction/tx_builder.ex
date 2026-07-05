@@ -55,7 +55,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
             errors: [],
             mints: %{},
             script_lookup: %{},
-            required_signers: MapSet.new(),
+            guards: MapSet.new(),
             plutus_data: %{},
             valid_to: nil,
             valid_from: nil,
@@ -529,6 +529,11 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   This is useful when the transaction needs to be signed by a key that isn't necessarily
   spending a UTxO (e.g., for governance actions or special script requirements).
 
+  > #### Deprecated {: .warning}
+  >
+  > Cardano's Dijkstra era replaces the `required_signers` transaction body field with
+  > `guards`, which can also hold script credentials. Use `add_guard/2` instead.
+
   ## Examples
 
       iex> add_signer(new_tx(), address)
@@ -538,27 +543,40 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
       %Sutra.Cardano.Transaction.TxBuilder{}
 
   """
-  def add_signer(
+  @deprecated "Use add_guard/2 instead"
+  def add_signer(%__MODULE__{} = cfg, signer), do: add_guard(cfg, signer)
+
+  @doc """
+  Adds a guard credential to the transaction (Dijkstra's `guards` transaction body
+  field, which replaces `required_signers`).
+
+  Accepts a raw key hash (assumed to be a vkey credential), an `Address`, or an
+  explicit `Credential` (which may be a script credential).
+
+  ## Examples
+
+      iex> add_guard(new_tx(), "pubkey_hash_hex")
+      %Sutra.Cardano.Transaction.TxBuilder{}
+
+      iex> add_guard(new_tx(), %Sutra.Cardano.Address.Credential{credential_type: :script, hash: "script_hash_hex"})
+      %Sutra.Cardano.Transaction.TxBuilder{}
+
+  """
+  def add_guard(
         %__MODULE__{} = cfg,
         %Address{payment_credential: %Credential{} = payment_credential} = addr
       ) do
     if Address.vkey_address?(addr),
-      do: %__MODULE__{
-        cfg
-        | required_signers: MapSet.put(cfg.required_signers, payment_credential.hash)
-      },
+      do: add_guard(cfg, payment_credential),
       else: %__MODULE__{cfg | errors: [%{key: :invalid_payment_signer, value: addr}]}
   end
 
-  def add_signer(
-        %__MODULE__{} = cfg,
-        pubkey_hash
-      )
-      when is_binary(pubkey_hash) do
-    %__MODULE__{
-      cfg
-      | required_signers: MapSet.put(cfg.required_signers, pubkey_hash)
-    }
+  def add_guard(%__MODULE__{} = cfg, %Credential{} = credential) do
+    %__MODULE__{cfg | guards: MapSet.put(cfg.guards, credential)}
+  end
+
+  def add_guard(%__MODULE__{} = cfg, key_hash) when is_binary(key_hash) do
+    add_guard(cfg, %Credential{credential_type: :vkey, hash: key_hash})
   end
 
   @doc """

@@ -37,8 +37,35 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxBuilderTest do
                valid_to: nil
              } = builder = new_tx()
 
-      assert builder.required_signers == MapSet.new()
+      assert builder.guards == MapSet.new()
       assert builder.config == %TxBuilder.TxConfig{}
+    end
+
+    test "add_signer/2 (deprecated) still populates guards with a vkey credential" do
+      builder = new_tx() |> add_signer("some_pubkey_hash")
+
+      assert builder.guards ==
+               MapSet.new([%Address.Credential{credential_type: :vkey, hash: "some_pubkey_hash"}])
+    end
+
+    test "add_guard/2 accepts a raw key hash, an Address, or a Credential" do
+      builder =
+        new_tx()
+        |> add_guard("some_pubkey_hash")
+        |> add_guard(Address.from_bech32(@addr1))
+        |> add_guard(%Address.Credential{credential_type: :script, hash: "some_script_hash"})
+
+      assert MapSet.member?(
+               builder.guards,
+               %Address.Credential{credential_type: :vkey, hash: "some_pubkey_hash"}
+             )
+
+      assert MapSet.member?(
+               builder.guards,
+               %Address.Credential{credential_type: :script, hash: "some_script_hash"}
+             )
+
+      assert Enum.any?(builder.guards, &(&1.credential_type == :vkey and &1.hash != nil))
     end
 
     test "use_provider/2 overrides provider" do

@@ -145,20 +145,27 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
     end)
   end
 
-  defp calculate_refscript_fee(protocol_params, total_bytes, fee \\ 0)
-  defp calculate_refscript_fee(_, 0, fee), do: fee
+  defp calculate_refscript_fee(_, 0, fee, _, _), do: fee
 
-  defp calculate_refscript_fee(ref_script_cost_per_byte, total_bytes, fee)
+  defp calculate_refscript_fee(
+         ref_script_cost_per_byte,
+         total_bytes,
+         fee,
+         cost_stride,
+         cost_multiplier
+       )
        when total_bytes > 0 do
-    if total_bytes < @ref_script_size_increment do
+    if total_bytes < cost_stride do
       fee + ref_script_cost_per_byte * total_bytes
     else
-      new_ref_script_cost = @ref_script_multiplier * ref_script_cost_per_byte
+      new_ref_script_cost = cost_multiplier * ref_script_cost_per_byte
 
       calculate_refscript_fee(
         new_ref_script_cost,
-        total_bytes - @ref_script_size_increment,
-        fee + new_ref_script_cost
+        total_bytes - cost_stride,
+        fee + new_ref_script_cost,
+        cost_stride,
+        cost_multiplier
       )
     end
   end
@@ -174,7 +181,10 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
     initial_fee =
       calculate_refscript_fee(
         builder.config.protocol_params.min_fee_ref_script_cost_per_byte,
-        total_ref_bytes(builder.ref_inputs)
+        total_ref_bytes(builder.ref_inputs),
+        0,
+        builder.config.protocol_params.ref_script_cost_stride || @ref_script_size_increment,
+        builder.config.protocol_params.ref_script_cost_multiplier || @ref_script_multiplier
       ) + 100_000
 
     ttl =
@@ -195,7 +205,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
       # TODO: Handle collateral as list
       collateral: maybe(collateral_inputs, nil, fn i -> [i.output_reference] end),
       total_collateral: maybe(collateral_inputs, nil, fn i -> i.output.value end),
-      required_signers: MapSet.to_list(builder.required_signers),
+      guards: MapSet.to_list(builder.guards),
       auxiliary_data_hash:
         maybe(builder.metadata, nil, &(CBOR.encode(&1) |> Blake2b.blake2b_256())),
       script_data_hash: Blake2b.blake2b_256(""),
@@ -258,7 +268,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
         %TxBody{
           tx_body
           | fee: Asset.from_lovelace(ceil(tx_fee * 1.06)),
-            required_signers: final_tx.tx_body.required_signers
+            guards: final_tx.tx_body.guards
         }
         |> create_tx(
           builder,
@@ -285,8 +295,13 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
       )
       |> calculate_min_ada_for_output(cfg.protocol_params)
 
-    vkey_witnesses =
-      calc_total_signers(builder.required_signers, new_inputs) |> derive_vkey_witness()
+    vkey_guard_hashes =
+      builder.guards
+      |> Enum.filter(&(&1.credential_type == :vkey))
+      |> Enum.map(& &1.hash)
+      |> MapSet.new()
+
+    vkey_witnesses = calc_total_signers(vkey_guard_hashes, new_inputs) |> derive_vkey_witness()
 
     tx = %Transaction{
       tx_body: %TxBody{
@@ -324,7 +339,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
   defp has_plutus_script?([]), do: false
 
   defp has_plutus_script?([script_type | rest]) do
-    if script_type in [:plutus_v1, :plutus_v2, :plutus_v3],
+    if script_type in [:plutus_v1, :plutus_v2, :plutus_v3, :plutus_v4],
       do: true,
       else: has_plutus_script?(rest)
   end
@@ -509,6 +524,9 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
 
           script_type == :plutus_v3 ->
             Map.put_new(acc, 2, cost_model.plutus_v3)
+
+          script_type == :plutus_v4 ->
+            Map.put_new(acc, 3, cost_model.plutus_v4)
 
           true ->
             acc

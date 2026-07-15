@@ -4,8 +4,11 @@ defmodule Sutra.Cardano.Gov do
   """
 
   alias Sutra.Cardano.Address.Credential
+<<<<<<< HEAD
   alias Sutra.Cardano.Common.Drep
   alias Sutra.Cardano.Transaction.OutputReference
+=======
+>>>>>>> dd915fc (feat: enhance governance module with voter and voting procedure structures and tests)
   alias Sutra.Data.Cbor
 
   import Sutra.Data.Cbor, only: [extract_value!: 1]
@@ -40,6 +43,18 @@ defmodule Sutra.Cardano.Gov do
     field(:credential, Credential.t(), enforce: true)
   end
 
+<<<<<<< HEAD
+=======
+  typedstruct(module: GovActionId) do
+    @moduledoc """
+      Identifies a governance action proposal by the transaction that
+      submitted it and its index within that transaction's proposals.
+    """
+    field(:transaction_id, String.t(), enforce: true)
+    field(:gov_action_index, integer(), enforce: true)
+  end
+
+>>>>>>> dd915fc (feat: enhance governance module with voter and voting procedure structures and tests)
   typedstruct(module: VotingProcedure) do
     @moduledoc """
       A single vote cast by a voter on a governance action, with an
@@ -51,6 +66,7 @@ defmodule Sutra.Cardano.Gov do
     field(:anchor, %{url: String.t(), hash: String.t()})
   end
 
+<<<<<<< HEAD
   @doc """
     Builds a DRep `Voter` from a `Credential`, a `Drep`, or a raw key-hash hex
     string (treated as a vkey credential).
@@ -118,10 +134,15 @@ defmodule Sutra.Cardano.Gov do
       voter_type: :committee_hot,
       credential: %Credential{credential_type: :vkey, hash: extract_value!(key_hash)}
     }
+=======
+  def decode_voter!([0, key_hash]),
+    do: %Voter{voter_type: :committee_hot, credential: decode_voter_credential(:vkey, key_hash)}
+>>>>>>> dd915fc (feat: enhance governance module with voter and voting procedure structures and tests)
 
   def decode_voter!([1, script_hash]),
     do: %Voter{
       voter_type: :committee_hot,
+<<<<<<< HEAD
       credential: %Credential{credential_type: :script, hash: extract_value!(script_hash)}
     }
 
@@ -142,6 +163,22 @@ defmodule Sutra.Cardano.Gov do
       voter_type: :stake_pool,
       credential: %Credential{credential_type: :vkey, hash: extract_value!(key_hash)}
     }
+=======
+      credential: decode_voter_credential(:script, script_hash)
+    }
+
+  def decode_voter!([2, key_hash]),
+    do: %Voter{voter_type: :drep, credential: decode_voter_credential(:vkey, key_hash)}
+
+  def decode_voter!([3, script_hash]),
+    do: %Voter{voter_type: :drep, credential: decode_voter_credential(:script, script_hash)}
+
+  def decode_voter!([4, key_hash]),
+    do: %Voter{voter_type: :stake_pool, credential: decode_voter_credential(:vkey, key_hash)}
+
+  defp decode_voter_credential(credential_type, hash),
+    do: %Credential{credential_type: credential_type, hash: extract_value!(hash)}
+>>>>>>> dd915fc (feat: enhance governance module with voter and voting procedure structures and tests)
 
   def voter_to_cbor(%Voter{
         voter_type: :committee_hot,
@@ -170,6 +207,18 @@ defmodule Sutra.Cardano.Gov do
   def voter_to_cbor(%Voter{voter_type: :stake_pool, credential: %Credential{hash: h}}),
     do: [4, Cbor.as_byte(h)]
 
+<<<<<<< HEAD
+=======
+  def decode_gov_action_id!([transaction_id, gov_action_index]),
+    do: %GovActionId{
+      transaction_id: extract_value!(transaction_id),
+      gov_action_index: gov_action_index
+    }
+
+  def gov_action_id_to_cbor(%GovActionId{transaction_id: transaction_id, gov_action_index: idx}),
+    do: [Cbor.as_byte(transaction_id), idx]
+
+>>>>>>> dd915fc (feat: enhance governance module with voter and voting procedure structures and tests)
   def decode_vote!(0), do: :no
   def decode_vote!(1), do: :yes
   def decode_vote!(2), do: :abstain
@@ -197,7 +246,11 @@ defmodule Sutra.Cardano.Gov do
     for {voter, votes} <- voting_procedures, into: %{} do
       {decode_voter!(voter),
        for {gov_action_id, voting_procedure} <- votes, into: %{} do
+<<<<<<< HEAD
          {OutputReference.from_cbor(gov_action_id), decode_voting_procedure!(voting_procedure)}
+=======
+         {decode_gov_action_id!(gov_action_id), decode_voting_procedure!(voting_procedure)}
+>>>>>>> dd915fc (feat: enhance governance module with voter and voting procedure structures and tests)
        end}
     end
   end
@@ -208,7 +261,11 @@ defmodule Sutra.Cardano.Gov do
     for {voter, votes} <- voting_procedures, into: %{} do
       {voter_to_cbor(voter),
        for {gov_action_id, voting_procedure} <- votes, into: %{} do
+<<<<<<< HEAD
          {OutputReference.to_cbor(gov_action_id), voting_procedure_to_cbor(voting_procedure)}
+=======
+         {gov_action_id_to_cbor(gov_action_id), voting_procedure_to_cbor(voting_procedure)}
+>>>>>>> dd915fc (feat: enhance governance module with voter and voting procedure structures and tests)
        end}
     end
   end

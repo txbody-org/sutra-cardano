@@ -159,10 +159,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.CertificateHelper do
          handle
        )
        when is_function(handle, 1) do
-    new_cfg = %TxBuilder{
-      cfg
-      | required_signers: MapSet.put(cfg.required_signers, stake_key_hash)
-    }
+    new_cfg =
+      TxBuilder.add_guard(cfg, %Credential{credential_type: :vkey, hash: stake_key_hash})
 
     handle.(new_cfg)
   end

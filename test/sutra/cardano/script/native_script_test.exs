@@ -165,5 +165,33 @@ defmodule Sutra.Cardano.Script.NativeScriptTest do
                }
              ]
     end
+
+    test "from_json/1 returns Native script for guard with vkey credential" do
+      guard = %{
+        "type" => "guard",
+        "keyHash" => "e09d36c79dec9bd1b3d9e152247701cd0bb860b5ebfd1de8abb6735a"
+      }
+
+      assert NativeScript.from_json(guard) == %NativeScript.ScriptRequireGuard{
+               credential: %Credential{
+                 credential_type: :vkey,
+                 hash: "e09d36c79dec9bd1b3d9e152247701cd0bb860b5ebfd1de8abb6735a"
+               }
+             }
+    end
+
+    test "from_json/1 returns Native script for guard with script credential" do
+      guard = %{
+        "type" => "guard",
+        "scriptHash" => "a687dcc24e00dd3caafbeb5e68f97ca8ef269cb6fe971345eb951756"
+      }
+
+      assert NativeScript.from_json(guard) == %NativeScript.ScriptRequireGuard{
+               credential: %Credential{
+                 credential_type: :script,
+                 hash: "a687dcc24e00dd3caafbeb5e68f97ca8ef269cb6fe971345eb951756"
+               }
+             }
+    end
   end
 end

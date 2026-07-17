@@ -151,6 +151,20 @@ defmodule Sutra.Cardano.Script.NativeScript do
     %__MODULE__.ScriptPubkey{pubkey_hash: pubkey_hash}
   end
 
+  defp do_parse_from_json(%{"type" => "guard", "keyHash" => key_hash})
+       when is_binary(key_hash) do
+    %__MODULE__.ScriptRequireGuard{
+      credential: %Credential{credential_type: :vkey, hash: key_hash}
+    }
+  end
+
+  defp do_parse_from_json(%{"type" => "guard", "scriptHash" => script_hash})
+       when is_binary(script_hash) do
+    %__MODULE__.ScriptRequireGuard{
+      credential: %Credential{credential_type: :script, hash: script_hash}
+    }
+  end
+
   defp decode_credential([cred_type, hash]) do
     credential_type = if cred_type == 0, do: :vkey, else: :script
     %Credential{credential_type: credential_type, hash: Cbor.extract_value!(hash)}

@@ -30,11 +30,14 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Address.Credential
   alias Sutra.Cardano.Asset
+  alias Sutra.Cardano.Gov.Voter
+  alias Sutra.Cardano.Gov.VotingProcedure
   alias Sutra.Cardano.Script
   alias Sutra.Cardano.Transaction
   alias Sutra.Cardano.Transaction.Datum
   alias Sutra.Cardano.Transaction.Input
   alias Sutra.Cardano.Transaction.Output
+  alias Sutra.Cardano.Transaction.OutputReference
   alias Sutra.Cardano.Transaction.TxBuilder.CertificateHelper
   alias Sutra.Cardano.Transaction.TxBuilder.Internal
   alias Sutra.Cardano.Transaction.TxBuilder.TxConfig
@@ -65,7 +68,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
             collateral_inputs: [],
             certificates: [],
             total_deposit: Asset.zero(),
-            withdrawals: %{}
+            withdrawals: %{},
+            votes: %{}
 
   @doc """
   Initialize a new empty `TxBuilder`.
@@ -737,6 +741,112 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
         redeemer_lookup: Map.put_new(cfg.redeemer_lookup, {:reward, script_hash}, redeemer)
     }
   end
+
+  @doc """
+  Casts a vote on a governance action (Dijkstra/Conway `voting_procedures`,
+  transaction body field 19).
+
+  Call it multiple times to have the same voter vote on several actions, or to
+  register votes from several voters — each call is accumulated.
+
+  ## Parameters
+
+  - `builder`: The `TxBuilder` instance.
+  - `voter`: A `%Sutra.Cardano.Gov.Voter{}`. Build one with the helpers in
+    `Sutra.Cardano.Gov`: `drep_voter/1`, `committee_voter/1`, or `stake_pool_voter/1`.
+  - `gov_action_id`: The governance action being voted on. A gov action is
+    identified exactly like a UTxO — a transaction id plus an index — so this
+    accepts an `%OutputReference{}`, an `%Input{}`, or the result of
+    `Sutra.Cardano.Gov.gov_action_id/2` (which is itself an `%OutputReference{}`).
+  - `vote`: `:yes`, `:no`, or `:abstain`.
+  - `opts`: options.
+
+  ## Options
+
+  - `:anchor` - Optional metadata anchor `%{url: String.t(), hash: String.t()}`.
+  - `:witness` - The voting script (`%Script{}` or `%NativeScript{}`) when the
+    voter uses a script credential (script DRep / script committee member).
+  - `:redeemer` - Redeemer data (required when voting with a Plutus script credential).
+
+  ## Examples
+
+      # DRep (key credential) voting yes
+      iex> new_tx()
+      ...> |> vote(Gov.drep_voter(drep_credential), Gov.gov_action_id(action_tx_id, 0), :yes)
+
+      # Stake pool voting no, referencing the action by its output reference
+      iex> new_tx()
+      ...> |> vote(Gov.stake_pool_voter(pool_key_hash), action_output_reference, :no)
+
+      # Script DRep voting with a Plutus script + redeemer
+      iex> new_tx()
+      ...> |> vote(Gov.drep_voter(script_credential), gov_action_id, :yes,
+      ...>      witness: plutus_script, redeemer: redeemer_data)
+
+  """
+  def vote(builder, voter, gov_action_id, vote, opts \\ [])
+
+  def vote(%__MODULE__{} = builder, %Voter{} = voter, %Input{output_reference: ref}, vote, opts),
+    do: vote(builder, voter, ref, vote, opts)
+
+  # Key-credential voters authorize with a signature at sign time.
+  def vote(
+        %__MODULE__{} = builder,
+        %Voter{credential: %Credential{credential_type: :vkey}} = voter,
+        %OutputReference{} = gov_action_id,
+        vote,
+        opts
+      )
+      when vote in [:yes, :no, :abstain],
+      do:
+        put_voter_builder(builder, voter, gov_action_id, %VotingProcedure{
+          vote: vote,
+          anchor: opts[:anchor]
+        })
+
+  def vote(
+        %__MODULE__{} = builder,
+        %Voter{credential: %Credential{credential_type: :script, hash: voter_script_hash}} = voter,
+        %OutputReference{} = gov_action_id,
+        vote,
+        opts
+      )
+      when vote in [:yes, :no, :abstain] do
+    procedure = %VotingProcedure{vote: vote, anchor: opts[:anchor]}
+    witness = opts[:witness]
+    redeemer = opts[:redeemer]
+
+    # Script voters (script DRep / committee) must supply the voting script, so route
+    # them through validate_script_witness/4 (which flags a missing/invalid
+    # script, or a missing Plutus redeemer, even when no witness was passed).
+    case validate_script_witness(builder.script_lookup, voter_script_hash, redeemer, witness) do
+      {:ok, used_script_type, script_hash} ->
+        %__MODULE__{
+          put_voter_builder(builder, voter, gov_action_id, procedure)
+          | script_lookup: Map.put_new(builder.script_lookup, script_hash, witness),
+            used_scripts: MapSet.put(builder.used_scripts, used_script_type),
+            redeemer_lookup: put_vote_redeemer(builder.redeemer_lookup, voter, redeemer)
+        }
+
+      {:error, err_key} ->
+        %__MODULE__{builder | errors: [%{key: err_key, value: voter} | builder.errors]}
+    end
+  end
+
+  defp put_voter_builder(
+         %__MODULE__{} = builder,
+         %Voter{} = voter,
+         %OutputReference{} = gov_action_id,
+         %VotingProcedure{} = procedure
+       ) do
+    inner = Map.get(builder.votes, voter, %{}) |> Map.put(gov_action_id, procedure)
+    %__MODULE__{builder | votes: Map.put(builder.votes, voter, inner)}
+  end
+
+  defp put_vote_redeemer(redeemer_lookup, _voter, nil), do: redeemer_lookup
+
+  defp put_vote_redeemer(redeemer_lookup, voter, redeemer),
+    do: Map.put_new(redeemer_lookup, {:vote, voter}, redeemer)
 
   @doc delegate_to: {CertificateHelper, :register_stake_credential, 3}
   defdelegate register_stake_credential(builder, credential, redeemer \\ nil),

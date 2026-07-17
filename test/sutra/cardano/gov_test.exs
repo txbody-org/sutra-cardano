@@ -5,7 +5,8 @@ defmodule Sutra.Cardano.GovTest do
 
   alias Sutra.Cardano.Address.Credential
   alias Sutra.Cardano.Gov
-  alias Sutra.Cardano.Gov.{GovActionId, Voter, VotingProcedure}
+  alias Sutra.Cardano.Gov.{Voter, VotingProcedure}
+  alias Sutra.Cardano.Transaction.OutputReference
 
   @tx_id "bcaeed39733e00db82a5492d5b4791de8dc7e8b4859dafe89ec3915304bd4f4b"
   @key_hash "e09d36c79dec9bd1b3d9e152247701cd0bb860b5ebfd1de8abb6735a"
@@ -49,7 +50,7 @@ defmodule Sutra.Cardano.GovTest do
           voter_type: :drep,
           credential: %Credential{credential_type: :vkey, hash: @key_hash}
         } => %{
-          %GovActionId{transaction_id: @tx_id, gov_action_index: 0} => %VotingProcedure{
+          %OutputReference{transaction_id: @tx_id, output_index: 0} => %VotingProcedure{
             vote: :yes,
             anchor: nil
           }
@@ -58,7 +59,7 @@ defmodule Sutra.Cardano.GovTest do
           voter_type: :stake_pool,
           credential: %Credential{credential_type: :vkey, hash: @key_hash}
         } => %{
-          %GovActionId{transaction_id: @tx_id, gov_action_index: 1} => %VotingProcedure{
+          %OutputReference{transaction_id: @tx_id, output_index: 1} => %VotingProcedure{
             vote: :abstain,
             anchor: %{url: "https://example.com", hash: @script_hash}
           }

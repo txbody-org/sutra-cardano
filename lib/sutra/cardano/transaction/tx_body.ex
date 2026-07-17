@@ -62,7 +62,7 @@ defmodule Sutra.Cardano.Transaction.TxBody do
     field(:reference_inputs, [OutputReference.t()])
 
     # --- New Fields in Conway Era
-    # -- (19) %{Gov.Voter.t() => %{Gov.GovActionId.t() => Gov.VotingProcedure.t()}}
+    # -- (19) %{Gov.Voter.t() => %{OutputReference.t() => Gov.VotingProcedure.t()}}
     field(:voting_procedures, map())
     # -- (20)
     field(:proposal_procedures, any())

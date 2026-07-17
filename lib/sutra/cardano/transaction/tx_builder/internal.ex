@@ -8,6 +8,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
   alias Sutra.Blake2b
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Asset
+  alias Sutra.Cardano.Gov
   alias Sutra.Cardano.Gov.CostModels
   alias Sutra.Cardano.Script
   alias Sutra.Cardano.Transaction
@@ -63,7 +64,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
       redeemer:
         with_mint_redeemers([], builder)
         |> with_cert_redeemers(builder)
-        |> with_reward_redeemers(builder),
+        |> with_reward_redeemers(builder)
+        |> with_vote_redeemers(builder),
       script_witness: Map.values(builder.script_lookup) |> Enum.filter(&Script.is_script/1),
       plutus_data: Enum.map(builder.plutus_data, fn {_, v} -> %PlutusData{value: v} end),
       vkey_witness: []
@@ -117,6 +119,32 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
   end
 
   defp with_reward_redeemers(initial_witness, _), do: initial_witness
+
+  defp with_vote_redeemers(initial_witness, %TxBuilder{votes: votes})
+       when map_size(votes) == 0,
+       do: initial_witness
+
+  defp with_vote_redeemers(initial_witness, %TxBuilder{
+         votes: votes,
+         redeemer_lookup: redeemer_lookup
+       }) do
+    # Only script-credential voters carry a redeemer, but its pointer is the
+    # voter's index in the full ledger-canonical (serialized) voter ordering —
+    # so index every sorted voter, then keep the ones that have a redeemer.
+    vote_redeemers =
+      votes
+      |> Map.keys()
+      |> Enum.sort_by(&Gov.voter_to_cbor(&1) |> CBOR.encode())
+      |> Enum.with_index()
+      |> Enum.flat_map(fn {voter, index} ->
+        case Map.get(redeemer_lookup, {:vote, voter}) do
+          nil -> []
+          redeemer -> [Witness.init_redeemer(index, redeemer, :vote)]
+        end
+      end)
+
+    initial_witness ++ vote_redeemers
+  end
 
   defp with_spend_redeemers(%TxBuilder{} = builder, inputs) do
     Enum.reduce(Enum.with_index(inputs), [], fn {%Input{} = input, indx}, acc ->
@@ -210,7 +238,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
         maybe(builder.metadata, nil, &(CBOR.encode(&1) |> Blake2b.blake2b_256())),
       script_data_hash: Blake2b.blake2b_256(""),
       certificates: Enum.map(builder.certificates, &Utils.fst/1),
-      withdrawals: prepare_withdrawals(builder)
+      withdrawals: prepare_withdrawals(builder),
+      voting_procedures: builder.votes
     }
   end
 

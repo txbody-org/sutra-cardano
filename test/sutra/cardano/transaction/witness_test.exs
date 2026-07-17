@@ -4,6 +4,7 @@ defmodule Sutra.Cardano.Transaction.Witness.VkeyWitnessTest do
   use ExUnit.Case, async: true
 
   alias Sutra.Cardano.Transaction.Witness
+  alias Witness.Redeemer
   alias Witness.VkeyWitness
 
   describe "Signature verification test" do
@@ -84,6 +85,31 @@ defmodule Sutra.Cardano.Transaction.Witness.VkeyWitnessTest do
                @invalid_normal_ed25519_key["witness"],
                @invalid_normal_ed25519_key["tx_id"]
              ) == {:error, :INVALID_SIGNATURE}
+    end
+  end
+
+  describe "Redeemer tag" do
+    test "encode_tag/1 and decode_tag!/1 round trip for all tags, incl. Dijkstra's :guard" do
+      for {tag, code} <- [spend: 0, mint: 1, cert: 2, reward: 3, vote: 4, propose: 5, guard: 6] do
+        assert Redeemer.encode_tag(tag) == code
+        assert Redeemer.decode_tag!(code) == tag
+      end
+    end
+  end
+
+  describe "Witness.decode/1 for redeemers (key 5)" do
+    @redeemer %Redeemer{tag: :guard, index: 0, data: 1, exunits: {0, 0}}
+
+    test "decodes Dijkstra's map-only format" do
+      assert Witness.decode({5, %{[6, 0] => [1, [0, 0]]}}) == [@redeemer]
+    end
+
+    test "still decodes the pre-Dijkstra flat array format" do
+      assert Witness.decode({5, [[6, 0, 1, [0, 0]]]}) == [@redeemer]
+    end
+
+    test "map format is always used on encode" do
+      assert Witness.to_cbor([@redeemer]) == %{5 => %{[6, 0] => [1, [0, 0]]}}
     end
   end
 end

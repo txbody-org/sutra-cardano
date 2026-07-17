@@ -90,7 +90,7 @@ defmodule Sutra.Cardano.Common.Drep do
   def to_cbor(%__MODULE__{} = drep) do
     case drep.drep_type do
       :key_hash -> [0, Cbor.as_byte(drep.drep_value)]
-      :sctipt_hash -> [1, Cbor.as_byte(drep.drep_value)]
+      :script_hash -> [1, Cbor.as_byte(drep.drep_value)]
       :abstain -> [2]
       :no_confidence -> [3]
     end

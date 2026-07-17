@@ -73,7 +73,11 @@ defmodule Sutra do
   defdelegate deploy_script(builder, address, script), to: TxBuilder
 
   @doc delegate_to: {TxBuilder, :add_signer, 2}
-  defdelegate add_signer(builder, signer), to: TxBuilder
+  @deprecated "Use add_guard/2 instead"
+  defdelegate add_signer(builder, signer), to: TxBuilder, as: :add_guard
+
+  @doc delegate_to: {TxBuilder, :add_guard, 2}
+  defdelegate add_guard(builder, guard), to: TxBuilder
 
   @doc delegate_to: {TxBuilder, :attach_datum, 2}
   defdelegate attach_datum(builder, datum), to: TxBuilder

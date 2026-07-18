@@ -7,6 +7,7 @@ defmodule Sutra.Cardano.Transaction.TxBody do
   alias Sutra.Cardano.Address.Credential
   alias Sutra.Cardano.Asset
   alias Sutra.Cardano.Gov
+  alias Sutra.Cardano.Gov.ProposalProcedure
   alias Sutra.Cardano.Transaction.AccountBalanceInterval
   alias Sutra.Cardano.Transaction.Certificate
   alias Sutra.Cardano.Transaction.Input
@@ -128,6 +129,7 @@ defmodule Sutra.Cardano.Transaction.TxBody do
           Enum.map(d, &OutputReference.from_cbor/1)
         end),
       voting_procedures: Gov.decode_voting_procedures(tx_body[19]),
+      proposal_procedures: decode_proposal_procedures(tx_body[20]),
       direct_deposits: withdrawal_from_cbor(tx_body[25]),
       account_balance_intervals: AccountBalanceInterval.decode_all(tx_body[26])
     }
@@ -138,6 +140,15 @@ defmodule Sutra.Cardano.Transaction.TxBody do
   end
 
   defp withdrawal_from_cbor(_), do: nil
+
+  # proposal_procedures = nonempty_oset<proposal_procedure>
+  defp decode_proposal_procedures(nil), do: nil
+
+  defp decode_proposal_procedures(procedures_cbor) do
+    procedures_cbor
+    |> extract_value!()
+    |> Enum.map(&ProposalProcedure.decode/1)
+  end
 
   # guards = nonempty_set<addr_keyhash> / nonempty_oset<credential>
   #
@@ -300,6 +311,13 @@ defmodule Sutra.Cardano.Transaction.TxBody do
     voting_procedures
     |> Gov.encode_voting_procedures()
     |> Cbor.as_indexed_map(19, acc)
+  end
+
+  defp do_map_to_cbor({:proposal_procedures, proposal_procedures}, acc) do
+    proposal_procedures
+    |> Enum.map(&ProposalProcedure.to_cbor/1)
+    |> Cbor.as_nonempty_set()
+    |> Cbor.as_indexed_map(20, acc)
   end
 
   defp do_map_to_cbor({:direct_deposits, direct_deposits}, acc) do

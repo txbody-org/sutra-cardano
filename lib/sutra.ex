@@ -119,6 +119,9 @@ defmodule Sutra do
   @doc delegate_to: {TxBuilder, :vote, 5}
   defdelegate vote(builder, voter, gov_action_id, vote, opts \\ []), to: TxBuilder
 
+  @doc delegate_to: {TxBuilder, :propose, 3}
+  defdelegate propose(builder, gov_action, opts \\ []), to: TxBuilder
+
   @doc delegate_to: {TxBuilder, :build_tx, 2}
   defdelegate build_tx(builder, opts \\ []), to: TxBuilder
 

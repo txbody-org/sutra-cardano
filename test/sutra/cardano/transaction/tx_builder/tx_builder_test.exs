@@ -42,7 +42,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxBuilderTest do
     end
 
     test "add_signer/2 (deprecated) still populates guards with a vkey credential" do
-      builder = new_tx() |> add_signer("some_pubkey_hash")
+      builder = new_tx() |> add_guard("some_pubkey_hash")
 
       assert builder.guards ==
                MapSet.new([%Address.Credential{credential_type: :vkey, hash: "some_pubkey_hash"}])

@@ -30,6 +30,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Address.Credential
   alias Sutra.Cardano.Asset
+  alias Sutra.Cardano.Gov.ProposalProcedure
   alias Sutra.Cardano.Gov.Voter
   alias Sutra.Cardano.Gov.VotingProcedure
   alias Sutra.Cardano.Script
@@ -69,7 +70,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
             certificates: [],
             total_deposit: Asset.zero(),
             withdrawals: %{},
-            votes: %{}
+            votes: %{},
+            proposals: []
 
   @doc """
   Initialize a new empty `TxBuilder`.
@@ -848,6 +850,80 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   defp put_vote_redeemer(redeemer_lookup, voter, redeemer),
     do: Map.put_new(redeemer_lookup, {:vote, voter}, redeemer)
 
+  @doc """
+  Submits a governance proposal (Dijkstra/Conway `proposal_procedures`,
+  transaction body field 20).
+
+  Call it multiple times to submit several proposals; each is accumulated in
+  submission order.
+
+  ## Parameters
+
+  - `builder`: The `TxBuilder` instance.
+  - `gov_action`: The governance action to propose. Build one with the helpers
+    in `Sutra.Cardano.Gov.GovAction` (`hard_fork/3`, `treasury_withdrawals/2`,
+    `no_confidence/1`, `update_committee/4`, `new_constitution/2`, `info/0`).
+  - `opts`: options.
+
+  ## Options
+
+  - `:reward_account` - Where the deposit is refunded. A reward `%Address{}` or a
+    raw reward-account hex string. **Required.**
+  - `:anchor` - Proposal metadata anchor `%{url: String.t(), hash: String.t()}`.
+    **Required** (the CDDL mandates it).
+  - `:deposit` - Deposit in lovelace. Defaults to the protocol parameter
+    `gov_action_deposit` at build time when omitted.
+  - `:witness` - A guardrails `%Script{}`/`%NativeScript{}` when the action
+    references a guardrails script (e.g. treasury withdrawals).
+  - `:redeemer` - Redeemer data for the guardrails Plutus script.
+
+  ## Examples
+
+      # Info action (no on-chain effect), deposit defaulted from protocol params
+      iex> new_tx()
+      ...> |> propose(GovAction.info(), reward_account: reward_addr, anchor: anchor)
+
+      # Treasury withdrawal with an explicit deposit
+      iex> action = GovAction.treasury_withdrawals(%{reward_hex => 1_000_000})
+      iex> new_tx()
+      ...> |> propose(action, reward_account: reward_addr, anchor: anchor, deposit: 100_000_000)
+
+  """
+  def propose(builder, gov_action, opts \\ [])
+
+  def propose(%__MODULE__{} = builder, gov_action, opts) do
+    procedure = %ProposalProcedure{
+      deposit: normalize_deposit(opts[:deposit]),
+      reward_account: normalize_reward_account(opts[:reward_account]),
+      gov_action: gov_action,
+      anchor: opts[:anchor]
+    }
+
+    %__MODULE__{} = builder = register_guardrails_script(builder, opts[:witness])
+    %__MODULE__{builder | proposals: [{procedure, opts[:redeemer]} | builder.proposals]}
+  end
+
+  defp normalize_deposit(nil), do: nil
+  defp normalize_deposit(lovelace) when is_integer(lovelace), do: Asset.from_lovelace(lovelace)
+
+  defp normalize_reward_account(%Address{} = address),
+    do: Address.Parser.encode(address) |> Base.encode16(case: :lower)
+
+  defp normalize_reward_account(reward_account) when is_binary(reward_account), do: reward_account
+
+  defp register_guardrails_script(builder, nil), do: builder
+
+  defp register_guardrails_script(%__MODULE__{} = builder, script)
+       when Script.is_script(script) do
+    script_type = if Script.is_native_script(script), do: :native, else: script.script_type
+
+    %__MODULE__{
+      builder
+      | script_lookup: Map.put_new(builder.script_lookup, Script.hash_script(script), script),
+        used_scripts: MapSet.put(builder.used_scripts, script_type)
+    }
+  end
+
   @doc delegate_to: {CertificateHelper, :register_stake_credential, 3}
   defdelegate register_stake_credential(builder, credential, redeemer \\ nil),
     to: CertificateHelper
@@ -908,6 +984,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
           ref_inputs: ref_inputs,
           used_scripts: MapSet.to_list(cfg.used_scripts),
           certificates: Enum.reverse(cfg.certificates),
+          proposals: Enum.reverse(cfg.proposals),
           outputs: Enum.reverse(cfg.outputs)
       }
       |> Internal.process_build_tx(wallet_inputs, collateral_inputs)

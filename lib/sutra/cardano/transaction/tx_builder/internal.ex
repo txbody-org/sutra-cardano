@@ -10,6 +10,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
   alias Sutra.Cardano.Asset
   alias Sutra.Cardano.Gov
   alias Sutra.Cardano.Gov.CostModels
+  alias Sutra.Cardano.Gov.ProposalProcedure
   alias Sutra.Cardano.Script
   alias Sutra.Cardano.Transaction
   alias Sutra.Cardano.Transaction.Input
@@ -65,7 +66,8 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
         with_mint_redeemers([], builder)
         |> with_cert_redeemers(builder)
         |> with_reward_redeemers(builder)
-        |> with_vote_redeemers(builder),
+        |> with_vote_redeemers(builder)
+        |> with_propose_redeemers(builder),
       script_witness: Map.values(builder.script_lookup) |> Enum.filter(&Script.is_script/1),
       plutus_data: Enum.map(builder.plutus_data, fn {_, v} -> %PlutusData{value: v} end),
       vkey_witness: []
@@ -134,7 +136,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
     vote_redeemers =
       votes
       |> Map.keys()
-      |> Enum.sort_by(&Gov.voter_to_cbor(&1) |> CBOR.encode())
+      |> Enum.sort_by(&(Gov.voter_to_cbor(&1) |> CBOR.encode()))
       |> Enum.with_index()
       |> Enum.flat_map(fn {voter, index} ->
         case Map.get(redeemer_lookup, {:vote, voter}) do
@@ -144,6 +146,22 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
       end)
 
     initial_witness ++ vote_redeemers
+  end
+
+  defp with_propose_redeemers(initial_witness, %TxBuilder{proposals: []}), do: initial_witness
+
+  defp with_propose_redeemers(initial_witness, %TxBuilder{proposals: proposals}) do
+    # The proposing redeemer pointer is the proposal's index in submission order
+    # (proposals are already reversed to submission order in build_tx). Only
+    # proposals with a guardrails Plutus script carry a redeemer.
+    propose_redeemers =
+      proposals
+      |> Enum.with_index()
+      |> Enum.flat_map(fn {{_procedure, redeemer}, index} ->
+        if is_nil(redeemer), do: [], else: [Witness.init_redeemer(index, redeemer, :propose)]
+      end)
+
+    initial_witness ++ propose_redeemers
   end
 
   defp with_spend_redeemers(%TxBuilder{} = builder, inputs) do
@@ -239,8 +257,22 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
       script_data_hash: Blake2b.blake2b_256(""),
       certificates: Enum.map(builder.certificates, &Utils.fst/1),
       withdrawals: prepare_withdrawals(builder),
-      voting_procedures: builder.votes
+      voting_procedures: builder.votes,
+      proposal_procedures: prepare_proposals(builder)
     }
+  end
+
+  # Fills each proposal's deposit from the `gov_action_deposit` protocol
+  # parameter when the caller didn't set one explicitly.
+  defp prepare_proposals(%TxBuilder{proposals: proposals, config: %TxConfig{} = cfg}) do
+    Enum.map(proposals, fn {%ProposalProcedure{} = procedure, _redeemer} ->
+      if procedure.deposit,
+        do: procedure,
+        else: %ProposalProcedure{
+          procedure
+          | deposit: Asset.from_lovelace(cfg.protocol_params.gov_action_deposit)
+        }
+    end)
   end
 
   defp prepare_withdrawals(%TxBuilder{

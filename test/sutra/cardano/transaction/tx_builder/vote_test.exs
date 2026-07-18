@@ -38,6 +38,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.VoteTest do
 
     test "committee_voter/1 and stake_pool_voter/1" do
       assert %Voter{voter_type: :committee_hot} = Gov.committee_voter(@drep_hash)
+
       assert %Voter{voter_type: :stake_pool, credential: %Credential{credential_type: :vkey}} =
                Gov.stake_pool_voter(@pool_hash)
     end
@@ -62,7 +63,9 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.VoteTest do
       builder = new_tx() |> vote(voter, action_ref(2), :no, anchor: anchor)
 
       action = action_ref(2)
-      assert %{^voter => %{^action => %VotingProcedure{vote: :no, anchor: ^anchor}}} = builder.votes
+
+      assert %{^voter => %{^action => %VotingProcedure{vote: :no, anchor: ^anchor}}} =
+               builder.votes
     end
 
     test "accepts an Input to identify the action" do
@@ -129,7 +132,9 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.VoteTest do
 
       body = %TxBody{
         inputs: [%OutputReference{transaction_id: @action_tx, output_index: 0}],
-        outputs: [Output.new(Address.from_bech32(sample_address()), Asset.from_lovelace(2_000_000))],
+        outputs: [
+          Output.new(Address.from_bech32(sample_address()), Asset.from_lovelace(2_000_000))
+        ],
         fee: Asset.from_lovelace(170_000),
         voting_procedures: votes
       }

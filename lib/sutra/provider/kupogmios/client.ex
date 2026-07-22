@@ -80,7 +80,7 @@ defmodule Sutra.Provider.Kupogmios.Client do
 
     case Req.post!(clients.ogmios, json: data).body do
       %{"result" => %{"transaction" => tx_resp}} -> tx_resp["id"]
-      result -> :json.encode(result)
+      result -> Jason.encode!(result)
     end
   end
 

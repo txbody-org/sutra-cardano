@@ -65,7 +65,7 @@ jobs:
         run: npm install -g @bloxbean/yaci-devkit
 
       - name: Start Yaci DevKit in background
-        run: nohup  yaci-devkit up --enable-yaci-store &
+        run: nohup  yaci-devkit up --enable-yaci-store --block-time 0.1 --slot-length 0.1 --epoch-length 80 &
 
       - name: Wait for Yaci DevKit to start
         run: |

@@ -142,7 +142,7 @@ defmodule Sutra.Provider.Yaci.Client do
 
     %SlotConfig{
       zero_time: DateTime.to_unix(zero_time, :millisecond),
-      slot_length: resp["slotLength"] * 1000,
+      slot_length: round(resp["slotLength"] * 1000),
       zero_slot: 0
     }
   end

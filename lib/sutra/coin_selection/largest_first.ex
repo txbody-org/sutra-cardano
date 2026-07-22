@@ -34,24 +34,33 @@ defmodule Sutra.CoinSelection.LargestFirst do
       current_lovelace = Asset.lovelace_of(current_value)
       needed_lovelace = target_lovelace - current_lovelace
 
-      if needed_lovelace > 0 do
-        case CoinSelection.select_utxos_for_lovelace(
-               remaining_inputs,
-               needed_lovelace,
-               %{}
-             ) do
-          {:ok, %CoinSelection{selected_inputs: lovelace_inputs}} ->
-            final_inputs = selected_inputs ++ lovelace_inputs
-            final_value = sum_values(final_inputs)
-            calculate_result(final_inputs, final_value, to_fill, left_over)
+      select_for_lovelace(
+        needed_lovelace,
+        remaining_inputs,
+        selected_inputs,
+        current_value,
+        to_fill,
+        left_over
+      )
+    end
+  end
 
-          {:error, _} ->
-            # Construct error with missing lovelace
-            {:error, Error.CannotBalanceTx.new(%{"lovelace" => needed_lovelace})}
-        end
-      else
-        calculate_result(selected_inputs, current_value, to_fill, left_over)
-      end
+  # No additional Lovelace needed; native token selection already satisfies it.
+  defp select_for_lovelace(needed, _remaining, selected, current_value, to_fill, left_over)
+       when needed <= 0 do
+    calculate_result(selected, current_value, to_fill, left_over)
+  end
+
+  defp select_for_lovelace(needed, remaining, selected, _current_value, to_fill, left_over) do
+    case CoinSelection.select_utxos_for_lovelace(remaining, needed, %{}) do
+      {:ok, %CoinSelection{selected_inputs: lovelace_inputs}} ->
+        final_inputs = selected ++ lovelace_inputs
+        final_value = sum_values(final_inputs)
+        calculate_result(final_inputs, final_value, to_fill, left_over)
+
+      {:error, _} ->
+        # Construct error with missing lovelace
+        {:error, Error.CannotBalanceTx.new(%{"lovelace" => needed})}
     end
   end
 

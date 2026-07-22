@@ -18,8 +18,35 @@ permissions:
   contents: read
 
 jobs:
+  # Builds the test matrix from a single source of truth and computes the
+  # latest Elixir version, so version-specific steps (e.g. format check)
+  # can pin to "latest" without hardcoding a version string.
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.build.outputs.matrix }}
+      latest: ${{ steps.build.outputs.latest }}
+    steps:
+      # Each row pairs an Elixir version with a supported OTP release,
+      # spanning OTP 25 -> 28 so we exercise older toolchains too.
+      # To add a new version, edit this list only.
+      - name: Build matrix and resolve latest Elixir
+        id: build
+        run: |
+          include='[
+            {"elixir":"1.15","otp":"25"},
+            {"elixir":"1.16","otp":"26"},
+            {"elixir":"1.17","otp":"26"},
+            {"elixir":"1.18","otp":"27"},
+            {"elixir":"1.19","otp":"27"},
+            {"elixir":"1.20","otp":"28"}
+          ]'
+          echo "matrix={\"include\":$(echo "$include" | jq -c .)}" >> "$GITHUB_OUTPUT"
+          echo "latest=$(echo "$include" | jq -r '.[].elixir' | sort -V | tail -n1)" >> "$GITHUB_OUTPUT"
+
   test:
     # Additional services can be defined here if required.
+    needs: setup
 
     runs-on: ubuntu-latest
     name: Test on OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
@@ -27,22 +54,7 @@ jobs:
       # Don't cancel the whole matrix when one (older) version fails —
       # we want to see exactly which combinations work.
       fail-fast: false
-      # Each row pairs an Elixir version (1.15 -> 1.20) with a supported OTP
-      # release, spanning OTP 25 -> 28 so we exercise older toolchains too.
-      matrix:
-        include:
-          - elixir: "1.15"
-            otp: "25"
-          - elixir: "1.16"
-            otp: "26"
-          - elixir: "1.17"
-            otp: "26"
-          - elixir: "1.18"
-            otp: "27"
-          - elixir: "1.19"
-            otp: "27"
-          - elixir: "1.20"
-            otp: "28"
+      matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
     steps:
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -124,8 +136,10 @@ jobs:
 
       # Step: Check that the checked in code has already been formatted.
       # This step fails if something was found unformatted.
-      # Customize this step as desired.
+      # Only run on the latest Elixir version — formatter output can differ
+      # between versions, so older toolchains would flag false positives.
       - name: Check Formatting
+        if: ${{ matrix.elixir == needs.setup.outputs.latest }}
         run: mix format --check-formatted
 
       - name: Check for code consistency

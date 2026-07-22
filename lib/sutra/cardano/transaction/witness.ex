@@ -36,7 +36,7 @@ defmodule Sutra.Cardano.Transaction.Witness do
   end
 
   typedstruct(module: Redeemer) do
-    @type redeemer_tag() :: :spend | :mint | :cert | :reward | :vote | :propose
+    @type redeemer_tag() :: :spend | :mint | :cert | :reward | :vote | :propose | :guard
 
     field(:tag, redeemer_tag())
     field(:index, integer())
@@ -49,6 +49,7 @@ defmodule Sutra.Cardano.Transaction.Witness do
     def decode_tag!(3), do: :reward
     def decode_tag!(4), do: :vote
     def decode_tag!(5), do: :propose
+    def decode_tag!(6), do: :guard
     def decode_tag!(n), do: raise("Invalid redeemer tag: #{n}")
 
     def encode_tag(tag) do
@@ -59,6 +60,7 @@ defmodule Sutra.Cardano.Transaction.Witness do
         :reward -> 3
         :vote -> 4
         :propose -> 5
+        :guard -> 6
       end
     end
   end
@@ -121,6 +123,8 @@ defmodule Sutra.Cardano.Transaction.Witness do
     ]
   end
 
+  # Dijkstra mandates the map format below for redeemers; we always encode
+  # into this format (see do_encode_witness_to_cbor/2 for tag 5).
   def decode({5, redeemer_witnesses}) when is_map(redeemer_witnesses) do
     Enum.map(redeemer_witnesses, fn {[tag, index], [data, [mem, exec]]} ->
       %Redeemer{
@@ -132,6 +136,9 @@ defmodule Sutra.Cardano.Transaction.Witness do
     end)
   end
 
+  # Pre-Dijkstra eras also allowed redeemers as a flat array. Dijkstra
+  # removes this format, but we keep decoding it to stay able to parse
+  # older-era transactions.
   def decode({5, [tag, index, data, [mem, exec]]}) do
     %Redeemer{
       tag: __MODULE__.Redeemer.decode_tag!(tag),

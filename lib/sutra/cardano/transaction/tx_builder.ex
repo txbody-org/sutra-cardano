@@ -30,11 +30,15 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Address.Credential
   alias Sutra.Cardano.Asset
+  alias Sutra.Cardano.Gov.ProposalProcedure
+  alias Sutra.Cardano.Gov.Voter
+  alias Sutra.Cardano.Gov.VotingProcedure
   alias Sutra.Cardano.Script
   alias Sutra.Cardano.Transaction
   alias Sutra.Cardano.Transaction.Datum
   alias Sutra.Cardano.Transaction.Input
   alias Sutra.Cardano.Transaction.Output
+  alias Sutra.Cardano.Transaction.OutputReference
   alias Sutra.Cardano.Transaction.TxBuilder.CertificateHelper
   alias Sutra.Cardano.Transaction.TxBuilder.Internal
   alias Sutra.Cardano.Transaction.TxBuilder.TxConfig
@@ -55,7 +59,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
             errors: [],
             mints: %{},
             script_lookup: %{},
-            required_signers: MapSet.new(),
+            guards: MapSet.new(),
             plutus_data: %{},
             valid_to: nil,
             valid_from: nil,
@@ -65,7 +69,9 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
             collateral_inputs: [],
             certificates: [],
             total_deposit: Asset.zero(),
-            withdrawals: %{}
+            withdrawals: %{},
+            votes: %{},
+            proposals: []
 
   @doc """
   Initialize a new empty `TxBuilder`.
@@ -529,6 +535,11 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   This is useful when the transaction needs to be signed by a key that isn't necessarily
   spending a UTxO (e.g., for governance actions or special script requirements).
 
+  > #### Deprecated {: .warning}
+  >
+  > Cardano's Dijkstra era replaces the `required_signers` transaction body field with
+  > `guards`, which can also hold script credentials. Use `add_guard/2` instead.
+
   ## Examples
 
       iex> add_signer(new_tx(), address)
@@ -538,26 +549,60 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
       %Sutra.Cardano.Transaction.TxBuilder{}
 
   """
-  def add_signer(
+  @deprecated "Use add_guard/2 instead"
+  def add_signer(%__MODULE__{} = cfg, signer), do: add_guard(cfg, signer)
+
+  @doc """
+  Adds a guard credential to the transaction (Dijkstra's `guards` transaction body
+  field, which replaces `required_signers`).
+
+  To guard with a keyHash, either pass a hex encoded keyHash or an `Address` with
+  a Verification Key credential. 
+  To guard using a script, pass a `%Script{}` or NativeScript.
+
+  ## Examples
+
+      # Guard by a key hash
+      iex> add_guard(new_tx(), "pubkey_hash_hex")
+      %Sutra.Cardano.Transaction.TxBuilder{}
+
+      # Guard by a key, using its address
+      iex> add_guard(new_tx(), Sutra.Cardano.Address.from_bech32("addr_test1..."))
+      %Sutra.Cardano.Transaction.TxBuilder{}
+
+      # Guard by a script — derives the script credential and attaches the script.
+      iex> add_guard(new_tx(), native_script)
+      %Sutra.Cardano.Transaction.TxBuilder{}
+
+  """
+  def add_guard(
         %__MODULE__{} = cfg,
-        %Address{payment_credential: %Credential{} = payment_credential} = addr
+        %Address{payment_credential: %Credential{hash: hash}} = addr
       ) do
     if Address.vkey_address?(addr),
-      do: %__MODULE__{
-        cfg
-        | required_signers: MapSet.put(cfg.required_signers, payment_credential.hash)
-      },
+      do: add_guard(cfg, hash),
       else: %__MODULE__{cfg | errors: [%{key: :invalid_payment_signer, value: addr}]}
   end
 
-  def add_signer(
-        %__MODULE__{} = cfg,
-        pubkey_hash
-      )
-      when is_binary(pubkey_hash) do
+  # A `%Script{}`/`%NativeScript{}` guard: derive the script hash for the guard's
+  # script credential and attach the script to the witness set (via `script_lookup`)
+  # so callers don't need a separate "attach script" step.
+  def add_guard(%__MODULE__{} = cfg, script) when Script.is_script(script) do
+    script_type = if Script.is_native_script(script), do: :native, else: script.script_type
+    script_hash = Script.hash_script(script)
+
     %__MODULE__{
       cfg
-      | required_signers: MapSet.put(cfg.required_signers, pubkey_hash)
+      | guards: MapSet.put(cfg.guards, %Credential{credential_type: :script, hash: script_hash}),
+        script_lookup: Map.put_new(cfg.script_lookup, script_hash, script),
+        used_scripts: MapSet.put(cfg.used_scripts, script_type)
+    }
+  end
+
+  def add_guard(%__MODULE__{} = cfg, key_hash) when is_binary(key_hash) do
+    %__MODULE__{
+      cfg
+      | guards: MapSet.put(cfg.guards, %Credential{credential_type: :vkey, hash: key_hash})
     }
   end
 
@@ -720,9 +765,192 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
     }
   end
 
+  @doc """
+  Casts a vote on a governance action (Dijkstra/Conway `voting_procedures`,
+  transaction body field 19).
+
+  Call it multiple times to have the same voter vote on several actions, or to
+  register votes from several voters — each call is accumulated.
+
+  ## Parameters
+
+  - `builder`: The `TxBuilder` instance.
+  - `voter`: A `%Sutra.Cardano.Gov.Voter{}`. Build one with the helpers in
+    `Sutra.Cardano.Gov`: `drep_voter/1`, `committee_voter/1`, or `stake_pool_voter/1`.
+  - `gov_action_id`: The governance action being voted on. A gov action is
+    identified exactly like a UTxO — a transaction id plus an index — so this
+    accepts an `%OutputReference{}`, an `%Input{}`, or the result of
+    `Sutra.Cardano.Gov.gov_action_id/2` (which is itself an `%OutputReference{}`).
+  - `vote`: `:yes`, `:no`, or `:abstain`.
+  - `opts`: options.
+
+  ## Options
+
+  - `:anchor` - Optional metadata anchor `%{url: String.t(), hash: String.t()}`.
+  - `:witness` - The voting script (`%Script{}` or `%NativeScript{}`) when the
+    voter uses a script credential (script DRep / script committee member).
+  - `:redeemer` - Redeemer data (required when voting with a Plutus script credential).
+
+  ## Examples
+
+      # DRep (key credential) voting yes
+      iex> new_tx()
+      ...> |> vote(Gov.drep_voter(drep_credential), Gov.gov_action_id(action_tx_id, 0), :yes)
+
+      # Stake pool voting no, referencing the action by its output reference
+      iex> new_tx()
+      ...> |> vote(Gov.stake_pool_voter(pool_key_hash), action_output_reference, :no)
+
+      # Script DRep voting with a Plutus script + redeemer
+      iex> new_tx()
+      ...> |> vote(Gov.drep_voter(script_credential), gov_action_id, :yes,
+      ...>      witness: plutus_script, redeemer: redeemer_data)
+
+  """
+  def vote(builder, voter, gov_action_id, vote, opts \\ [])
+
+  def vote(%__MODULE__{} = builder, %Voter{} = voter, %Input{output_reference: ref}, vote, opts),
+    do: vote(builder, voter, ref, vote, opts)
+
+  # Key-credential voters authorize with a signature at sign time.
+  def vote(
+        %__MODULE__{} = builder,
+        %Voter{credential: %Credential{credential_type: :vkey}} = voter,
+        %OutputReference{} = gov_action_id,
+        vote,
+        opts
+      )
+      when vote in [:yes, :no, :abstain],
+      do:
+        put_voter_builder(builder, voter, gov_action_id, %VotingProcedure{
+          vote: vote,
+          anchor: opts[:anchor]
+        })
+
+  def vote(
+        %__MODULE__{} = builder,
+        %Voter{credential: %Credential{credential_type: :script, hash: voter_script_hash}} = voter,
+        %OutputReference{} = gov_action_id,
+        vote,
+        opts
+      )
+      when vote in [:yes, :no, :abstain] do
+    procedure = %VotingProcedure{vote: vote, anchor: opts[:anchor]}
+    witness = opts[:witness]
+    redeemer = opts[:redeemer]
+
+    # Script voters (script DRep / committee) must supply the voting script, so route
+    # them through validate_script_witness/4 (which flags a missing/invalid
+    # script, or a missing Plutus redeemer, even when no witness was passed).
+    case validate_script_witness(builder.script_lookup, voter_script_hash, redeemer, witness) do
+      {:ok, used_script_type, script_hash} ->
+        %__MODULE__{
+          put_voter_builder(builder, voter, gov_action_id, procedure)
+          | script_lookup: Map.put_new(builder.script_lookup, script_hash, witness),
+            used_scripts: MapSet.put(builder.used_scripts, used_script_type),
+            redeemer_lookup: put_vote_redeemer(builder.redeemer_lookup, voter, redeemer)
+        }
+
+      {:error, err_key} ->
+        %__MODULE__{builder | errors: [%{key: err_key, value: voter} | builder.errors]}
+    end
+  end
+
+  defp put_voter_builder(
+         %__MODULE__{} = builder,
+         %Voter{} = voter,
+         %OutputReference{} = gov_action_id,
+         %VotingProcedure{} = procedure
+       ) do
+    inner = Map.get(builder.votes, voter, %{}) |> Map.put(gov_action_id, procedure)
+    %__MODULE__{builder | votes: Map.put(builder.votes, voter, inner)}
+  end
+
+  defp put_vote_redeemer(redeemer_lookup, _voter, nil), do: redeemer_lookup
+
+  defp put_vote_redeemer(redeemer_lookup, voter, redeemer),
+    do: Map.put_new(redeemer_lookup, {:vote, voter}, redeemer)
+
+  @doc """
+  Submits a governance proposal (Dijkstra/Conway `proposal_procedures`,
+  transaction body field 20).
+
+  Call it multiple times to submit several proposals; each is accumulated in
+  submission order.
+
+  ## Parameters
+
+  - `builder`: The `TxBuilder` instance.
+  - `gov_action`: The governance action to propose. Build one with the helpers
+    in `Sutra.Cardano.Gov.GovAction` (`hard_fork/3`, `treasury_withdrawals/2`,
+    `no_confidence/1`, `update_committee/4`, `new_constitution/2`, `info/0`).
+  - `opts`: options.
+
+  ## Options
+
+  - `:reward_account` - Where the deposit is refunded. A reward `%Address{}` or a
+    raw reward-account hex string. **Required.**
+  - `:anchor` - Proposal metadata anchor `%{url: String.t(), hash: String.t()}`.
+    **Required** (the CDDL mandates it).
+  - `:deposit` - Deposit in lovelace. Defaults to the protocol parameter
+    `gov_action_deposit` at build time when omitted.
+  - `:witness` - A guardrails `%Script{}`/`%NativeScript{}` when the action
+    references a guardrails script (e.g. treasury withdrawals).
+  - `:redeemer` - Redeemer data for the guardrails Plutus script.
+
+  ## Examples
+
+      # Info action (no on-chain effect), deposit defaulted from protocol params
+      iex> new_tx()
+      ...> |> propose(GovAction.info(), reward_account: reward_addr, anchor: anchor)
+
+      # Treasury withdrawal with an explicit deposit
+      iex> action = GovAction.treasury_withdrawals(%{reward_hex => 1_000_000})
+      iex> new_tx()
+      ...> |> propose(action, reward_account: reward_addr, anchor: anchor, deposit: 100_000_000)
+
+  """
+  def propose(builder, gov_action, opts \\ [])
+
+  def propose(%__MODULE__{} = builder, gov_action, opts) do
+    procedure = %ProposalProcedure{
+      deposit: normalize_deposit(opts[:deposit]),
+      reward_account: normalize_reward_account(opts[:reward_account]),
+      gov_action: gov_action,
+      anchor: opts[:anchor]
+    }
+
+    %__MODULE__{} = builder = register_guardrails_script(builder, opts[:witness])
+    %__MODULE__{builder | proposals: [{procedure, opts[:redeemer]} | builder.proposals]}
+  end
+
+  defp normalize_deposit(nil), do: nil
+  defp normalize_deposit(lovelace) when is_integer(lovelace), do: Asset.from_lovelace(lovelace)
+
+  defp normalize_reward_account(%Address{} = address),
+    do: Address.Parser.encode(address) |> Base.encode16(case: :lower)
+
+  defp normalize_reward_account(reward_account) when is_binary(reward_account), do: reward_account
+
+  defp register_guardrails_script(builder, nil), do: builder
+
+  defp register_guardrails_script(%__MODULE__{} = builder, script)
+       when Script.is_script(script) do
+    script_type = if Script.is_native_script(script), do: :native, else: script.script_type
+
+    %__MODULE__{
+      builder
+      | script_lookup: Map.put_new(builder.script_lookup, Script.hash_script(script), script),
+        used_scripts: MapSet.put(builder.used_scripts, script_type)
+    }
+  end
+
   @doc delegate_to: {CertificateHelper, :register_stake_credential, 3}
   defdelegate register_stake_credential(builder, credential, redeemer \\ nil),
     to: CertificateHelper
+
+  @doc delegate_to: {CertificateHelper, :register_drep, 3}
+  defdelegate register_drep(builder, credential, opts \\ []), to: CertificateHelper
 
   @doc delegate_to: {CertificateHelper, :delegate_vote, 3}
   defdelegate delegate_vote(builder, credential, drep, redeemer \\ nil), to: CertificateHelper
@@ -780,6 +1008,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
           ref_inputs: ref_inputs,
           used_scripts: MapSet.to_list(cfg.used_scripts),
           certificates: Enum.reverse(cfg.certificates),
+          proposals: Enum.reverse(cfg.proposals),
           outputs: Enum.reverse(cfg.outputs)
       }
       |> Internal.process_build_tx(wallet_inputs, collateral_inputs)

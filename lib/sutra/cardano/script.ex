@@ -2,7 +2,7 @@ defmodule Sutra.Cardano.Script do
   @moduledoc """
     Cardano script
   """
-  @type script_type() :: :plutus_v1 | :plutus_v2 | :plutus_v3
+  @type script_type() :: :plutus_v1 | :plutus_v2 | :plutus_v3 | :plutus_v4
   @type script_data() :: binary()
   @type t() :: %__MODULE__{
           script_type: script_type(),
@@ -19,7 +19,8 @@ defmodule Sutra.Cardano.Script do
     ScriptInvalidBefore,
     ScriptInvalidHereafter,
     ScriptNOfK,
-    ScriptPubkey
+    ScriptPubkey,
+    ScriptRequireGuard
   }
 
   alias Sutra.Blake2b
@@ -29,7 +30,7 @@ defmodule Sutra.Cardano.Script do
   defguard is_native_script(a)
            when is_struct(a, ScriptAll) or is_struct(a, ScriptAny) or is_struct(a, ScriptNOfK) or
                   is_struct(a, ScriptPubkey) or is_struct(a, ScriptInvalidBefore) or
-                  is_struct(a, ScriptInvalidHereafter)
+                  is_struct(a, ScriptInvalidHereafter) or is_struct(a, ScriptRequireGuard)
 
   defguard is_plutus_script(s) when is_struct(s, __MODULE__)
 
@@ -67,6 +68,7 @@ defmodule Sutra.Cardano.Script do
         :plutus_v1 -> "\x01"
         :plutus_v2 -> "\x02"
         :plutus_v3 -> "\x03"
+        :plutus_v4 -> "\x04"
       end
 
     (prefix <> Sutra.Utils.safe_base16_decode(script.data))
@@ -91,6 +93,7 @@ defmodule Sutra.Cardano.Script do
         :plutus_v1 -> 1
         :plutus_v2 -> 2
         :plutus_v3 -> 3
+        :plutus_v4 -> 4
       end
 
     script_value = [script_index, cbor_data] |> CBOR.encode() |> Base.encode16() |> Cbor.as_byte()
@@ -121,6 +124,7 @@ defmodule Sutra.Cardano.Script do
       [1, val] -> %__MODULE__{data: Cbor.extract_value!(val), script_type: :plutus_v1}
       [2, val] -> %__MODULE__{data: Cbor.extract_value!(val), script_type: :plutus_v2}
       [3, val] -> %__MODULE__{data: Cbor.extract_value!(val), script_type: :plutus_v3}
+      [4, val] -> %__MODULE__{data: Cbor.extract_value!(val), script_type: :plutus_v4}
     end
   end
 

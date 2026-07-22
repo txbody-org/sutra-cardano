@@ -49,6 +49,23 @@ defmodule Sutra.Cardano.Address do
   end
 
   @doc """
+    Decode a `credential = [0, addr_keyhash// 1, script_hash]` CBOR term
+  """
+  def credential_from_cbor([cred_type, hash]) do
+    %Credential{
+      credential_type: if(cred_type == 0, do: :vkey, else: :script),
+      hash: Cbor.extract_value!(hash)
+    }
+  end
+
+  @doc """
+    Encode a Credential to its `credential = [0, addr_keyhash// 1, script_hash]` CBOR term
+  """
+  def credential_to_cbor(%Credential{credential_type: credential_type, hash: hash}) do
+    [if(credential_type == :vkey, do: 0, else: 1), Cbor.as_byte(hash)]
+  end
+
+  @doc """
     Return an address from a Bech32
 
       ## Example

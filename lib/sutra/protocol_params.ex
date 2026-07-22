@@ -97,5 +97,18 @@ defmodule Sutra.ProtocolParams do
 
     ## -- 33
     field(:min_fee_ref_script_cost_per_byte, pos_integer())
+
+    ## -- 34 (Dijkstra)
+    field(:max_ref_script_size_per_block, pos_integer())
+
+    ## -- 35 (Dijkstra)
+    field(:max_ref_script_size_per_tx, pos_integer())
+
+    ## -- 36 (Dijkstra) refScript cost stride: byte-size increment at which
+    ## the ref script fee multiplier below is (re)applied
+    field(:ref_script_cost_stride, pos_integer())
+
+    ## -- 37 (Dijkstra) refScript cost multiplier, applied per stride
+    field(:ref_script_cost_multiplier, number())
   end
 end

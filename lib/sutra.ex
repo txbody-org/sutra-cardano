@@ -73,7 +73,11 @@ defmodule Sutra do
   defdelegate deploy_script(builder, address, script), to: TxBuilder
 
   @doc delegate_to: {TxBuilder, :add_signer, 2}
-  defdelegate add_signer(builder, signer), to: TxBuilder
+  @deprecated "Use add_guard/2 instead"
+  defdelegate add_signer(builder, signer), to: TxBuilder, as: :add_guard
+
+  @doc delegate_to: {TxBuilder, :add_guard, 2}
+  defdelegate add_guard(builder, guard), to: TxBuilder
 
   @doc delegate_to: {TxBuilder, :attach_datum, 2}
   defdelegate attach_datum(builder, datum), to: TxBuilder
@@ -99,6 +103,9 @@ defmodule Sutra do
   @doc delegate_to: {TxBuilder, :register_stake_credential, 3}
   defdelegate register_stake_credential(builder, credential, redeemer \\ nil), to: TxBuilder
 
+  @doc delegate_to: {TxBuilder, :register_drep, 3}
+  defdelegate register_drep(builder, credential, opts \\ []), to: TxBuilder
+
   @doc delegate_to: {TxBuilder, :delegate_vote, 4}
   defdelegate delegate_vote(builder, credential, drep, redeemer \\ nil), to: TxBuilder
 
@@ -111,6 +118,12 @@ defmodule Sutra do
                 redeemer \\ nil
               ),
               to: TxBuilder
+
+  @doc delegate_to: {TxBuilder, :vote, 5}
+  defdelegate vote(builder, voter, gov_action_id, vote, opts \\ []), to: TxBuilder
+
+  @doc delegate_to: {TxBuilder, :propose, 3}
+  defdelegate propose(builder, gov_action, opts \\ []), to: TxBuilder
 
   @doc delegate_to: {TxBuilder, :build_tx, 2}
   defdelegate build_tx(builder, opts \\ []), to: TxBuilder

@@ -37,8 +37,44 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.TxBuilderTest do
                valid_to: nil
              } = builder = new_tx()
 
-      assert builder.required_signers == MapSet.new()
+      assert builder.guards == MapSet.new()
       assert builder.config == %TxBuilder.TxConfig{}
+    end
+
+    test "add_signer/2 (deprecated) still populates guards with a vkey credential" do
+      builder = new_tx() |> add_guard("some_pubkey_hash")
+
+      assert builder.guards ==
+               MapSet.new([%Address.Credential{credential_type: :vkey, hash: "some_pubkey_hash"}])
+    end
+
+    test "add_guard/2 accepts a raw key hash or an Address as a vkey guard" do
+      builder =
+        new_tx()
+        |> add_guard("some_pubkey_hash")
+        |> add_guard(Address.from_bech32(@addr1))
+
+      assert MapSet.member?(
+               builder.guards,
+               %Address.Credential{credential_type: :vkey, hash: "some_pubkey_hash"}
+             )
+
+      assert Enum.any?(builder.guards, &(&1.credential_type == :vkey and &1.hash != nil))
+    end
+
+    test "add_guard/2 with a script derives its credential and attaches the script" do
+      native_script = sample_native_script()
+      script_hash = Script.hash_script(native_script)
+
+      builder = new_tx() |> add_guard(native_script)
+
+      assert MapSet.member?(
+               builder.guards,
+               %Address.Credential{credential_type: :script, hash: script_hash}
+             )
+
+      assert builder.script_lookup[script_hash] == native_script
+      assert MapSet.member?(builder.used_scripts, :native)
     end
 
     test "use_provider/2 overrides provider" do

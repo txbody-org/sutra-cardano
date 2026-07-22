@@ -109,7 +109,7 @@ defmodule Sutra.Cardano.Transaction.Certificate do
   ## (15, committee_cold_credential, anchor / nil)
   typedstruct(module: ResignCommitteeColdCert) do
     field(:committee_cold_credential, Credential.t(), enforce: true)
-    field(:anchor, :string)
+    field(:anchor, %{url: :string, hash: :string})
   end
 
   ## (16, drep_credential, coin, anchor / nil)
@@ -234,6 +234,13 @@ defmodule Sutra.Cardano.Transaction.Certificate do
     %AuthCommitteeHotCert{
       committee_cold_credential: decode_credential(cold_cred),
       committee_hot_credential: decode_credential(hot_cred)
+    }
+  end
+
+  def decode([15, cold_cred, anchor]) do
+    %ResignCommitteeColdCert{
+      committee_cold_credential: decode_credential(cold_cred),
+      anchor: maybe(anchor, nil, fn [u, h] -> %{url: u, hash: extract_value!(h)} end)
     }
   end
 
@@ -365,6 +372,16 @@ defmodule Sutra.Cardano.Transaction.Certificate do
       14,
       encode_credential(auth_committee_hot_cert.committee_cold_credential),
       encode_credential(auth_committee_hot_cert.committee_hot_credential)
+    ]
+  end
+
+  def to_cbor(%ResignCommitteeColdCert{} = resign_committee_cold_cert) do
+    [
+      15,
+      encode_credential(resign_committee_cold_cert.committee_cold_credential),
+      maybe(resign_committee_cold_cert.anchor, nil, fn %{url: u, hash: h} ->
+        [u, Cbor.as_byte(h)]
+      end)
     ]
   end
 

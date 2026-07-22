@@ -8,7 +8,9 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
   alias Sutra.Blake2b
   alias Sutra.Cardano.Address
   alias Sutra.Cardano.Asset
+  alias Sutra.Cardano.Gov
   alias Sutra.Cardano.Gov.CostModels
+  alias Sutra.Cardano.Gov.ProposalProcedure
   alias Sutra.Cardano.Script
   alias Sutra.Cardano.Transaction
   alias Sutra.Cardano.Transaction.Input
@@ -63,7 +65,9 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
       redeemer:
         with_mint_redeemers([], builder)
         |> with_cert_redeemers(builder)
-        |> with_reward_redeemers(builder),
+        |> with_reward_redeemers(builder)
+        |> with_vote_redeemers(builder)
+        |> with_propose_redeemers(builder),
       script_witness: Map.values(builder.script_lookup) |> Enum.filter(&Script.is_script/1),
       plutus_data: Enum.map(builder.plutus_data, fn {_, v} -> %PlutusData{value: v} end),
       vkey_witness: []
@@ -118,6 +122,48 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
 
   defp with_reward_redeemers(initial_witness, _), do: initial_witness
 
+  defp with_vote_redeemers(initial_witness, %TxBuilder{votes: votes})
+       when map_size(votes) == 0,
+       do: initial_witness
+
+  defp with_vote_redeemers(initial_witness, %TxBuilder{
+         votes: votes,
+         redeemer_lookup: redeemer_lookup
+       }) do
+    # Only script-credential voters carry a redeemer, but its pointer is the
+    # voter's index in the full ledger-canonical (serialized) voter ordering —
+    # so index every sorted voter, then keep the ones that have a redeemer.
+    vote_redeemers =
+      votes
+      |> Map.keys()
+      |> Enum.sort_by(&(Gov.voter_to_cbor(&1) |> CBOR.encode()))
+      |> Enum.with_index()
+      |> Enum.flat_map(fn {voter, index} ->
+        case Map.get(redeemer_lookup, {:vote, voter}) do
+          nil -> []
+          redeemer -> [Witness.init_redeemer(index, redeemer, :vote)]
+        end
+      end)
+
+    initial_witness ++ vote_redeemers
+  end
+
+  defp with_propose_redeemers(initial_witness, %TxBuilder{proposals: []}), do: initial_witness
+
+  defp with_propose_redeemers(initial_witness, %TxBuilder{proposals: proposals}) do
+    # The proposing redeemer pointer is the proposal's index in submission order
+    # (proposals are already reversed to submission order in build_tx). Only
+    # proposals with a guardrails Plutus script carry a redeemer.
+    propose_redeemers =
+      proposals
+      |> Enum.with_index()
+      |> Enum.flat_map(fn {{_procedure, redeemer}, index} ->
+        if is_nil(redeemer), do: [], else: [Witness.init_redeemer(index, redeemer, :propose)]
+      end)
+
+    initial_witness ++ propose_redeemers
+  end
+
   defp with_spend_redeemers(%TxBuilder{} = builder, inputs) do
     Enum.reduce(Enum.with_index(inputs), [], fn {%Input{} = input, indx}, acc ->
       if Address.script_address?(input.output.address) do
@@ -145,20 +191,27 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
     end)
   end
 
-  defp calculate_refscript_fee(protocol_params, total_bytes, fee \\ 0)
-  defp calculate_refscript_fee(_, 0, fee), do: fee
+  defp calculate_refscript_fee(_, 0, fee, _, _), do: fee
 
-  defp calculate_refscript_fee(ref_script_cost_per_byte, total_bytes, fee)
+  defp calculate_refscript_fee(
+         ref_script_cost_per_byte,
+         total_bytes,
+         fee,
+         cost_stride,
+         cost_multiplier
+       )
        when total_bytes > 0 do
-    if total_bytes < @ref_script_size_increment do
+    if total_bytes < cost_stride do
       fee + ref_script_cost_per_byte * total_bytes
     else
-      new_ref_script_cost = @ref_script_multiplier * ref_script_cost_per_byte
+      new_ref_script_cost = cost_multiplier * ref_script_cost_per_byte
 
       calculate_refscript_fee(
         new_ref_script_cost,
-        total_bytes - @ref_script_size_increment,
-        fee + new_ref_script_cost
+        total_bytes - cost_stride,
+        fee + new_ref_script_cost,
+        cost_stride,
+        cost_multiplier
       )
     end
   end
@@ -174,7 +227,10 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
     initial_fee =
       calculate_refscript_fee(
         builder.config.protocol_params.min_fee_ref_script_cost_per_byte,
-        total_ref_bytes(builder.ref_inputs)
+        total_ref_bytes(builder.ref_inputs),
+        0,
+        builder.config.protocol_params.ref_script_cost_stride || @ref_script_size_increment,
+        builder.config.protocol_params.ref_script_cost_multiplier || @ref_script_multiplier
       ) + 100_000
 
     ttl =
@@ -195,13 +251,28 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
       # TODO: Handle collateral as list
       collateral: maybe(collateral_inputs, nil, fn i -> [i.output_reference] end),
       total_collateral: maybe(collateral_inputs, nil, fn i -> i.output.value end),
-      required_signers: MapSet.to_list(builder.required_signers),
+      guards: MapSet.to_list(builder.guards),
       auxiliary_data_hash:
         maybe(builder.metadata, nil, &(CBOR.encode(&1) |> Blake2b.blake2b_256())),
       script_data_hash: Blake2b.blake2b_256(""),
       certificates: Enum.map(builder.certificates, &Utils.fst/1),
-      withdrawals: prepare_withdrawals(builder)
+      withdrawals: prepare_withdrawals(builder),
+      voting_procedures: builder.votes,
+      proposal_procedures: prepare_proposals(builder)
     }
+  end
+
+  # Fills each proposal's deposit from the `gov_action_deposit` protocol
+  # parameter when the caller didn't set one explicitly.
+  defp prepare_proposals(%TxBuilder{proposals: proposals, config: %TxConfig{} = cfg}) do
+    Enum.map(proposals, fn {%ProposalProcedure{} = procedure, _redeemer} ->
+      if procedure.deposit,
+        do: procedure,
+        else: %ProposalProcedure{
+          procedure
+          | deposit: Asset.from_lovelace(cfg.protocol_params.gov_action_deposit)
+        }
+    end)
   end
 
   defp prepare_withdrawals(%TxBuilder{
@@ -217,13 +288,28 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
     end)
   end
 
+  defp total_proposal_deposits(%TxBody{proposal_procedures: procedures}) do
+    procedures = if is_list(procedures), do: procedures, else: []
+
+    Enum.reduce(procedures, Asset.zero(), fn %ProposalProcedure{deposit: deposit}, acc ->
+      Asset.merge(acc, deposit || Asset.zero())
+    end)
+  end
+
   defp create_tx(
          %TxBody{} = tx_body,
          %TxBuilder{config: %TxConfig{protocol_params: protocol_params}} = builder,
          wallet_inputs,
          %Witness{} = witnesses
        ) do
-    initial_required_asset = Asset.merge(builder.total_deposit, tx_body.fee)
+    # Proposal deposits leave the wallet just like certificate deposits, but
+    # `propose/3` records them on the proposal (and may leave them nil for the
+    # `gov_action_deposit` auto-fill) rather than in `total_deposit`. Sum them
+    # from the prepared tx body so coin selection covers them.
+    initial_required_asset =
+      builder.total_deposit
+      |> Asset.merge(tx_body.fee)
+      |> Asset.merge(total_proposal_deposits(tx_body))
 
     with {:ok, %CoinSelection{selected_inputs: selected_inputs} = c_selection} <-
            balance_tx(initial_required_asset, tx_body, wallet_inputs, builder),
@@ -258,7 +344,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
         %TxBody{
           tx_body
           | fee: Asset.from_lovelace(ceil(tx_fee * 1.06)),
-            required_signers: final_tx.tx_body.required_signers
+            guards: final_tx.tx_body.guards
         }
         |> create_tx(
           builder,
@@ -285,8 +371,13 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
       )
       |> calculate_min_ada_for_output(cfg.protocol_params)
 
-    vkey_witnesses =
-      calc_total_signers(builder.required_signers, new_inputs) |> derive_vkey_witness()
+    vkey_guard_hashes =
+      builder.guards
+      |> Enum.filter(&(&1.credential_type == :vkey))
+      |> Enum.map(& &1.hash)
+      |> MapSet.new()
+
+    vkey_witnesses = calc_total_signers(vkey_guard_hashes, new_inputs) |> derive_vkey_witness()
 
     tx = %Transaction{
       tx_body: %TxBody{
@@ -324,7 +415,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
   defp has_plutus_script?([]), do: false
 
   defp has_plutus_script?([script_type | rest]) do
-    if script_type in [:plutus_v1, :plutus_v2, :plutus_v3],
+    if script_type in [:plutus_v1, :plutus_v2, :plutus_v3, :plutus_v4],
       do: true,
       else: has_plutus_script?(rest)
   end
@@ -509,6 +600,9 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
 
           script_type == :plutus_v3 ->
             Map.put_new(acc, 2, cost_model.plutus_v3)
+
+          script_type == :plutus_v4 ->
+            Map.put_new(acc, 3, cost_model.plutus_v4)
 
           true ->
             acc

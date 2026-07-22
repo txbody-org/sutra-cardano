@@ -3,7 +3,12 @@ defmodule Sutra.Cardano.Transaction.TxBody do
     Cardano Transaction Body
   """
   alias CBOR.Utils
+  alias Sutra.Cardano.Address
+  alias Sutra.Cardano.Address.Credential
   alias Sutra.Cardano.Asset
+  alias Sutra.Cardano.Gov
+  alias Sutra.Cardano.Gov.ProposalProcedure
+  alias Sutra.Cardano.Transaction.AccountBalanceInterval
   alias Sutra.Cardano.Transaction.Certificate
   alias Sutra.Cardano.Transaction.Input
   alias Sutra.Cardano.Transaction.Output
@@ -40,8 +45,14 @@ defmodule Sutra.Cardano.Transaction.TxBody do
     field(:script_data_hash, :string)
     # -- (13)
     field(:collateral, [OutputReference.t()])
-    # -- (14)
+    # -- (14) DEPRECATED: Dijkstra replaces this with `guards` below. No
+    # longer populated on decode, and ignored on encode.
     field(:required_signers, [String.t()])
+    # -- (14) guards = nonempty_set<addr_keyhash> / nonempty_oset<credential>
+    # Both wire alternatives normalize to a list of Credential.t() here; on
+    # encode we emit the compact addr_keyhash-only set when every entry is a
+    # vkey credential, else the full credential oset.
+    field(:guards, [Credential.t()])
     # -- (15)
     field(:network_id, :string)
     # -- (16)
@@ -52,14 +63,21 @@ defmodule Sutra.Cardano.Transaction.TxBody do
     field(:reference_inputs, [OutputReference.t()])
 
     # --- New Fields in Conway Era
-    # -- (19)
-    field(:voting_procedures, any())
+    # -- (19) %{Gov.Voter.t() => %{OutputReference.t() => Gov.VotingProcedure.t()}}
+    field(:voting_procedures, map())
     # -- (20)
     field(:proposal_procedures, any())
     # -- (21)
     field(:current_treasury_value, :integer)
     # -- (22)
     field(:treasury_donation, :integer)
+
+    # --- New Fields in Dijkstra Era
+    # -- (23) sub_transactions: not yet supported
+    # -- (25) %{reward_account :: String.t() => Asset.t()}
+    field(:direct_deposits, %{})
+    # -- (26) %{Credential.t() => AccountBalanceInterval.t()}
+    field(:account_balance_intervals, %{})
   end
 
   defp decode_netword_id(0), do: :testnet
@@ -97,10 +115,7 @@ defmodule Sutra.Cardano.Transaction.TxBody do
       auxiliary_data_hash: extract_value!(tx_body[7]),
       validaty_interval_start: tx_body[8],
       mint: maybe(tx_body[9], nil, &Asset.from_plutus/1) |> Utils.ok_or(nil),
-      required_signers:
-        maybe(extract_value!(tx_body[14]), nil, fn d ->
-          Enum.map(d, &extract_value!/1)
-        end),
+      guards: decode_guards(tx_body[14]),
       script_data_hash: extract_value!(tx_body[11]),
       collateral:
         maybe(extract_value!(tx_body[13]), nil, fn d ->
@@ -112,7 +127,11 @@ defmodule Sutra.Cardano.Transaction.TxBody do
       reference_inputs:
         maybe(extract_value!(tx_body[18]), nil, fn d ->
           Enum.map(d, &OutputReference.from_cbor/1)
-        end)
+        end),
+      voting_procedures: Gov.decode_voting_procedures(tx_body[19]),
+      proposal_procedures: decode_proposal_procedures(tx_body[20]),
+      direct_deposits: withdrawal_from_cbor(tx_body[25]),
+      account_balance_intervals: AccountBalanceInterval.decode_all(tx_body[26])
     }
   end
 
@@ -121,6 +140,45 @@ defmodule Sutra.Cardano.Transaction.TxBody do
   end
 
   defp withdrawal_from_cbor(_), do: nil
+
+  # proposal_procedures = nonempty_oset<proposal_procedure>
+  defp decode_proposal_procedures(nil), do: nil
+
+  defp decode_proposal_procedures(procedures_cbor) do
+    procedures_cbor
+    |> extract_value!()
+    |> Enum.map(&ProposalProcedure.decode/1)
+  end
+
+  # guards = nonempty_set<addr_keyhash> / nonempty_oset<credential>
+  #
+  # Pre-Dijkstra transactions (and the addr_keyhash-only guards alternative)
+  # encode entries as raw keyhashes; the credential alternative encodes
+  # entries as [cred_type, hash]. Both normalize to Credential.t() here.
+  defp decode_guards(nil), do: nil
+
+  defp decode_guards(guards_cbor) do
+    guards_cbor
+    |> extract_value!()
+    |> Enum.map(&decode_guard_entry/1)
+  end
+
+  defp decode_guard_entry([cred_type, hash]) when cred_type in [0, 1] do
+    Address.credential_from_cbor([cred_type, hash])
+  end
+
+  defp decode_guard_entry(key_hash) do
+    %Credential{credential_type: :vkey, hash: extract_value!(key_hash)}
+  end
+
+  defp encode_guards(guards) do
+    if Enum.all?(guards, &(&1.credential_type == :vkey)) do
+      guards |> Enum.map(&Cbor.as_byte(&1.hash))
+    else
+      Enum.map(guards, &Address.credential_to_cbor/1)
+    end
+    |> Cbor.as_nonempty_set()
+  end
 
   def to_cbor(%__MODULE__{} = tx_body) do
     Map.to_list(tx_body)
@@ -209,10 +267,13 @@ defmodule Sutra.Cardano.Transaction.TxBody do
     |> Cbor.as_indexed_map(13, acc)
   end
 
-  defp do_map_to_cbor({:required_signers, required_signers}, acc) do
-    required_signers
-    |> Enum.map(&Cbor.as_byte/1)
-    |> Cbor.as_nonempty_set()
+  # DEPRECATED: Dijkstra removes required_signers in favor of `guards`
+  # (encoded below). Kept as a no-op so setting it doesn't raise.
+  defp do_map_to_cbor({:required_signers, _}, acc), do: acc
+
+  defp do_map_to_cbor({:guards, guards}, acc) do
+    guards
+    |> encode_guards()
     |> Cbor.as_indexed_map(14, acc)
   end
 
@@ -244,5 +305,33 @@ defmodule Sutra.Cardano.Transaction.TxBody do
     end)
     |> Cbor.as_nonempty_set()
     |> Cbor.as_indexed_map(18, acc)
+  end
+
+  defp do_map_to_cbor({:voting_procedures, voting_procedures}, acc) do
+    voting_procedures
+    |> Gov.encode_voting_procedures()
+    |> Cbor.as_indexed_map(19, acc)
+  end
+
+  defp do_map_to_cbor({:proposal_procedures, proposal_procedures}, acc) do
+    proposal_procedures
+    |> Enum.map(&ProposalProcedure.to_cbor/1)
+    |> Cbor.as_nonempty_set()
+    |> Cbor.as_indexed_map(20, acc)
+  end
+
+  defp do_map_to_cbor({:direct_deposits, direct_deposits}, acc) do
+    direct_deposits_cbor =
+      for {k, v} <- direct_deposits,
+          into: %{},
+          do: {Cbor.as_byte(k), Asset.to_cbor(v)}
+
+    Cbor.as_indexed_map(direct_deposits_cbor, 25, acc)
+  end
+
+  defp do_map_to_cbor({:account_balance_intervals, account_balance_intervals}, acc) do
+    account_balance_intervals
+    |> AccountBalanceInterval.encode_all()
+    |> Cbor.as_indexed_map(26, acc)
   end
 end

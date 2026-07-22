@@ -4,6 +4,7 @@ defmodule Sutra.Cardano.Script.NativeScriptTest do
   use ExUnit.Case, async: true
 
   alias Sutra.Cardano.Address
+  alias Sutra.Cardano.Address.Credential
   alias Sutra.Cardano.Script.NativeScript
 
   # Examples are from
@@ -87,6 +88,34 @@ defmodule Sutra.Cardano.Script.NativeScriptTest do
     end
   end
 
+  describe "ScriptRequireGuard witness_set round trip" do
+    test "encodes and decodes a vkey guard credential" do
+      guard_script = %NativeScript.ScriptRequireGuard{
+        credential: %Credential{
+          credential_type: :vkey,
+          hash: "e09d36c79dec9bd1b3d9e152247701cd0bb860b5ebfd1de8abb6735a"
+        }
+      }
+
+      assert guard_script
+             |> NativeScript.to_witness_set()
+             |> NativeScript.from_witness_set() == guard_script
+    end
+
+    test "encodes and decodes a script guard credential" do
+      guard_script = %NativeScript.ScriptRequireGuard{
+        credential: %Credential{
+          credential_type: :script,
+          hash: "a687dcc24e00dd3caafbeb5e68f97ca8ef269cb6fe971345eb951756"
+        }
+      }
+
+      assert guard_script
+             |> NativeScript.to_witness_set()
+             |> NativeScript.from_witness_set() == guard_script
+    end
+  end
+
   describe "Native Script from Json" do
     test "from_json/1 returns Native Script for script type all " do
       assert %NativeScript.ScriptAll{scripts: other_scripts} = NativeScript.from_json(@script_all)
@@ -135,6 +164,34 @@ defmodule Sutra.Cardano.Script.NativeScriptTest do
                  pubkey_hash: "b275b08c999097247f7c17e77007c7010cd19f20cc086ad99d398538"
                }
              ]
+    end
+
+    test "from_json/1 returns Native script for guard with vkey credential" do
+      guard = %{
+        "type" => "guard",
+        "keyHash" => "e09d36c79dec9bd1b3d9e152247701cd0bb860b5ebfd1de8abb6735a"
+      }
+
+      assert NativeScript.from_json(guard) == %NativeScript.ScriptRequireGuard{
+               credential: %Credential{
+                 credential_type: :vkey,
+                 hash: "e09d36c79dec9bd1b3d9e152247701cd0bb860b5ebfd1de8abb6735a"
+               }
+             }
+    end
+
+    test "from_json/1 returns Native script for guard with script credential" do
+      guard = %{
+        "type" => "guard",
+        "scriptHash" => "a687dcc24e00dd3caafbeb5e68f97ca8ef269cb6fe971345eb951756"
+      }
+
+      assert NativeScript.from_json(guard) == %NativeScript.ScriptRequireGuard{
+               credential: %Credential{
+                 credential_type: :script,
+                 hash: "a687dcc24e00dd3caafbeb5e68f97ca8ef269cb6fe971345eb951756"
+               }
+             }
     end
   end
 end

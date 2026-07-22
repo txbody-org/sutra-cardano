@@ -24,11 +24,25 @@ jobs:
     runs-on: ubuntu-latest
     name: Test on OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
     strategy:
-      # Specify the OTP and Elixir versions to use when building
-      # and running the workflow steps.
+      # Don't cancel the whole matrix when one (older) version fails —
+      # we want to see exactly which combinations work.
+      fail-fast: false
+      # Each row pairs an Elixir version (1.15 -> 1.20) with a supported OTP
+      # release, spanning OTP 25 -> 28 so we exercise older toolchains too.
       matrix:
-        otp: ["28.3.0"] # Define the OTP version [required]
-        elixir: ["1.20.2"] # Define the elixir version [required]
+        include:
+          - elixir: "1.15"
+            otp: "25"
+          - elixir: "1.16"
+            otp: "26"
+          - elixir: "1.17"
+            otp: "26"
+          - elixir: "1.18"
+            otp: "27"
+          - elixir: "1.19"
+            otp: "27"
+          - elixir: "1.20"
+            otp: "28"
     steps:
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -79,9 +93,9 @@ jobs:
           cache-name: cache-elixir-deps
         with:
           path: deps
-          key: ${{ runner.os }}-mix-${{ env.cache-name }}-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-otp${{ matrix.otp }}-elixir${{ matrix.elixir }}-mix-${{ env.cache-name }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            ${{ runner.os }}-mix-${{ env.cache-name }}-
+            ${{ runner.os }}-otp${{ matrix.otp }}-elixir${{ matrix.elixir }}-mix-${{ env.cache-name }}-
 
       # Step: Define how to cache the `_build` directory. After the first run,
       # this speeds up tests runs a lot. This includes not re-compiling our
@@ -93,10 +107,10 @@ jobs:
           cache-name: cache-compiled-build
         with:
           path: _build
-          key: ${{ runner.os }}-mix-${{ env.cache-name }}-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-otp${{ matrix.otp }}-elixir${{ matrix.elixir }}-mix-${{ env.cache-name }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            ${{ runner.os }}-mix-${{ env.cache-name }}-
-            ${{ runner.os }}-mix-
+            ${{ runner.os }}-otp${{ matrix.otp }}-elixir${{ matrix.elixir }}-mix-${{ env.cache-name }}-
+            ${{ runner.os }}-otp${{ matrix.otp }}-elixir${{ matrix.elixir }}-mix-
 
       # Step: Download project dependencies. If unchanged, uses
       # the cached version.

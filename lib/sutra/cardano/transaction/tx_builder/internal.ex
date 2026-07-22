@@ -289,12 +289,12 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
   end
 
   defp total_proposal_deposits(%TxBody{proposal_procedures: procedures}) do
-      procedures = if is_list(procedures), do: procedures, else: []
+    procedures = if is_list(procedures), do: procedures, else: []
+
     Enum.reduce(procedures, Asset.zero(), fn %ProposalProcedure{deposit: deposit}, acc ->
       Asset.merge(acc, deposit || Asset.zero())
     end)
   end
-
 
   defp create_tx(
          %TxBody{} = tx_body,

@@ -65,7 +65,7 @@ defmodule Sutra.PrivnetTest do
 
   def await_tx(tx_id), do: await_tx(tx_id, 3)
 
-  def await_tx(_, retry) when retry < 0, do: throw "Transaction not found after 3 retries"
+  def await_tx(_, retry) when retry < 0, do: throw("Transaction not found after 3 retries")
 
   def await_tx(tx_id, retry) when byte_size(tx_id) == 64 do
     case Yaci.get_tx_info(tx_id) do
@@ -78,7 +78,7 @@ defmodule Sutra.PrivnetTest do
     end
   end
 
-  def await_tx(_tx_id, _), do: throw "Invalid Transaction to await. Transaction submition failed"
+  def await_tx(_tx_id, _), do: throw("Invalid Transaction to await. Transaction submition failed")
 
   setup _tags do
     if Application.get_env(:sutra, :provider) != Yaci,

@@ -20,7 +20,7 @@ defmodule Sutra.Examples.Advance.SimpleGuessSpend do
   def run(wallet_address, sig) do
     script_code =
       File.read!("./blueprint.json")
-      |> :elixir_json.decode()
+      |> :json.decode()
       |> Map.get("validators", [])
       |> Enum.find(fn v -> v["title"] == "simple.simple.spend" end)
       |> Map.get("compiledCode")

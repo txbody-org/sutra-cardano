@@ -18,7 +18,7 @@ defmodule Sutra.Examples.Advance.AlwaysSucceed do
   alias Sutra.Cardano.Script
   alias Sutra.Data
 
-  def blueprint, do: File.read!("./blueprint.json") |> :json.decode()
+  def blueprint, do: File.read!("./blueprint.json") |> Jason.decode!()
 
   def get_script(title) do
     blueprint()

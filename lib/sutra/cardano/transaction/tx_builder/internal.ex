@@ -288,13 +288,28 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.Internal do
     end)
   end
 
+  defp total_proposal_deposits(%TxBody{proposal_procedures: procedures}) do
+      procedures = if is_list(procedures), do: procedures, else: []
+    Enum.reduce(procedures, Asset.zero(), fn %ProposalProcedure{deposit: deposit}, acc ->
+      Asset.merge(acc, deposit || Asset.zero())
+    end)
+  end
+
+
   defp create_tx(
          %TxBody{} = tx_body,
          %TxBuilder{config: %TxConfig{protocol_params: protocol_params}} = builder,
          wallet_inputs,
          %Witness{} = witnesses
        ) do
-    initial_required_asset = Asset.merge(builder.total_deposit, tx_body.fee)
+    # Proposal deposits leave the wallet just like certificate deposits, but
+    # `propose/3` records them on the proposal (and may leave them nil for the
+    # `gov_action_deposit` auto-fill) rather than in `total_deposit`. Sum them
+    # from the prepared tx body so coin selection covers them.
+    initial_required_asset =
+      builder.total_deposit
+      |> Asset.merge(tx_body.fee)
+      |> Asset.merge(total_proposal_deposits(tx_body))
 
     with {:ok, %CoinSelection{selected_inputs: selected_inputs} = c_selection} <-
            balance_tx(initial_required_asset, tx_body, wallet_inputs, builder),

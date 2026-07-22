@@ -9,6 +9,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.CertificateHelper do
   alias Sutra.Cardano.Common.Drep
   alias Sutra.Cardano.Common.StakePool
   alias Sutra.Cardano.Script
+  alias Sutra.Cardano.Transaction.Certificate.RegDrepCert
   alias Sutra.Cardano.Transaction.Certificate.RegisterCert
   alias Sutra.Cardano.Transaction.Certificate.StakeVoteRegDelegCert
   alias Sutra.Cardano.Transaction.Certificate.VoteDelegCert
@@ -17,8 +18,13 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.CertificateHelper do
 
   @min_ada_for_stake_reg 2_000_000
 
+  # Default DRep registration deposit (the `drep_deposit` protocol parameter).
+  # Callers should pass `deposit:` when the network uses a different value; this
+  # default matches the standard Conway/Dijkstra devnet genesis (500 ADA).
+  @default_drep_deposit 500_000_000
+
   @doc """
-  Register a stake credential 
+  Register a stake credential
 
     ## Parameters
       * `tx_builder` - The `%TxBuilder{}` struct representing current transaction
@@ -60,7 +66,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.CertificateHelper do
     ## Parameters
       * `tx_builder` - The `%TxBuilder{}` struct representing current transaction
       * `credential` - The Credential to register Stake. either `%Address{}` with vkey stake credential, `%Scrip{}` Plutus Script or NativeScript
-      * `drep`       - The `%Drep{}` 
+      * `drep`       - The `%Drep{}`
       * `redeemer`   - The redeemer if trying to Register stake for Plutus Script
 
 
@@ -97,7 +103,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.CertificateHelper do
     ## Parameters
       * `tx_builder` - The `%TxBuilder{}` struct representing current transaction
       * `credential` - The Credential to register Stake. either `%Address{}` with vkey stake credential, `%Scrip{}` Plutus Script or NativeScript
-      * `drep`       - The `%Drep{}` 
+      * `drep`       - The `%Drep{}`
       * `stake pool keyhash` - The StakePool Key Hash
       * `redeemer`   - The redeemer if trying to Register stake for Plutus Script
 
@@ -114,7 +120,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.CertificateHelper do
 
       iex> new_tx() |> delegate_stake_and_vote(%Script{}, %Drep{}, "pool1....", redeemer_data)
       %TxBuilder{}
-      
+
       # we can also pass pool Bech32
       iex> new_tx() |> delegate_stake_and_vote(%Script{}, %Drep{}, "pool1....", redeemer_data)
       %TxBuilder{}
@@ -145,6 +151,46 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.CertificateHelper do
     end)
   end
 
+  @doc """
+  Registers a DRep (Dijkstra/Conway `reg_drep_cert`, certificate 16).
+
+    ## Parameters
+      * `tx_builder` - The `%TxBuilder{}` struct representing current transaction
+      * `credential` - The DRep credential. Either an `%Address{}` (its vkey stake
+        credential is used), a `%Script{}` Plutus script, or a `NativeScript`.
+      * `opts` - options.
+
+    ## Options
+      * `:deposit`  - DRep deposit in lovelace. Defaults (500 ADA). Must match the network's `drep_deposit`.
+      * `:anchor`   - Optional metadata anchor `%{url: String.t(), hash: String.t()}`.
+      * `:redeemer` - Redeemer, required when registering a Plutus-script DRep.
+
+    ## Examples
+      iex> new_tx() |> register_drep(%Address{})
+      %TxBuilder{}
+
+      iex> new_tx() |> register_drep(%Script{}, redeemer: redeemer_data)
+      %TxBuilder{}
+  """
+  def register_drep(%TxBuilder{} = builder, cred, opts \\ []) do
+    redeemer = if Script.is_plutus_script(cred), do: opts[:redeemer], else: nil
+    deposit = Asset.from_lovelace(opts[:deposit] || @default_drep_deposit)
+
+    cert = %RegDrepCert{
+      drep_credential: prepare_credential(cred),
+      deposit: deposit,
+      anchor: opts[:anchor]
+    }
+
+    with_cert_handler(builder, cred, fn %TxBuilder{} = new_builder ->
+      %TxBuilder{
+        new_builder
+        | certificates: [{cert, redeemer} | builder.certificates],
+          total_deposit: Asset.merge(builder.total_deposit, deposit)
+      }
+    end)
+  end
+
   defp prepare_credential(%Address{
          stake_credential: %Credential{credential_type: :vkey, hash: hash} = stake_cred
        })
@@ -159,8 +205,7 @@ defmodule Sutra.Cardano.Transaction.TxBuilder.CertificateHelper do
          handle
        )
        when is_function(handle, 1) do
-    new_cfg =
-      TxBuilder.add_guard(cfg, %Credential{credential_type: :vkey, hash: stake_key_hash})
+    new_cfg = TxBuilder.add_guard(cfg, stake_key_hash)
 
     handle.(new_cfg)
   end

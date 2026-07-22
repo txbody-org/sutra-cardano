@@ -4,6 +4,7 @@ defmodule Sutra.TxExamples.Simple.SimpleSpendTest do
   use Sutra.PrivnetTest
 
   alias Sutra.Cardano.Address
+  alias Sutra.Cardano.Address.Credential
   alias Sutra.Cardano.Asset
   alias Sutra.Cardano.Script
   alias Sutra.Cardano.Transaction.Input
@@ -57,6 +58,49 @@ defmodule Sutra.TxExamples.Simple.SimpleSpendTest do
           end)
 
         assert is_nil(place_utxo)
+      end)
+    end
+  end
+
+  describe "Spend with guards" do
+    # The script guard uses a RequireGuard native script (type 6), Dijkstra-only.
+    @tag :dijkstra
+    test "attaches both a pubkeyhash guard and a script guard" do
+      with_new_wallet(fn %{signing_key: signing_key, address: addr} ->
+        to_address = random_address()
+
+        # A native script that only validates when the wallet key is present in
+        # the tx `guards` field, exercised here alongside a plain pubkeyhash guard.
+        guard_script = guard_native_script(addr)
+
+        tx =
+          Sutra.new_tx()
+          |> Sutra.add_output(to_address, Asset.from_lovelace(2_000_000))
+          # pubkeyhash guard (also satisfies the script guard's RequireGuard)
+          |> Sutra.add_guard(addr)
+          # script guard: derives the script credential and attaches the script
+          |> Sutra.add_guard(guard_script)
+          |> Sutra.build_tx!(wallet_address: addr)
+
+        guards = tx.tx_body.guards
+
+        submit_tx_id =
+          tx
+          |> Sutra.sign_tx([signing_key])
+          |> Sutra.submit_tx()
+
+        IO.inspect(submit_tx_id)
+        await_tx(submit_tx_id)
+
+        assert %Credential{credential_type: :vkey} =
+                 Enum.find(guards, &(&1.credential_type == :vkey))
+
+        assert %Credential{credential_type: :script, hash: script_hash} =
+                 Enum.find(guards, &(&1.credential_type == :script))
+
+        assert script_hash == Script.hash_script(guard_script)
+
+        assert Asset.from_lovelace(2_000_000) == Yaci.balance_of(to_address)
       end)
     end
   end

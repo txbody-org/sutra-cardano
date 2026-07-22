@@ -9,7 +9,8 @@ defmodule Sutra.TxExamples.Simple.SimpleMintTest do
   alias Sutra.Data
   alias Sutra.Provider.Yaci
 
-  import Sutra.Test.Support.BlueprintSupport, only: [get_simple_script: 1]
+  import Sutra.Test.Support.BlueprintSupport,
+    only: [get_simple_script: 1, guard_native_script: 1]
 
   @mint_asset %{Base.encode16("token1", case: :lower) => 100}
 
@@ -77,6 +78,34 @@ defmodule Sutra.TxExamples.Simple.SimpleMintTest do
             %{policy_id => @mint_asset},
             {:inline_datum, Data.encode(58)}
           )
+          |> Sutra.build_tx!(wallet_address: addr)
+          |> Sutra.sign_tx([signing_key])
+          |> Sutra.submit_tx()
+
+        await_tx(mint_tx_id)
+
+        assert %{policy_id => @mint_asset} ==
+                 Yaci.balance_of(to_address) |> Asset.without_lovelace()
+      end)
+    end
+  end
+
+  describe "Mint with guard Native Script" do
+    # RequireGuard native scripts (native script type 6) are Dijkstra-only.
+    @tag :dijkstra
+    test "can mint using a Native Script that requires a guard credential" do
+      with_new_wallet(fn %{signing_key: signing_key, address: addr} ->
+        # A native script minting policy whose `RequireGuard` clause is satisfied
+        # only when the wallet key is present in the tx `guards` field.
+        native_policy = guard_native_script(addr)
+        policy_id = Script.hash_script(native_policy)
+        to_address = random_address()
+
+        mint_tx_id =
+          Sutra.new_tx()
+          |> Sutra.mint_asset(policy_id, @mint_asset, native_policy)
+          |> Sutra.add_guard(addr)
+          |> Sutra.add_output(to_address, %{policy_id => @mint_asset})
           |> Sutra.build_tx!(wallet_address: addr)
           |> Sutra.sign_tx([signing_key])
           |> Sutra.submit_tx()

@@ -42,6 +42,7 @@ defmodule Sutra.MixProject do
       {:rustler, "~> 0.36.2"},
       {:bech32, "~> 1.0"},
       {:req, "~> 0.6.3"},
+      {:jason, "~> 1.4"},
       {:mnemonic_tx, "~> 0.3.2"},
       {:ex_sodium, "~> 0.1.2"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},

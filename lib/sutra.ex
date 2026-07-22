@@ -103,6 +103,9 @@ defmodule Sutra do
   @doc delegate_to: {TxBuilder, :register_stake_credential, 3}
   defdelegate register_stake_credential(builder, credential, redeemer \\ nil), to: TxBuilder
 
+  @doc delegate_to: {TxBuilder, :register_drep, 3}
+  defdelegate register_drep(builder, credential, opts \\ []), to: TxBuilder
+
   @doc delegate_to: {TxBuilder, :delegate_vote, 4}
   defdelegate delegate_vote(builder, credential, drep, redeemer \\ nil), to: TxBuilder
 

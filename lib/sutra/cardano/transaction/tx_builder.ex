@@ -556,33 +556,54 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   Adds a guard credential to the transaction (Dijkstra's `guards` transaction body
   field, which replaces `required_signers`).
 
-  Accepts a raw key hash (assumed to be a vkey credential), an `Address`, or an
-  explicit `Credential` (which may be a script credential).
+  To guard with a keyHash, either pass a hex encoded keyHash or an `Address` with
+  a Verification Key credential. 
+  To guard using a script, pass a `%Script{}` or NativeScript.
 
   ## Examples
 
+      # Guard by a key hash
       iex> add_guard(new_tx(), "pubkey_hash_hex")
       %Sutra.Cardano.Transaction.TxBuilder{}
 
-      iex> add_guard(new_tx(), %Sutra.Cardano.Address.Credential{credential_type: :script, hash: "script_hash_hex"})
+      # Guard by a key, using its address
+      iex> add_guard(new_tx(), Sutra.Cardano.Address.from_bech32("addr_test1..."))
+      %Sutra.Cardano.Transaction.TxBuilder{}
+
+      # Guard by a script — derives the script credential and attaches the script.
+      iex> add_guard(new_tx(), native_script)
       %Sutra.Cardano.Transaction.TxBuilder{}
 
   """
   def add_guard(
         %__MODULE__{} = cfg,
-        %Address{payment_credential: %Credential{} = payment_credential} = addr
+        %Address{payment_credential: %Credential{hash: hash}} = addr
       ) do
     if Address.vkey_address?(addr),
-      do: add_guard(cfg, payment_credential),
+      do: add_guard(cfg, hash),
       else: %__MODULE__{cfg | errors: [%{key: :invalid_payment_signer, value: addr}]}
   end
 
-  def add_guard(%__MODULE__{} = cfg, %Credential{} = credential) do
-    %__MODULE__{cfg | guards: MapSet.put(cfg.guards, credential)}
+  # A `%Script{}`/`%NativeScript{}` guard: derive the script hash for the guard's
+  # script credential and attach the script to the witness set (via `script_lookup`)
+  # so callers don't need a separate "attach script" step.
+  def add_guard(%__MODULE__{} = cfg, script) when Script.is_script(script) do
+    script_type = if Script.is_native_script(script), do: :native, else: script.script_type
+    script_hash = Script.hash_script(script)
+
+    %__MODULE__{
+      cfg
+      | guards: MapSet.put(cfg.guards, %Credential{credential_type: :script, hash: script_hash}),
+        script_lookup: Map.put_new(cfg.script_lookup, script_hash, script),
+        used_scripts: MapSet.put(cfg.used_scripts, script_type)
+    }
   end
 
   def add_guard(%__MODULE__{} = cfg, key_hash) when is_binary(key_hash) do
-    add_guard(cfg, %Credential{credential_type: :vkey, hash: key_hash})
+    %__MODULE__{
+      cfg
+      | guards: MapSet.put(cfg.guards, %Credential{credential_type: :vkey, hash: key_hash})
+    }
   end
 
   @doc """
@@ -927,6 +948,9 @@ defmodule Sutra.Cardano.Transaction.TxBuilder do
   @doc delegate_to: {CertificateHelper, :register_stake_credential, 3}
   defdelegate register_stake_credential(builder, credential, redeemer \\ nil),
     to: CertificateHelper
+
+  @doc delegate_to: {CertificateHelper, :register_drep, 3}
+  defdelegate register_drep(builder, credential, opts \\ []), to: CertificateHelper
 
   @doc delegate_to: {CertificateHelper, :delegate_vote, 3}
   defdelegate delegate_vote(builder, credential, drep, redeemer \\ nil), to: CertificateHelper

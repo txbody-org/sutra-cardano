@@ -38,4 +38,20 @@ defmodule Sutra.Test.Support.BlueprintSupport do
 
     NativeScript.from_json(script_json)
   end
+
+  @doc """
+  A native script that is satisfied when the given address' key is present in the
+  transaction's `guards` field (Dijkstra `RequireGuard`, native script type 6).
+  """
+  def guard_native_script(%Address{payment_credential: %Credential{hash: pubkey_hash}}) do
+    NativeScript.from_json(%{
+      "type" => "all",
+      "scripts" => [
+        %{
+          "type" => "guard",
+          "keyHash" => pubkey_hash
+        }
+      ]
+    })
+  end
 end

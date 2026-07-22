@@ -125,13 +125,11 @@ defmodule Sutra.Cardano.Gov do
   def decode_voter!([0, key_hash]),
     do: %Voter{voter_type: :committee_hot, credential: decode_voter_credential(:vkey, key_hash)}
 
-
   def decode_voter!([1, script_hash]),
     do: %Voter{
       voter_type: :committee_hot,
       credential: %Credential{credential_type: :script, hash: extract_value!(script_hash)}
     }
-
 
   def decode_voter!([2, key_hash]),
     do: %Voter{voter_type: :drep, credential: decode_voter_credential(:vkey, key_hash)}

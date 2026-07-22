@@ -28,7 +28,7 @@ jobs:
       # and running the workflow steps.
       matrix:
         otp: ["28.3.0"] # Define the OTP version [required]
-        elixir: ["1.19.4"] # Define the elixir version [required]
+        elixir: ["1.20.2"] # Define the elixir version [required]
     steps:
       - name: Setup Node.js
         uses: actions/setup-node@v4

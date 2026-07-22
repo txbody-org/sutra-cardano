@@ -12,7 +12,7 @@ defmodule Sutra.Test.Support.BlueprintSupport do
 
   def get_simple_script(validator_name) do
     File.read!(@simple_blueprint_url)
-    |> :json.decode()
+    |> Jason.decode!()
     |> Map.get("validators", [])
     |> Enum.find(fn v -> v["title"] == validator_name end)
     |> Map.get("compiledCode")
